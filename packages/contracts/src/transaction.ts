@@ -40,8 +40,8 @@ export type TypeId = typeof TypeId;
  * Encapsulates the context for managing a scoped contract transaction.
  *
  * `C` and `PCK` type what the scope returns: the data of its last call, typed by this contract. A
- * call made in the scope is typed by its own contract and circuit, whichever circuit the scope is
- * typed by, so one scope takes calls of several circuits without a cast.
+ * call made in the scope is typed by its own contract and circuit, whichever contract the scope is
+ * typed by, so one scope takes calls of several circuits and of several contracts without a cast.
  */
 export interface Ledger9TransactionContext<
   C extends Contract.Any,
@@ -130,8 +130,8 @@ export interface Ledger8TransactionContext<
 
 /**
  * A {@link Ledger9TransactionContext} as a call made in the scope takes it: the members that are
- * the same whatever contract and circuit the scope is typed by, so a scope typed by one circuit takes
- * calls of others, each typed by its own contract and circuit.
+ * the same whatever contract the scope is typed by, so a scope typed by one contract takes calls of
+ * others, each typed by its own contract and circuit.
  */
 export type AnyLedger9TransactionContext = Pick<
   Ledger9TransactionContext<Contract.Any, AnyProvableCircuitId>,
@@ -242,10 +242,9 @@ type Ledger8ScopeBody = (txCtx: AnyLedger8TransactionContext) => Promise<void>;
  * too: the transaction holds the calls recorded when `fn` returns, and only their private states are
  * stored.
  *
- * A ledger 9 scope takes calls to one contract and private state id; a call that reads another is
- * refused with a `ScopedTransactionIdentityMismatchError`.
+ * A ledger 9 scope takes calls to several contracts, each with the providers of its own contract.
  * Every state is read at the block of the scope's first read, and a contract address is one contract
- * in either case. A callee
+ * in either case. A contract's public state is shared by every private state id of it, and a callee
  * the scope holds is given the state the scope's earlier calls left it in. Each private state id
  * chains from call to call, through the private state provider it was first read through: a call
  * that reaches it through another provider, as a second wallet using the same id would, is refused

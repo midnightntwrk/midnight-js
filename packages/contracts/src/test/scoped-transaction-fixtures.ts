@@ -52,6 +52,7 @@ import { createLedger9UnprovenDeployTxFromVerifierKeys } from '../unproven-deplo
 import { handles } from './ledger-transaction-fixtures';
 import * as Callee from './resources/compiled/callee/contract/index.js';
 import * as Caller from './resources/compiled/caller/contract/index.js';
+import * as Checkpointed from './resources/compiled/checkpointed/contract/index.js';
 import * as ShieldedMap from './resources/compiled/shielded-map/contract/index.js';
 import * as Stamps from './resources/compiled/stamps/contract/index.js';
 import * as UnshieldedBalance from './resources/compiled/unshielded-balance/contract/index.js';
@@ -74,6 +75,8 @@ import {
  * - `caller`: calls the `callee` given to its constructor, so every call of it has a callee;
  * - `unshielded-balance`: `mintToSelf` mints unshielded tokens to the contract, `sendToUser` pays them
  *   to a user, `balanceOf` reads the contract's balance of a token;
+ * - `checkpointed`: writes enough state before a checkpoint that what follows it, a coin minted and
+ *   sent to a user, is placed in the fallible half;
  * - `stamps`: `step` takes the next stamp from a witness that advances the caller's private state, and
  *   refuses a stamp that is not one more than the last, so a second call succeeds only on the private
  *   and public states the first left; `fillOne` to `fillThree` insert into a Merkle tree.
@@ -108,6 +111,7 @@ export type CountingShieldedMapContract = ShieldedMap.Contract<CountingState>;
 export type CalleeContract = Callee.Contract<undefined>;
 export type CallerContract = Caller.Contract<undefined>;
 export type UnshieldedBalanceContract = UnshieldedBalance.Contract<undefined>;
+export type CheckpointedContract = Checkpointed.Contract<undefined>;
 export type StampsContract = Stamps.Contract<StampState>;
 
 /** A private state its witness counts up, one at each call. */
@@ -146,6 +150,11 @@ export const unshieldedBalance = CompiledContract.make<UnshieldedBalanceContract
   CompiledContract.withCompiledFileAssets(compiledDirectory('unshielded-balance'))
 );
 
+export const checkpointed = CompiledContract.make<CheckpointedContract>('checkpointed', Checkpointed.Contract).pipe(
+  CompiledContract.withVacantWitnesses,
+  CompiledContract.withCompiledFileAssets(compiledDirectory('checkpointed'))
+);
+
 /** `stamps`, whose `nextStamp` witness takes the stamp after the private state's and keeps it. */
 export const stamps = CompiledContract.make<StampsContract>('stamps', Stamps.Contract).pipe(
   CompiledContract.withWitnesses({
@@ -156,6 +165,7 @@ export const stamps = CompiledContract.make<StampsContract>('stamps', Stamps.Con
 
 export const shieldedMapKeys = new CompiledKeys<'deposit'>('shielded-map');
 export const unshieldedBalanceKeys = new CompiledKeys<'mintToSelf' | 'sendToUser' | 'balanceOf'>('unshielded-balance');
+export const checkpointedKeys = new CompiledKeys<'heavyCheckpointMintAndSend'>('checkpointed');
 export const calleeKeys = new CompiledKeys<'deposit' | 'mintAndSend'>('callee');
 export const callerKeys = new CompiledKeys<'depositToCallee' | 'mintAndSendFromCallee'>('caller');
 export const stampsKeys = new CompiledKeys<'step' | 'count' | 'fillOne' | 'fillTwo' | 'fillThree'>('stamps');
@@ -190,6 +200,20 @@ export const deployedUnshieldedBalance = (): Promise<SerializedContractState<'v9
         unshieldedBalanceKeys,
         sampleCoinPublicKey(),
         { compiledContract: unshieldedBalance, signingKey: sampleSigningKey() },
+        createMockEncryptionPublicKey(),
+        MOCK_CONFIG
+      )
+    ).public.initialContractState
+  );
+
+/** The state `checkpointed` is deployed with. */
+export const deployedCheckpointed = (): Promise<SerializedContractState<'v9'>> =>
+  deployOnce('checkpointed', async () =>
+    (
+      await createLedger9UnprovenDeployTxFromVerifierKeys(
+        checkpointedKeys,
+        sampleCoinPublicKey(),
+        { compiledContract: checkpointed, signingKey: sampleSigningKey() },
         createMockEncryptionPublicKey(),
         MOCK_CONFIG
       )
@@ -283,6 +307,12 @@ export const chainOf = async (
     return { providers: { ...shared, zkConfigProvider, privateStateProvider }, stored };
   };
   return { providers: shared, withKeys, zswapChainState, coinPublicKey, encryptionPublicKey };
+};
+
+/** The unproven transaction the scope handed to be proven last. */
+export const lastProvenInput = (proveTx: unknown): UnprovenTransaction => {
+  const [unprovenTx] = vi.mocked(proveTx as (tx: { deserialize: (d: object) => unknown }) => unknown).mock.lastCall!;
+  return unprovenTx.deserialize({ v9: Transaction }) as UnprovenTransaction;
 };
 
 /** The unproven transaction the scope handed to be proven. */

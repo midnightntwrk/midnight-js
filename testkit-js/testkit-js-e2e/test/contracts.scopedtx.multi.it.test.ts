@@ -38,11 +38,18 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 
 import {
   CompiledCounterContract,
+  CompiledDoubleCounterContract,
   CompiledScopeShapesContract
 } from '../src/contract';
 import * as counterApi from '../src/counter-api';
+import * as doubleCounterApi from '../src/double-counter-api';
 import { type CounterContract, type CounterProviders } from '../src/types/counter-types';
-import { CounterPrivateStateId, privateStateZero } from '../src/types/double-counter-types';
+import {
+  CounterPrivateStateId,
+  type CounterProviders as DoubleCounterProviders,
+  type DoubleCounterContract,
+  privateStateZero
+} from '../src/types/double-counter-types';
 import { type ScopeShapesContract, type ScopeShapesContractProviders } from '../src/types/scope-shapes-types';
 
 const logger = createLogger(
@@ -59,8 +66,10 @@ describe('Scoped transactions over several calls and contracts', () => {
   let testEnvironment: TestEnvironment;
   let environmentConfiguration: EnvironmentConfiguration;
   let wallet: MidnightWalletProvider;
+  let doubleCounterProviders: DoubleCounterProviders;
   let counterProviders: CounterProviders;
   let scopeShapesProviders: ScopeShapesContractProviders;
+  let doubleCounterAddress: ContractAddress;
   let counterAddress: ContractAddress;
   let scopeShapesAddress: ContractAddress;
 
@@ -87,6 +96,7 @@ describe('Scoped transactions over several calls and contracts', () => {
     testEnvironment = getTestEnvironment(logger);
     environmentConfiguration = await testEnvironment.start();
     wallet = await testEnvironment.getMidnightWalletProvider();
+    doubleCounterApi.setLogger(logger);
     counterApi.setLogger(logger);
     const suffix = Date.now().toString();
 
@@ -95,6 +105,14 @@ describe('Scoped transactions over several calls and contracts', () => {
       url: environmentConfiguration.proofServer,
       zkConfigProvider: await nodeZkConfigRegistry(COMPILED_ROOT)
     });
+    doubleCounterProviders = {
+      ...initializeMidnightProviders(
+        wallet,
+        environmentConfiguration,
+        new doubleCounterApi.CounterConfiguration(`double-counter-private-state-${suffix}`)
+      ),
+      proofProvider
+    };
     counterProviders = {
       ...initializeMidnightProviders(
         wallet,
@@ -111,6 +129,8 @@ describe('Scoped transactions over several calls and contracts', () => {
       proofProvider
     };
 
+    doubleCounterAddress = (await doubleCounterApi.deploy(doubleCounterProviders, privateStateZero)).deployTxData
+      .public.contractAddress;
     counterAddress = (await counterApi.deploy(counterProviders, privateStateZero)).deployTxData.public.contractAddress;
     const scopeShapesDeployOptions = {
       compiledContract: CompiledScopeShapesContract,
@@ -152,6 +172,54 @@ describe('Scoped transactions over several calls and contracts', () => {
       expect(privateState2!.privateCounter).toEqual(privateState1!.privateCounter + 2);
     }
   );
+
+  test('should land calls to two contracts in one transaction, in order, and store each private state through its own provider [@slow]', async () => {
+    const tickers1 = await doubleCounterApi.getCounterLedgerState(doubleCounterProviders, doubleCounterAddress);
+    const round1 = await counterApi.getCounterLedgerState(counterProviders, counterAddress);
+    const doubleCounterPS1 = await doubleCounterApi.getCounterPrivateState(
+      doubleCounterProviders,
+      doubleCounterAddress,
+      CounterPrivateStateId
+    );
+    const counterPS1 = await counterApi.getCounterPrivateState(counterProviders, counterAddress, CounterPrivateStateId);
+
+    const doubleCounterOptions: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'> = {
+      compiledContract: CompiledDoubleCounterContract,
+      contractAddress: doubleCounterAddress,
+      circuitId: 'increment1',
+      privateStateId: CounterPrivateStateId,
+      args: [3n]
+    };
+    const callTxData = await withContractScopedTransaction<DoubleCounterContract>(
+      doubleCounterProviders,
+      async (txCtx) => {
+        await submitCallTx(doubleCounterProviders, doubleCounterOptions, txCtx);
+        await submitCallTx(counterProviders, incrementOptions(), txCtx);
+      }
+    );
+
+    expect(callTxData.public.status).toBe(SucceedEntirely);
+    const transaction = callTxData.private.unprovenTx.deserialize({ v9: Transaction });
+    const intents = Array.from(transaction.intents!.values());
+    expect(intents).toHaveLength(1);
+    expect(intents[0].actions.map((action) => ('address' in action ? action.address : undefined))).toEqual([
+      doubleCounterAddress,
+      counterAddress
+    ]);
+
+    const tickers2 = await doubleCounterApi.getCounterLedgerState(doubleCounterProviders, doubleCounterAddress);
+    expect(tickers2!.at(0)).toEqual(tickers1!.at(0)! + 3n);
+    expect(tickers2!.at(1)).toEqual(tickers1!.at(1));
+    expect(await counterApi.getCounterLedgerState(counterProviders, counterAddress)).toEqual(round1! + 1n);
+    const doubleCounterPS2 = await doubleCounterApi.getCounterPrivateState(
+      doubleCounterProviders,
+      doubleCounterAddress,
+      CounterPrivateStateId
+    );
+    const counterPS2 = await counterApi.getCounterPrivateState(counterProviders, counterAddress, CounterPrivateStateId);
+    expect(doubleCounterPS2!.privateCounter).toEqual(doubleCounterPS1!.privateCounter + 1);
+    expect(counterPS2!.privateCounter).toEqual(counterPS1!.privateCounter + 1);
+  });
 
   test('should spend, in the next call of the scope, a coin a call minted to the contract [@slow]', async () => {
     const walletKey = { bytes: new Uint8Array(Buffer.from(wallet.getCoinPublicKey(), 'hex')) };

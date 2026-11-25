@@ -25,7 +25,6 @@ import {
 } from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ScopedTransactionIdentityMismatchError } from '../errors';
 import type { Ledger9ContractStates, Ledger9PublicStates } from '../internal/era';
 import {
   type CachedStateIdentity,
@@ -107,74 +106,6 @@ describe('TransactionContextImpl identity validation', () => {
 
 
 
-    it('should throw ScopedTransactionIdentityMismatchError when contract addresses differ', () => {
-      const contractAddress1 = createMockContractAddress();
-      const contractAddress2 = createMockContractAddress();
-      const privateStateId = 'test-private-state-id' as PrivateStateId;
-      const cachedIdentity: CachedStateIdentity = { contractAddress: contractAddress1, privateStateId };
-      const requestedIdentity: CachedStateIdentity = { contractAddress: contractAddress2, privateStateId };
-      const mockStates = createMockStates();
-
-      txCtx[CacheStates](mockStates, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
-
-      expect(() => txCtx[GetCurrentStatesForIdentity](requestedIdentity)).toThrow(
-        ScopedTransactionIdentityMismatchError
-      );
-    });
-
-    it('should throw ScopedTransactionIdentityMismatchError when private state IDs differ', () => {
-      const contractAddress = createMockContractAddress();
-      const privateStateId1 = 'private-state-id-1' as PrivateStateId;
-      const privateStateId2 = 'private-state-id-2' as PrivateStateId;
-      const cachedIdentity: CachedStateIdentity = { contractAddress, privateStateId: privateStateId1 };
-      const requestedIdentity: CachedStateIdentity = { contractAddress, privateStateId: privateStateId2 };
-      const mockStates = createMockStates();
-
-      txCtx[CacheStates](mockStates, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
-
-      expect(() => txCtx[GetCurrentStatesForIdentity](requestedIdentity)).toThrow(
-        ScopedTransactionIdentityMismatchError
-      );
-    });
-
-    it('should throw ScopedTransactionIdentityMismatchError when one has privateStateId and other does not', () => {
-      const contractAddress = createMockContractAddress();
-      const privateStateId = 'test-private-state-id' as PrivateStateId;
-      const cachedIdentity: CachedStateIdentity = { contractAddress, privateStateId };
-      const requestedIdentity: CachedStateIdentity = { contractAddress };
-      const mockStates = createMockStates();
-
-      txCtx[CacheStates](mockStates, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
-
-      expect(() => txCtx[GetCurrentStatesForIdentity](requestedIdentity)).toThrow(
-        ScopedTransactionIdentityMismatchError
-      );
-    });
-
-    it('should include correct identity information in error', () => {
-      const contractAddress1 = createMockContractAddress();
-      const contractAddress2 = createMockContractAddress();
-      const privateStateId1 = 'ps-id-1' as PrivateStateId;
-      const privateStateId2 = 'ps-id-2' as PrivateStateId;
-      const cachedIdentity: CachedStateIdentity = { contractAddress: contractAddress1, privateStateId: privateStateId1 };
-      const requestedIdentity: CachedStateIdentity = { contractAddress: contractAddress2, privateStateId: privateStateId2 };
-      const mockStates = createMockStates();
-
-      txCtx[CacheStates](mockStates, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
-
-      try {
-        txCtx[GetCurrentStatesForIdentity](requestedIdentity);
-        expect.fail('Expected ScopedTransactionIdentityMismatchError to be thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ScopedTransactionIdentityMismatchError);
-        const identityError = error as ScopedTransactionIdentityMismatchError;
-        expect(identityError.cached.contractAddress).toBe(contractAddress1);
-        expect(identityError.cached.privateStateId).toBe(privateStateId1);
-        expect(identityError.requested.contractAddress).toBe(contractAddress2);
-        expect(identityError.requested.privateStateId).toBe(privateStateId2);
-      }
-    });
-
     it('should allow same identity to be used multiple times', () => {
       const contractAddress = createMockContractAddress();
       const privateStateId = 'test-private-state-id' as PrivateStateId;
@@ -201,17 +132,66 @@ describe('TransactionContextImpl identity validation', () => {
       expect(result?.states).toEqual({ ...mockStates, privateState: undefined });
     });
 
-    it('should throw when requesting with privateStateId but cached without', () => {
+  });
+
+  describe('several contracts and private state ids in one scope', () => {
+    it('holds nothing yet for a contract, or a private state id, the scope has not read', () => {
+      // Arrange
       const contractAddress = createMockContractAddress();
-      const cachedIdentity: CachedStateIdentity = { contractAddress };
-      const requestedIdentity: CachedStateIdentity = { contractAddress, privateStateId: 'some-id' as PrivateStateId };
-      const mockStates = createMockPublicStates();
+      txCtx[CacheStates](createMockStates(), MOCK_READ, { contractAddress, privateStateId: 'first' }, MOCK_BLOCK_HASH);
 
-      txCtx[CacheStates]({ ...mockStates, privateState: undefined }, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
+      // Act
+      const otherContract = txCtx[GetCurrentStatesForIdentity]({ contractAddress: createMockContractAddress(), privateStateId: 'first' });
+      const otherId = txCtx[GetCurrentStatesForIdentity]({ contractAddress, privateStateId: 'second' });
 
-      expect(() => txCtx[GetCurrentStatesForIdentity](requestedIdentity)).toThrow(
-        ScopedTransactionIdentityMismatchError
+      // Assert: RED WHEN a scope refuses a second contract or private state id.
+      expect(otherContract).toBeUndefined();
+      expect(otherId).toBeUndefined();
+    });
+
+    it('a scope takes calls to two contracts', async () => {
+      // Arrange
+      const first = createMockContractAddress();
+      const second = createMockContractAddress();
+      const firstStates = createMockStates();
+      const secondStates = { ...createMockStates(), privateState: { other: true } as AnyPrivateState };
+
+      // Act
+      txCtx[CacheStates](firstStates, MOCK_READ, { contractAddress: first, privateStateId: 'id' }, MOCK_BLOCK_HASH);
+      await txCtx[RecordCall]('testCircuit', () => Promise.resolve(createMockExecutedCall()), { contractAddress: first, privateStateId: 'id' });
+      txCtx[CacheStates](secondStates, MOCK_READ, { contractAddress: second, privateStateId: 'id' }, 'ff'.repeat(32));
+
+      // Assert: RED WHEN a scope refuses a second contract.
+      expect(txCtx[GetCurrentStatesForIdentity]({ contractAddress: second, privateStateId: 'id' })).toEqual({
+        states: { ...secondStates, ledgerParameters: firstStates.ledgerParameters },
+        blockHash: MOCK_BLOCK_HASH
+      });
+      expect(txCtx[GetCurrentStatesForIdentity]({ contractAddress: first, privateStateId: 'id' })?.states.contractState).toBe(
+        firstStates.contractState
       );
+    });
+
+    it('two ids of one contract in one scope share its public state', async () => {
+      // Arrange
+      const contractAddress = PlatformContractAddress.ContractAddress(createMockContractAddress());
+      const contractState = new ContractState();
+      const call = createMockContractCall({ contractAddress });
+      const left = StateValue.newArray();
+      txCtx[CacheStates]({ ...createMockStates(), contractState }, MOCK_READ, { contractAddress, privateStateId: 'first' }, MOCK_BLOCK_HASH);
+      await txCtx[RecordCall]('testCircuit', () => Promise.resolve(createMockExecutedCall(createMockUnprovenCallTxData({ calls: [{ ...call, public: { ...call.public, contractState: left } }] }))), { contractAddress, privateStateId: 'first' });
+
+      // Act
+      txCtx[CacheStates](
+        { ...createMockStates(), contractState: new ContractState(), privateState: { second: true } as AnyPrivateState },
+        MOCK_READ,
+        { contractAddress, privateStateId: 'second' },
+        MOCK_BLOCK_HASH
+      );
+      const second = txCtx[GetCurrentStatesForIdentity]({ contractAddress, privateStateId: 'second' });
+
+      // Assert: RED WHEN a second private state id of a contract runs on the public state as read.
+      expect(second?.states.contractState.data.state.encode()).toEqual(left.encode());
+      expect((second?.states as Ledger9ContractStates<AnyPrivateState>).privateState).toEqual({ second: true });
     });
   });
 
@@ -254,6 +234,27 @@ describe('TransactionContextImpl identity validation', () => {
 
       expect(running?.serialize()).not.toEqual(before);
       expect(txCtx.getCurrentStates()?.contractState.serialize()).toEqual(running?.serialize());
+    });
+  });
+
+  describe('getCurrentStates over several contracts', () => {
+    it("answers for the contract the scope's last call was made to", async () => {
+      // Arrange
+      const first = createMockContractAddress();
+      const second = PlatformContractAddress.ContractAddress(createMockContractAddress());
+      const secondState = new ContractState();
+      secondState.data = new ChargedState(StateValue.newArray());
+      const call = createMockContractCall({ contractAddress: second });
+      txCtx[CacheStates]({ ...createMockStates(), contractState: new ContractState() }, MOCK_READ, { contractAddress: first }, MOCK_BLOCK_HASH);
+      txCtx[CacheStates]({ ...createMockStates(), contractState: secondState }, MOCK_READ, { contractAddress: second }, MOCK_BLOCK_HASH);
+      const before = txCtx.getCurrentStates()?.contractState.serialize();
+
+      // Act
+      await txCtx[RecordCall]('testCircuit', () => Promise.resolve(createMockExecutedCall(createMockUnprovenCallTxData({ calls: [{ ...call, public: { ...call.public, contractState: StateValue.newArray() } }] }))));
+
+      // Assert: RED WHEN it answers for the first contract the scope read whatever the last call was.
+      expect(before).toEqual(new ContractState().serialize());
+      expect(txCtx.getCurrentStates()?.contractState.serialize()).toEqual(secondState.serialize());
     });
   });
 

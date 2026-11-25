@@ -1188,9 +1188,10 @@ export class IncompleteFindContractPrivateStateConfig extends MidnightJsError {
 }
 
 /**
- * An error indicating that a scoped transaction attempted to use cached states
+ * An error indicating that a ledger 8 scoped transaction attempted to use cached states
  * with a different contract address or private state ID than the one originally cached.
- * This prevents silent state mismatches when batching calls to different contracts.
+ * This prevents silent state mismatches when batching calls to different contracts. A ledger 9
+ * scope holds states per contract and private state ID, and takes calls to several contracts.
  */
 export class ScopedTransactionIdentityMismatchError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH;

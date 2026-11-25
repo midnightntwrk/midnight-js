@@ -119,7 +119,7 @@ export interface Ledger9ExecutedCall<C extends Contract.Any, PCK extends Contrac
 type AnyLedger9CallResult = Ledger9CallResult<Contract.Any, AnyProvableCircuitId>;
 
 /**
- * @internal A circuit run of any contract, as a scope records it: every
+ * @internal A circuit run of any contract, as a scope of several contracts records it: every
  * {@link Ledger9ExecutedCall} is one. Its circuit's return value and private state are held as they
  * are, untyped.
  */

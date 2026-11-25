@@ -1,4 +1,4 @@
-# 0027. Build a ledger 9 contract-scoped transaction once, in call order
+# 0027. Build a ledger 9 contract-scoped transaction once, in call order, across contracts
 
 - Status: Accepted
 - Date: 2026-11-23
@@ -44,9 +44,7 @@ recorded, in the order the calls were made.
   reaches, root and callees, as a copy. A callee is served from the scope's state before the
   chain. Private states are kept per contract and private state id, each with the private state
   provider it was read through; a call that reaches one through another provider is refused
-  before it runs. Contract addresses are compared in lower case. The scope still takes calls to
-  one contract and private state id, and refuses another
-  (`ScopedTransactionIdentityMismatchError`), as before.
+  before it runs. Contract addresses are compared in lower case.
 - **Encryption keys.** The scope's mappings, every call's mappings and every call's wallet keys
   are merged; a coin key mapped to two encryption keys is refused before proving.
 - **The claim check is the ledger's own five comparisons** (receives, nullifiers, claimed
@@ -72,7 +70,7 @@ recorded, in the order the calls were made.
 ## Consequences
 
 - **Positive:** calls that depend on each other land in the order they were made, or not at all.
-  The claim check and the time
+  One scope can call several contracts and several private states. The claim check and the time
   to dismiss refuse before a proof is paid for.
 - **Positive:** a lone call that contradicts its own wallet's encryption key now gets a named
   error, where it used to get the wallet's key silently. A lone call whose transcripts' claims do not
@@ -87,6 +85,8 @@ recorded, in the order the calls were made.
   allowance; otherwise it is sent in a transaction of its own, where it keeps its fallible
   placement. A scope that earlier releases landed in one transaction with a fallible part,
   possibly in part, is refused before proving.
+- **Negative:** a scope over several contracts needs a proof provider that resolves the keys of
+  every contract its calls reach.
 - **Negative:** one transaction links what its calls state publicly. A wrap of unshielded tokens
   merged with a deposit into a receiver meant to stay private puts the wrap's amount, the token
   and the receiver together on chain; sent apart, the deposit of an already-shielded coin states

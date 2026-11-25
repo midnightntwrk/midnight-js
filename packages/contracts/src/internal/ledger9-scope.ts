@@ -29,7 +29,7 @@ import {
 
 import { type Ledger9CallResult } from '../call';
 import { type Ledger9ContractProviders } from '../contract-providers';
-import { IncompleteCallTxPrivateStateConfig, ScopedTransactionIdentityMismatchError } from '../errors';
+import { IncompleteCallTxPrivateStateConfig } from '../errors';
 import type * as Transaction from '../transaction';
 import { type Ledger9FinalizedCallTxData, type Ledger9UnsubmittedCallTxData } from '../tx-model';
 import { type Ledger9ContractStates, type Ledger9PublicStates, type ResolvedOperationEra } from './era';
@@ -182,8 +182,6 @@ export class TransactionContextImpl<
         readonly read: Pick<PublicStatesRead, 'protocolVersion' | 'ledgerParameters'>;
       }
     | undefined;
-  /** The contract and private state id the scope first read: the only one its calls may read. */
-  private identity: CachedStateIdentity | undefined;
   /** The public states of every contract the scope has read or its calls have reached, keyed by address. */
   private readonly publicStates = new Map<string, ScopeContractStates>();
   /** The private states the scope holds, per contract and private state id, in the order it first reached each. */
@@ -252,8 +250,6 @@ export class TransactionContextImpl<
    * when the scope holds either not yet.
    *
    * @param privateStateProvider The provider the asking call reads private states through.
-   * @throws ScopedTransactionIdentityMismatchError if the scope first read another contract or
-   *         private state id: its calls read one contract and private state id.
    * @throws InvalidArgumentError if the scope read that private state through another provider: a
    *         scope holds one private state per contract and private state id, which two wallets
    *         cannot share.
@@ -262,17 +258,6 @@ export class TransactionContextImpl<
     identity: CachedStateIdentity,
     privateStateProvider?: PrivateStateProvider
   ): PinnedContractStates<unknown> | undefined {
-    const scoped = this.identity;
-    if (
-      scoped !== undefined &&
-      (contractAddressKey(scoped.contractAddress) !== contractAddressKey(identity.contractAddress) ||
-        scoped.privateStateId !== identity.privateStateId)
-    ) {
-      throw new ScopedTransactionIdentityMismatchError(
-        { contractAddress: scoped.contractAddress, privateStateId: scoped.privateStateId },
-        { contractAddress: identity.contractAddress, privateStateId: identity.privateStateId }
-      );
-    }
     const publicStates = this.publicStates.get(contractAddressKey(identity.contractAddress));
     if (this.pinned === undefined || publicStates === undefined) {
       return undefined;
@@ -318,7 +303,8 @@ export class TransactionContextImpl<
   /**
    * The last call's data, with the transaction of every call recorded so far as its
    * `private.unprovenTx` and their new coins as its `private.newCoins`, built when this is called.
-   * It is typed by the scope's contract.
+   * It is typed by the scope's contract; in a scope of several contracts, the last call may be of
+   * another.
    *
    * @throws ZswapOutputResolutionError if the calls recorded so far do not make a transaction, for
    *         example when a coin one of them sends to a contract is claimed by no call yet.
@@ -331,7 +317,10 @@ export class TransactionContextImpl<
     return [{ ...last, private: { ...last.private, ...this.scopeTransaction() } }, this.lastRecordedCall()?.privateStateTarget?.privateStateId];
   }
 
-  /** The last call's result, typed by the scope's contract. */
+  /**
+   * The last call's result, typed by the scope's contract: in a scope of several contracts, the last
+   * call may be of another, whose result the caller types as its own.
+   */
   [LastCallResult](): Ledger9CallResult<C, PCK> | undefined {
     return this.lastRecordedCall()?.executed.result as Ledger9CallResult<C, PCK> | undefined;
   }
@@ -462,7 +451,6 @@ export class TransactionContextImpl<
     privateStateProvider?: PrivateStateProvider
   ): void {
     const { contractState, zswapChainState, ledgerParameters } = states;
-    this.identity ??= identity;
     this.pinned ??= {
       blockHash,
       ledgerParameters,
