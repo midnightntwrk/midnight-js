@@ -22,6 +22,7 @@ import {
   communicationCommitmentRandomness,
   type ContractAddress,
   createShieldedCoinInfo,
+  entryPointHash,
   feeToken,
   Intent,
   nativeToken,
@@ -59,7 +60,6 @@ import {
 } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { MidnightConfig } from '@midnightntwrk/midnight-js-types';
 import { assertDefined, CONTRACTS_ERROR_CODES, isDeserializationError, toHex } from '@midnightntwrk/midnight-js-utils';
-import { randomBytes } from 'crypto';
 import { Option } from 'effect';
 import { readFileSync } from 'fs';
 import { beforeAll } from 'vitest';
@@ -75,6 +75,7 @@ import {
   toLedgerContractState,
   toLedgerQueryContext,
   ZSWAP_MERKLE_ROOT_RETENTION_SECONDS} from '../../internal/utils';
+import { ledgerWellFormed } from '../scoped-transaction-fixtures';
 import { MOCK_CONFIG, networkIdOf } from '../test-mocks';
 
 const emptyTranscript: PartitionedTranscript = [undefined, undefined];
@@ -1010,24 +1011,262 @@ describe('ledger-utils', () => {
         // Assert
         expect(act).toThrow(ZswapOutputResolutionError);
         expect(act).toThrow(`segment 0 / ${commitment} / ${callee}: offered 1, claimed 0`);
-        expect(act).toThrow(`segment 1 / ${commitment} / ${callee}: offered 0, claimed 1`);
+        // A fallible half runs in the segment of its intent, which the transaction is placed at at random.
+        expect(act).toThrow(new RegExp(`segment [1-9][0-9]* / ${commitment} / ${callee}: offered 0, claimed 1`));
+      });
+    });
+
+    describe('createUnprovenLedgerCallTx over a whole scope', () => {
+      const coin = createShieldedCoinInfo(shieldedToken().raw, 70n);
+
+      /** A communication commitment, as a transcript's claim of a contract call carries it. */
+      const someCommitment = (): Uint8Array =>
+        new Uint8Array(Buffer.from(communicationCommitment(alignedValue, alignedValue, communicationCommitmentRandomness()), 'hex'));
+
+      /** A guaranteed transcript with `effects` over those of an empty one. */
+      const withEffects = (effects: Partial<Transcript<AlignedValue>['effects']>): PartitionedTranscript => {
+        const transcript = makeShieldedTranscript();
+        return [{ ...transcript, effects: { ...transcript.effects, ...effects } }, undefined];
+      };
+
+      it('passes a coin one call sends to a contract and a later call of that contract claims', () => {
+        // Arrange: the first call (of `sender`) makes a coin for `receiver`; the receiver's own,
+        // later, call of the scope takes it in.
+        const sender = sampleContractAddress();
+        const receiver = sampleContractAddress();
+        const commitment = contractCommitment(coin, receiver);
+
+        // Act
+        const tx = assemble([
+          callOf(sender, guaranteed([], [commitment]), localState([], [toContract(coin, receiver)])),
+          callOf(receiver, guaranteed([commitment]))
+        ]);
+
+        // Assert
+        expect(commitmentsOf(tx)).toEqual([commitment]);
+        expect(ledgerWellFormed(tx)).toBe(true);
+      });
+
+      it('refuses a coin sent to a contract that no call of the scope claims', () => {
+        // Arrange
+        const sender = sampleContractAddress();
+        const receiver = sampleContractAddress();
+        const commitment = contractCommitment(coin, receiver);
+
+        // Act
+        const act = () =>
+          assemble([
+            callOf(sender, guaranteed([], [commitment]), localState([], [toContract(coin, receiver)])),
+            callOf(receiver, guaranteed())
+          ]);
+
+        // Assert
+        expect(act).toThrow(ZswapOutputResolutionError);
+        expect(act).toThrow(`segment 0 / ${commitment} / ${receiver}: offered 1, claimed 0`);
+      });
+
+      it('refuses a coin claimed by a contract it was not sent to', () => {
+        // Arrange
+        const sender = sampleContractAddress();
+        const receiver = sampleContractAddress();
+        const other = sampleContractAddress();
+        const commitment = contractCommitment(coin, receiver);
+
+        // Act
+        const act = () =>
+          assemble([
+            callOf(sender, guaranteed([], [commitment]), localState([], [toContract(coin, receiver)])),
+            callOf(other, guaranteed([commitment]))
+          ]);
+
+        // Assert
+        expect(act).toThrow(ZswapOutputResolutionError);
+        expect(act).toThrow(`segment 0 / ${commitment} / ${receiver}: offered 1, claimed 0`);
+        expect(act).toThrow(`segment 0 / ${commitment} / ${other}: offered 0, claimed 1`);
+      });
+
+      it('refuses a coin a contract spends whose nullifier no call claims', () => {
+        // Arrange
+        const owner = sampleContractAddress();
+        const spent = settledFor(owner);
+
+        // Act
+        const act = () => assemble([callOf(owner, guaranteed(), localState([spent.qualifiedCoin]))], new Map([[owner, spent.chainState]]));
+
+        // Assert: RED WHEN the nullifiers the offers spend are not compared with the claimed ones.
+        expect(act).toThrow(ZswapOutputResolutionError);
+        expect(act).toThrow(`segment 0 / ${spent.nullifier} / ${owner}: spent 1, claimed 0`);
+      });
+
+      it('refuses a nullifier a call claims that no coin of its contract is spent under', () => {
+        // Arrange
+        const owner = sampleContractAddress();
+        const nullifier = settledFor(owner).nullifier;
+
+        // Act
+        const act = () => assemble([callOf(owner, guaranteed([], [], [nullifier]))]);
+
+        // Assert: RED WHEN the nullifiers the offers spend are not compared with the claimed ones.
+        expect(act).toThrow(ZswapOutputResolutionError);
+        expect(act).toThrow(`segment 0 / ${nullifier} / ${owner}: spent 0, claimed 1`);
+      });
+
+      it('passes a coin a call claims to send to the wallet, among the outputs of any owner', () => {
+        // Arrange
+        const owner = sampleContractAddress();
+        const toWallet: LocalOutput = { coinInfo: coin, recipient: { is_left: true, left: sampleCoinPublicKey(), right: owner } };
+        const commitment = ZswapOutput.new(coin, 0, toWallet.recipient.left, sampleEncryptionPublicKey()).commitment;
+
+        // Act
+        const tx = assemble([callOf(owner, guaranteed([], [commitment]), localState([], [toWallet]))]);
+
+        // Assert
+        expect(commitmentsOf(tx)).toEqual([commitment]);
+      });
+
+      it('refuses a coin a call claims to send that the offers do not create', () => {
+        // Arrange
+        const owner = sampleContractAddress();
+        const commitment = contractCommitment(coin, sampleContractAddress());
+
+        // Act
+        const act = () => assemble([callOf(owner, guaranteed([], [commitment]))]);
+
+        // Assert: RED WHEN a claimed spend is not looked for among the coins the offers create.
+        expect(act).toThrow(ZswapOutputResolutionError);
+        expect(act).toThrow(`segment 0 / ${commitment}: offered 0, claimed 1`);
+      });
+
+      it('refuses a coin two calls both claim to send', () => {
+        // Arrange
+        const first = sampleContractAddress();
+        const second = sampleContractAddress();
+        const receiver = sampleContractAddress();
+        const commitment = contractCommitment(coin, receiver);
+
+        // Act
+        const act = () =>
+          assemble([
+            callOf(first, guaranteed([], [commitment]), localState([], [toContract(coin, receiver)])),
+            callOf(second, guaranteed([], [commitment])),
+            callOf(receiver, guaranteed([commitment]))
+          ]);
+
+        // Assert: RED WHEN a coin claimed as sent twice is not refused.
+        expect(act).toThrow(ZswapOutputResolutionError);
+        expect(act).toThrow(`segment 0 / ${commitment}: claimed 2 times`);
+      });
+
+      it('refuses a contract call a transcript claims that the intent does not make', () => {
+        // Arrange
+        const caller = sampleContractAddress();
+        const callee = sampleContractAddress();
+        const claim: [bigint, string, string, Uint8Array] = [0n, callee, entryPointHash('treeCircuit'), someCommitment()];
+
+        // Act
+        const act = () => assemble([callOf(caller, withEffects({ claimedContractCalls: [claim] }))]);
+
+        // Assert: RED WHEN the claimed contract calls are not compared with the intent's calls.
+        expect(act).toThrow(InvalidArgumentError);
+        expect(act).toThrow(`${callee} / ${claim[2]} / ${toHex(claim[3])}: made 0, claimed 1`);
+      });
+
+      it("passes a callee's call its caller claims, from the caller's guaranteed half or its fallible one", () => {
+        // Arrange: the callee is bound to its caller by the commitment the caller's transcript claims.
+        const caller = sampleContractAddress();
+        const callee = sampleContractAddress();
+        const rand = communicationCommitmentRandomness();
+        const commitment = communicationCommitment(alignedValue, alignedValue, rand);
+        const calleeCall: LedgerCall = { ...callOf(callee, guaranteed()), communicationCommitment: Option.some({ commCommRand: rand, commComm: commitment }) };
+        const claim: [bigint, string, string, Uint8Array] = [0n, callee, entryPointHash(circuitId), new Uint8Array(Buffer.from(commitment, 'hex'))];
+        const [claimed = makeShieldedTranscript()] = withEffects({ claimedContractCalls: [claim] });
+
+        // Act
+        const fromGuaranteed = assemble([calleeCall, callOf(caller, [claimed, undefined])]);
+        // A callee its caller claims from the fallible half runs in the fallible half too, and a
+        // fallible half starts at a checkpoint.
+        const fromCheckpoint = (transcript: Transcript<AlignedValue>): Transcript<AlignedValue> => ({
+          ...transcript,
+          program: ['ckpt', ...transcript.program]
+        });
+        const fromFallible = assemble([
+          { ...calleeCall, public: { ...calleeCall.public, partitionedTranscript: [undefined, fromCheckpoint(makeShieldedTranscript())] } },
+          callOf(caller, [makeShieldedTranscript(), fromCheckpoint(claimed)])
+        ]);
+
+        // Assert: RED WHEN a claimed call is keyed by the half or the segment its transcript runs in,
+        // and not by the intent it is in, as the ledger keys it.
+        expect(fromGuaranteed.intents?.size).toBe(1);
+        expect(fromFallible.intents?.size).toBe(1);
+        expect([ledgerWellFormed(fromGuaranteed), ledgerWellFormed(fromFallible)]).toEqual([true, true]);
+      });
+
+      it('refuses one contract call claimed twice', () => {
+        // Arrange
+        const caller = sampleContractAddress();
+        const claim: [bigint, string, string, Uint8Array] = [0n, sampleContractAddress(), entryPointHash('treeCircuit'), someCommitment()];
+
+        // Act
+        const act = () =>
+          assemble([callOf(caller, withEffects({ claimedContractCalls: [claim] })), callOf(caller, withEffects({ claimedContractCalls: [claim] }))]);
+
+        // Assert: RED WHEN a contract call claimed twice is not refused.
+        expect(act).toThrow(InvalidArgumentError);
+        expect(act).toThrow(/claimed 2 times/);
+      });
+
+      it('refuses an unshielded payment to a contract that the contract does not take in', () => {
+        // Arrange
+        const payer = sampleContractAddress();
+        const payee = sampleContractAddress();
+        const claimedUnshieldedSpends = new Map([[[unshieldedToken(), { tag: 'contract', address: payee } as PublicAddress], 30n]]) as Map<
+          [TokenType, PublicAddress],
+          bigint
+        >;
+
+        // Act
+        const act = () => assemble([callOf(payer, withEffects({ claimedUnshieldedSpends })), callOf(payee, guaranteed())]);
+
+        // Assert: RED WHEN the claimed unshielded spends are not looked for among the inputs and outputs.
+        expect(act).toThrow(InvalidArgumentError);
+        expect(act).toThrow(new RegExp(`guaranteed / unshielded:${unshieldedToken().raw} / contract:${payee} / 30: paid 0, claimed 1`));
+      });
+
+      it('passes an unshielded payment to a contract that the contract takes in, in the same half', () => {
+        // Arrange
+        const payer = sampleContractAddress();
+        const payee = sampleContractAddress();
+        const claimedUnshieldedSpends = new Map([[[unshieldedToken(), { tag: 'contract', address: payee } as PublicAddress], 30n]]) as Map<
+          [TokenType, PublicAddress],
+          bigint
+        >;
+
+        // Act
+        const tx = assemble([
+          callOf(payer, withEffects({ claimedUnshieldedSpends })),
+          callOf(payee, withEffects({ unshieldedInputs: new Map([[unshieldedToken(), 30n]]) }))
+        ]);
+
+        // Assert
+        expect(tx.intents?.size).toBe(1);
       });
     });
   });
 
   const makeTranscript = (
-    claimedUnshieldedSpends: Map<[TokenType, PublicAddress], bigint>
+    claimedUnshieldedSpends: Map<[TokenType, PublicAddress], bigint>,
+    unshieldedInputs: Map<TokenType, bigint> = new Map()
   ): Transcript<AlignedValue> => ({
     gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
     effects: {
-      claimedNullifiers: [toHex(randomBytes(32))],
-      // No shielded receives: these cases carry no shielded coins, and a random commitment here
-      // claims a contract received something the offers do not contain, which the ledger rejects.
+      // No shielded claims: these cases carry no shielded coins, and a claim of a coin or nullifier
+      // the offers do not contain is one the ledger rejects.
+      claimedNullifiers: [],
       claimedShieldedReceives: [],
-      claimedShieldedSpends: [toHex(randomBytes(32))],
+      claimedShieldedSpends: [],
       claimedContractCalls: [],
       shieldedMints: new Map(),
-      unshieldedInputs: new Map(),
+      unshieldedInputs,
       unshieldedOutputs: new Map(),
       unshieldedMints: new Map(),
       claimedUnshieldedSpends
@@ -1155,11 +1394,11 @@ describe('ledger-utils', () => {
 
     const callTxWithTranscripts = (
       guaranteed: Transcript<AlignedValue> | undefined,
-      fallible: Transcript<AlignedValue> | undefined
+      fallible: Transcript<AlignedValue> | undefined,
+      contractAddress: string = sampleContractAddress()
     ) => {
       const contractState = new CompactContractState();
       contractState.setOperation(circuitId, makeOperation());
-      const contractAddress = sampleContractAddress();
 
       return callTxWithSingleState(
         [
@@ -1242,11 +1481,13 @@ describe('ledger-utils', () => {
     it('does not attach unshielded offers when only contract-addressed spends exist', () => {
       const contractAddr = sampleContractAddress();
       const tokenType = unshieldedToken();
+      // The contract receives the tokens it claims, as its own unshielded input, as the ledger requires.
       const transcript = makeTranscript(
-        new Map([[[tokenType, { tag: 'contract', address: contractAddr } as PublicAddress], 100n]])
+        new Map([[[tokenType, { tag: 'contract', address: contractAddr } as PublicAddress], 100n]]),
+        new Map([[tokenType, 100n]])
       );
 
-      const tx = callTxWithTranscripts(transcript, transcript);
+      const tx = callTxWithTranscripts(transcript, transcript, contractAddr);
 
       expect(tx).toBeInstanceOf(Transaction);
       const intent = tx.intents?.values().next().value;
@@ -1604,6 +1845,27 @@ describe('createUnprovenLedgerCallTx multi-call assembly', () => {
       String(calleeCall.contractAddress),
       String(rootCall.contractAddress)
     ]);
+  });
+
+  it('puts the calls of two circuits in one intent, in the order they are given', () => {
+    // Arrange
+    const address = sampleContractAddress();
+    const state = new CompactContractState();
+    state.setOperation('first', makeOperation());
+    state.setOperation('second', makeOperation());
+    const call = (circuitId: string) => callInput(circuitId, address, state, Option.none());
+    const build = (circuitIds: readonly string[]) =>
+      callTxWithSingleState(circuitIds.map(call), () => state, new ZswapChainState(), emptyZswapLocalState, encryptionPublicKey);
+
+    // Act
+    const inOrder = build(['first', 'second']);
+    const reversed = build(['second', 'first']);
+
+    // Assert: RED WHEN the calls are added to the intent in any order but the one they are given in.
+    expect(inOrder.intents?.size).toBe(1);
+    expect(actionsOf(inOrder).map(entryPointOf)).toEqual(['first', 'second']);
+    expect(reversed.intents?.size).toBe(1);
+    expect(actionsOf(reversed).map(entryPointOf)).toEqual(['second', 'first']);
   });
 
   it('reuses a sub-call communication commitment and samples fresh randomness for the root', () => {
