@@ -347,14 +347,14 @@ pipeline exists to keep callable.
 
 The entry points checked are EVERY circuit the artifact declares, not just one
 the caller names. That matches the current era, whose `verifyContractState`
-checks every provable circuit id the artifact exposes: attaching is the point at
+by default checks every provable circuit id the artifact exposes: attaching is the point at
 which a wrong artifact should be caught, and a mismatch on any entry point means
 this is not the artifact on chain.
 
 The cost: a contract that had a verifier key REMOVED by a maintenance update can
 no longer be attached to at all, because the removed slot now reads as
 never-deployed. That is not a retained-era quirk — the current era refuses the
-same contract for the same reason — so the two eras behave alike, which is what
+same contract for the same reason — so by default the two eras behave alike, which is what
 makes it the right default here. On the current era, a caller that must attach
 to such a contract passes `circuitIds` to `findDeployedContract`: only the named
 circuits are checked, and a call to any other circuit is refused. This retained-era

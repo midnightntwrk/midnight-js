@@ -644,6 +644,14 @@ describe('findDeployedContract', () => {
       expect(callC).not.toHaveBeenCalled();
     });
 
+    it('keeps every call as built when circuitIds is omitted', async () => {
+      vi.mocked(contractState.operation).mockReturnValue({ verifierKey: new Uint8Array(32) } as ContractOperation);
+
+      const found = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(found.callTx).toBe(builtCallTx.current);
+    });
+
     it('attaches a contract with no provable circuits when circuitIds is omitted', async () => {
       compiledContract = createMockCompiledContract({ circuits: {} });
 

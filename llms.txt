@@ -150,6 +150,7 @@ const existing = await findDeployedContract(providers, {
 const partial = await findDeployedContract(providers, {
   compiledContract,
   contractAddress,
+  privateStateId: 'my-state',
   circuitIds: ['increment']
 });
 

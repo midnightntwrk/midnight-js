@@ -488,7 +488,8 @@ export interface Ledger9FoundContract<C extends Contract.Any> {
    */
   readonly deployTxData: Ledger9FoundDeployTxData<C>;
   /**
-   * Interface for creating call transactions for a contract.
+   * Interface for creating call transactions for a contract. When the contract was found with
+   * `circuitIds`, a call to any other circuit rejects with {@link InvalidArgumentError}.
    */
   readonly callTx: Ledger9CircuitCallTxInterface<C>;
   /**
@@ -512,7 +513,7 @@ const ledger8FindFlow = async <C extends Contract.Any>(
     contractAddress: options.contractAddress,
     // EVERY circuit the artifact declares, off the ARTIFACT rather than off
     // the state -- see the attach section of `docs/keep-state-pipeline.md` for
-    // what this costs and why both eras pay it.
+    // what this costs and why both eras pay it by default.
     circuitIds: Object.keys(options.compiledContract.provableCircuits)
   });
   // Seeded HERE rather than inside `findLedger8Contract`, which takes a three-member `Pick` of the
@@ -581,7 +582,8 @@ const selectCircuitIds = <C extends Contract.Any>(
   const undeclared = selected.filter((circuitId) => !declared.includes(circuitId));
   if (undeclared.length > 0) {
     throw new InvalidArgumentError(
-      `circuitIds names circuits the compiled contract does not declare: ${undeclared.join(', ')}.`
+      `Contract at '${contractAddress}' cannot be found with circuitIds the compiled contract does not ` +
+        `declare: ${undeclared.join(', ')}.`
     );
   }
   return selected;
