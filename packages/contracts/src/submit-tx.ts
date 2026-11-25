@@ -67,7 +67,7 @@ export interface Ledger9PayloadSubmitOptions<PCK extends AnyProvableCircuitId> {
   readonly circuitId?: PCK | PCK[];
   /**
    * Awaited with the transaction the wallet balanced, before it is submitted: it may refuse it by
-   * throwing.
+   * throwing, and what it returns is carried by a rejected submission's `ProviderFailedError`.
    */
   readonly prepareSubmission?: PrepareSubmission;
 }
@@ -95,12 +95,19 @@ export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK exte
   return proveBalanceSubmit(providers, unprovenTx, options.circuitId, undefined, options.prepareSubmission);
 };
 
-/** @internal {@link submitLedger9PayloadAsync}, then waits for the v9 record. */
+/**
+ * @internal {@link submitLedger9PayloadAsync}, then waits for the v9 record.
+ *
+ * @param submitted Called with the identifier the midnight provider returned for the transaction, once
+ * it has submitted it and before the wait.
+ */
 export const submitLedger9Payload = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9SubmitTxProviders<C, PCK>,
-  options: Ledger9PayloadSubmitOptions<PCK>
+  options: Ledger9PayloadSubmitOptions<PCK>,
+  submitted?: (txId: string) => void
 ): Promise<Ledger9FinalizedTxData> => {
   const txId = await submitLedger9PayloadAsync(providers, options);
+  submitted?.(txId);
   return requireLedger9Record(
     await providers.publicDataProvider.watchForTxData(txId),
     'watchForTxData',

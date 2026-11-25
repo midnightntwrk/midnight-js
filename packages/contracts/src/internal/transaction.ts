@@ -289,6 +289,33 @@ export const logScopeFailure = (
 };
 
 /**
+ * Refuses the options only a ledger 9 scope that builds and submits acts on, given to a scope that
+ * would drop them, before any call runs: the caller would believe them in force. The message names
+ * the options given, never their values.
+ *
+ * @internal
+ * @param scope `'nested'` for a scope run inside another, `'ledger8'` for a scope on a ledger 8 head.
+ * @throws InvalidArgumentError if `beforeSubmit` is given.
+ */
+export const assertSubmitOptionsHonoured = (
+  options: Transaction.ScopedTransactionOptions | undefined,
+  scope: 'nested' | 'ledger8'
+): void => {
+  const given = (['beforeSubmit'] as const).filter((name) => options?.[name] !== undefined);
+  if (given.length === 0) {
+    return;
+  }
+  const names = given.map((name) => `'${name}'`).join(' and ');
+  throw new InvalidArgumentError(
+    scope === 'nested'
+      ? `${names} given to a scoped transaction nested in another. A nested scope builds and submits nothing: ` +
+          `the scope it joins does, with its own options. Give ${names} to the outermost scope.`
+      : `${names} given to a scoped transaction on a ledger 8 network, whose scope does not act on ` +
+          `${given.length === 1 ? 'it' : 'them'}. Omit ${given.length === 1 ? 'it' : 'them'} from a scope on a ledger 8 network.`
+  );
+};
+
+/**
  * The body every scope runs, with its inputs already separated: the outer
  * context if this is a nested call, the scope options, and the era reading if
  * this scope has one.
@@ -307,6 +334,9 @@ const runScope = async <
   txOptions: Transaction.ScopedTransactionOptions | undefined,
   scopeEra: ResolvedOperationEra | undefined
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (outerTxCtx !== undefined) {
+    assertSubmitOptionsHonoured(txOptions, 'nested');
+  }
   const innerTxCtx = outerTxCtx ?? new TransactionContextImpl<C, PCK>(providers, txOptions, scopeEra);
 
   try {

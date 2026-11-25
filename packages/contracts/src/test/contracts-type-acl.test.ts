@@ -192,6 +192,8 @@ describe('Contracts type ACL', () => {
       'Ledger9FoundContract',
       'Ledger9FoundDeployTxData',
       'Ledger9LogEvent',
+      'Ledger9NotStoredPrivateState',
+      'Ledger9PendingPrivateState',
       'Ledger9ScopeCheckStage',
       'Ledger9ScopeRefusalOptions',
       'Ledger9SubmitCallTxProviders',

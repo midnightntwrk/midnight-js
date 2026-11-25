@@ -39,7 +39,8 @@ import {
 import { parseCoinPublicKeyToHex, parseEncPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9CallResult } from '../call';
-import { ZswapOutputResolutionError } from '../errors';
+import { type Ledger9NotStoredPrivateState, Ledger9PrivateStatesNotStoredError, ZswapOutputResolutionError } from '../errors';
+import type { Ledger9PendingPrivateState } from '../transaction';
 import { type Ledger9ContractStates, type Ledger9PublicStates } from './era';
 import { tokenTypeKey } from './utils/ledger-utils';
 
@@ -147,15 +148,32 @@ export type ScopePrivateState = {
   | { readonly recorded: true; readonly privateStateProvider: PrivateStateProvider }
 );
 
+/** The private states a scope's calls left, in the order the scope first reached each. */
+export const pendingPrivateStates = (held: Iterable<ScopePrivateState>): Ledger9PendingPrivateState[] =>
+  Array.from(held)
+    .filter(({ recorded }) => recorded)
+    .map(({ contractAddress, privateStateId, privateState }) => ({ contractAddress, privateStateId, privateState }));
+
 /**
  * Stores every private state a scope's calls left, each through the provider it was read through,
- * in the order the scope first reached each.
+ * in the order the scope first reached each. Every state is tried, whatever an earlier store did.
+ *
+ * @param txId The transaction that succeeded, named in the refusal.
+ * @throws Ledger9PrivateStatesNotStoredError naming every state a provider refused, once all were tried.
  */
-export const storePrivateStates = async (held: Iterable<ScopePrivateState>): Promise<void> => {
+export const storePrivateStates = async (txId: string, held: Iterable<ScopePrivateState>): Promise<void> => {
+  const notStored: Ledger9NotStoredPrivateState[] = [];
   for (const state of held) {
     if (!state.recorded) continue;
     const { contractAddress, privateStateId, privateState } = state;
-    await state.privateStateProvider.forContract(contractAddress).set(privateStateId, privateState);
+    try {
+      await state.privateStateProvider.forContract(contractAddress).set(privateStateId, privateState);
+    } catch (cause: unknown) {
+      notStored.push({ contractAddress, privateStateId, privateState, cause });
+    }
+  }
+  if (notStored.length > 0) {
+    throw new Ledger9PrivateStatesNotStoredError(txId, notStored);
   }
 };
 

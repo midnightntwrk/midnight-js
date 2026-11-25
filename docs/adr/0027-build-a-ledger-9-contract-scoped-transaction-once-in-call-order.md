@@ -61,10 +61,24 @@ recorded, in the order the calls were made.
   the limit at no fee, after which the wallet releases what it booked. A lone call takes neither
   check, as before.
 - **Private states are stored only when the transaction succeeds entirely.** The scope takes one
-  snapshot of every private state before it submits, and stores exactly that snapshot through each
-  state's own provider. A call made after submitting begins is refused.
-- **Errors.** The two new errors are raised only on the ledger 9 path, so they carry the
-  `Ledger9` prefix (ADR 0018).
+  snapshot of every private state before it submits, hands it with every identifier of the
+  transaction to `beforeSubmit` once the wallet has balanced the transaction and the scope's checks
+  passed, before `submitTx` is called, and stores exactly that snapshot through each state's own
+  provider. A page or process that stops while `submitTx` runs has already been handed the states.
+  A `beforeSubmit` that throws stops the submission. Every state is tried; those refused are
+  carried by one `Ledger9PrivateStatesNotStoredError`. A failed wait after submission raises
+  `Ledger9SubmittedTxUnconfirmedError`. The `ProviderFailedError` of a rejected `submitTx` carries
+  the private states and the transaction's identifiers, hidden, since it does not prove the node
+  never took the transaction; a coded error the midnight provider raised is passed on as itself and
+  carries neither. A call made after submitting begins is refused.
+- **`beforeSubmit` is refused where it would be dropped:** given to a scope that does not
+  submit (a nested scope) or that runs on a ledger 8 network.
+- **Errors.** The four new errors are raised only on the ledger 9 path, so they carry the
+  `Ledger9` prefix (ADR 0018). `Ledger9SubmittedTxUnconfirmedError` and
+  `Ledger9PrivateStatesNotStoredError` sit in the categories of `Ledger8UnconfirmedError` and
+  `Ledger8NotStoredError` but are not cases of them: the ledger 8 classes carry a deploy's or an
+  authority replacement's signing key and send the caller to check the contract's address, the
+  ledger 9 classes carry the private states calls left and send the caller to store them.
 - The ledger 8 scope is unchanged (ADR 0025).
 
 ## Consequences
@@ -72,8 +86,9 @@ recorded, in the order the calls were made.
 - **Positive:** calls that depend on each other land in the order they were made, or not at all.
   One scope can call several contracts and several private states. The claim check and the time
   to dismiss refuse before a proof is paid for.
-- **Positive:** a lone call that contradicts its own wallet's encryption key now gets a named
-  error, where it used to get the wallet's key silently. A lone call whose transcripts' claims do not
+- **Positive:** a lone call that contradicts its own wallet's encryption key, whose private state
+  store is refused, or whose wait fails after submission now gets a named error, where it used to
+  get the wallet's key silently or the raw error. A lone call whose transcripts' claims do not
   match its transaction is refused before proving, where the node refused it after.
 - **Negative:** the time to dismiss before proving is an estimate made before the Dust spend,
   with the ledger's estimated proof sizes, so a scope near the limit can be refused that the node

@@ -383,10 +383,12 @@ export class TransactionContextImpl<
    * Builds the scope's ONE transaction over every recorded call, in the order the calls were made,
    * with the checks of a scope of two or more calls before proving ({@link assembleLedger9CallTx},
    * priced under {@link pricedUnder}) and its fallible-part check on the transaction the wallet
-   * balanced, submits the transaction, waits for it, and once it succeeded entirely stores the
-   * private state each of its private state ids was left in, through the provider it was read through
-   * (for a state the scope never read, the call's or the scope's), in the order the scope first
-   * reached each. The private states stored are one snapshot, taken before submitting; from the
+   * balanced, awaits the scope's `beforeSubmit` (what it throws is thrown, and nothing is submitted),
+   * submits the transaction, waits for it, and once it succeeded entirely stores the private state each
+   * of its private state ids was left in, through the provider it was read through (for a state the
+   * scope never read, the call's or the scope's), in the order the scope first reached each. Every
+   * state is tried; those not stored are thrown together, after the rest are stored. The private
+   * states handed to `beforeSubmit` and stored are one snapshot, taken before submitting; from the
    * moment the scope begins to submit it takes no call.
    *
    * @throws InvalidArgumentError if a call of the scope is still running, before anything is built,
@@ -396,8 +398,9 @@ export class TransactionContextImpl<
    *         or as the wallet balanced it; nothing is submitted.
    * @throws Ledger9ScopeOutsideTimeToDismissError if a scope of two or more calls costs more to dismiss than
    *         its size allows, before proving; nothing is proven or submitted.
-   * @throws ProviderFailedError if `submitTx` rejects.
-   * @throws TxFailedError if the transaction did not succeed entirely.
+   * @throws ProviderFailedError if `submitTx` rejects, carrying the private states left and the identifiers.
+   * @throws Ledger9SubmittedTxUnconfirmedError if the wait for the submitted transaction fails.
+   * @throws TxFailedError if the transaction did not succeed entirely, with the private states left.
    *
    * The result describes the last call, typed by the scope's contract; its `private.unprovenTx` is
    * the transaction the scope submitted, and its `private.newCoins` the new coins of every call, in
@@ -418,10 +421,11 @@ export class TransactionContextImpl<
     }
     const { unprovenTx, newCoins } = this.scopeTransaction(this.pricedUnder());
     const circuitId = circuitIdsOf(this.recordedCalls);
-    // One snapshot of the private states: what is stored.
+    // One snapshot of the private states: what beforeSubmit is handed and what is stored.
     const held = Array.from(this.privateStates.values());
     const finalizedTxData = await submitScopeTransaction(
       this.providers,
+      this.options,
       { unprovenTx, circuitId },
       held,
       landsWhole(this.recordedCalls.length) ? refuseFallibleBalanced : undefined

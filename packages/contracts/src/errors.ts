@@ -30,6 +30,7 @@ import {
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
+import type { Ledger9PendingPrivateState } from './transaction';
 
 const assignDefined = (target: object, values: Readonly<Record<string, unknown>>): void => {
   Object.assign(target, Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined)));
@@ -487,16 +488,36 @@ export class LedgerParametersUnservedError extends MidnightJsError {
 export class ProviderFailedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.PROVIDER_FAILED;
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.PROVIDER_FAILED];
+  /**
+   * Set when `submitTx` rejected a ledger 9 call's transaction: the private states its calls left,
+   * which were not stored. A rejected submission does not prove the node never took the transaction:
+   * look it up by {@link ProviderFailedError.txIds}, and if it succeeded entirely, store these. Not
+   * enumerable and never rendered into the message. A coded error a midnight provider raised is passed
+   * on as itself instead, and carries neither: to keep the states whatever `submitTx` does, give the
+   * scoped transaction a `beforeSubmit`.
+   */
+  declare readonly pendingPrivateStates?: readonly Ledger9PendingPrivateState[];
+  /**
+   * Set with {@link ProviderFailedError.pendingPrivateStates}: every identifier of the transaction the
+   * wallet balanced, read from it before it was submitted. Not enumerable.
+   */
+  declare readonly txIds?: readonly string[];
 
   /**
    * @param method The provider method that rejected.
    * @param circuitId The circuit, or circuits, the transaction runs, when known.
    * @param cause The provider's failure, already sanitized by the caller.
+   * @param submission For a rejected `submitTx` of a ledger 9 call's transaction, the private states
+   * its calls left and the transaction's identifiers, kept hidden on the error.
    */
   constructor(
     readonly method: ProviderMethod,
     readonly circuitId: string | readonly string[] | undefined,
-    cause: Error
+    cause: Error,
+    submission?: {
+      readonly pendingPrivateStates: readonly Ledger9PendingPrivateState[];
+      readonly txIds: readonly string[];
+    }
   ) {
     super(
       `${method} rejected the transaction${formatCircuitClause(circuitId) ?? ''}. The provider's own failure ` +
@@ -505,6 +526,10 @@ export class ProviderFailedError extends MidnightJsError {
       { cause }
     );
     this.name = 'ProviderFailedError';
+    if (submission !== undefined) {
+      hideProperty(this, 'pendingPrivateStates', Object.freeze([...submission.pendingPrivateStates]));
+      hideProperty(this, 'txIds', Object.freeze([...submission.txIds]));
+    }
   }
 }
 
@@ -907,6 +932,8 @@ export interface TxFailedDetails {
   readonly circuitId?: string | readonly string[];
   /** A deploy (the authority the contract was built with) or a replacement (the new authority). */
   readonly signingKey?: SigningKey;
+  /** A ledger 9 call: the private states its calls left, which were not stored. */
+  readonly pendingPrivateStates?: readonly Ledger9PendingPrivateState[];
 }
 
 const TX_FAILED_NOUNS: Readonly<Record<TxFailedOperation, string>> = {
@@ -990,6 +1017,10 @@ const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead
  * authority over a contract that landed. It is not enumerable, so a logger that
  * serializes an error's properties does not write it out.
  *
+ * {@link TxFailedError.pendingPrivateStates}, set for a ledger 9 call, holds the private states the
+ * transaction's calls left, which were not stored: with a status of `'FailFallible'` the guaranteed
+ * part's effects are on chain. Like the key it is never rendered into the message and not enumerable.
+ *
  * Branch on the registered code rather than `instanceof` where more than one
  * copy of this package may be loaded.
  */
@@ -999,6 +1030,8 @@ export class TxFailedError extends MidnightJsError {
   declare readonly contractAddress?: ContractAddress;
   declare readonly circuitId?: string | readonly string[];
   declare readonly signingKey?: SigningKey;
+  /** The private states the calls left, which were not stored; not enumerable. */
+  declare readonly pendingPrivateStates?: readonly Ledger9PendingPrivateState[];
 
   /**
    * @param operation The operation whose transaction failed.
@@ -1018,7 +1051,11 @@ export class TxFailedError extends MidnightJsError {
   constructor(
     operation: 'call',
     record: FinalizedTxRead,
-    details: { readonly circuitId: string | readonly string[]; readonly contractAddress?: ContractAddress }
+    details: {
+      readonly circuitId: string | readonly string[];
+      readonly contractAddress?: ContractAddress;
+      readonly pendingPrivateStates?: readonly Ledger9PendingPrivateState[];
+    }
   );
   constructor(
     readonly operation: TxFailedOperation,
@@ -1030,6 +1067,9 @@ export class TxFailedError extends MidnightJsError {
     assignDefined(this, { contractAddress: details.contractAddress, circuitId: details.circuitId });
     if (details.signingKey !== undefined) {
       hideProperty(this, 'signingKey', details.signingKey);
+    }
+    if (details.pendingPrivateStates !== undefined) {
+      hideProperty(this, 'pendingPrivateStates', Object.freeze([...details.pendingPrivateStates]));
     }
   }
 }
@@ -1209,6 +1249,96 @@ export class ScopedTransactionIdentityMismatchError extends MidnightJsError {
       ` for contract '${requested.contractAddress}'` +
       (requested.privateStateId ? ` (privateStateId: '${requested.privateStateId}')` : '') +
       '. Scoped transactions must target the same contract and private state identity.';
+  }
+}
+
+/** A private state a ledger 9 call left that its private state provider did not store. */
+export interface Ledger9NotStoredPrivateState extends Ledger9PendingPrivateState {
+  /** What the private state provider rejected with. */
+  readonly cause: unknown;
+}
+
+/**
+ * An error indicating that a ledger 9 transaction SUCCEEDED ENTIRELY on chain, but one or more of the
+ * private states its calls left could not be stored: the transaction of a call, or of a scoped
+ * transaction's calls. Every private state was tried, each through the provider it was read through,
+ * and those the providers took are stored.
+ *
+ * {@link Ledger9PrivateStatesNotStoredError.notStored} holds each state that was not stored, with its
+ * contract address, private state id and what its provider rejected with. The states are NAMED but
+ * never rendered into the message, and the property is not enumerable, so a logger that serializes
+ * the error does not write them out. They may be the only copies of those states: the chain holds
+ * the effects of the calls that left them, and the private states stored before no longer match it.
+ * `cause` is the first rejection.
+ */
+export class Ledger9PrivateStatesNotStoredError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER9_PRIVATE_STATES_NOT_STORED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER9_PRIVATE_STATES_NOT_STORED];
+  /** Each private state that was not stored, with what its provider rejected with; not enumerable. */
+  declare readonly notStored: readonly Ledger9NotStoredPrivateState[];
+
+  /**
+   * @param txId The identifier of the transaction that succeeded.
+   * @param notStored Every private state that was not stored, in the order the scope first reached
+   * each.
+   */
+  constructor(
+    readonly txId: string,
+    notStored: readonly Ledger9NotStoredPrivateState[]
+  ) {
+    super(
+      `Transaction '${txId}' SUCCEEDED ENTIRELY on chain, but the private state provider refused to ` +
+        `store ${notStored.length} of the private states its calls left: ` +
+        notStored
+          .map(({ contractAddress, privateStateId }) => `'${privateStateId}' of contract '${contractAddress}'`)
+          .join(', ') +
+        ". Do NOT submit the calls again: they are on chain. Keep the states on this error's 'notStored', " +
+        "fix what the store refused (see each entry's 'cause'), and write each back with " +
+        '`privateStateProvider.forContract(contractAddress).set(privateStateId, privateState)`.',
+      { cause: notStored[0]?.cause }
+    );
+    this.name = 'Ledger9PrivateStatesNotStoredError';
+    hideProperty(this, 'notStored', Object.freeze([...notStored]));
+  }
+}
+
+/**
+ * An error indicating that a ledger 9 transaction was submitted, but waiting for the chain's answer
+ * failed, so whether the transaction landed is not known: the transaction of a call, or of a scoped
+ * transaction's calls. Its private states were not stored.
+ *
+ * Look the transaction up by {@link Ledger9SubmittedTxUnconfirmedError.txId} before submitting the calls
+ * again. {@link Ledger9SubmittedTxUnconfirmedError.pendingPrivateStates} holds the private states the calls
+ * left: if the transaction succeeded entirely, store them; the private states stored before no longer
+ * match the chain. They are NAMED but never rendered into the message, and not enumerable. `cause` is
+ * what the wait failed with.
+ */
+export class Ledger9SubmittedTxUnconfirmedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER9_SUBMITTED_TX_UNCONFIRMED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER9_SUBMITTED_TX_UNCONFIRMED];
+  /** The private states the calls left, which were not stored; not enumerable. */
+  declare readonly pendingPrivateStates: readonly Ledger9PendingPrivateState[];
+
+  /**
+   * @param txId The identifier the midnight provider returned for the transaction.
+   * @param pendingPrivateStates The private states the calls left, in the order the scope first
+   * reached each.
+   * @param cause What the wait failed with.
+   */
+  constructor(
+    readonly txId: string,
+    pendingPrivateStates: readonly Ledger9PendingPrivateState[],
+    cause: unknown
+  ) {
+    super(
+      `Transaction '${txId}' was submitted, but waiting for its outcome failed, so it may or may not be on ` +
+        `chain (see this error's cause). Look the transaction up before submitting the calls again. The ` +
+        `${pendingPrivateStates.length} private state(s) its calls left were not stored; they are on this ` +
+        "error's 'pendingPrivateStates': store them if the transaction succeeded entirely.",
+      { cause }
+    );
+    this.name = 'Ledger9SubmittedTxUnconfirmedError';
+    hideProperty(this, 'pendingPrivateStates', Object.freeze([...pendingPrivateStates]));
   }
 }
 

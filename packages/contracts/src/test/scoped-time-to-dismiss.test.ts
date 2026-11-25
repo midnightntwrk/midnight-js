@@ -249,6 +249,7 @@ describe('a ledger 9 scoped transaction of two or more calls lands whole', () =>
     const { address, providers } = await stampsChain();
     const balanced = await finalizedWithUnshieldedOutputs(1, 'fallible');
     vi.mocked(providers.walletProvider.balanceTx).mockResolvedValue(balanced);
+    const beforeSubmit = vi.fn();
 
     // Act
     const scope = withContractScopedTransaction(
@@ -256,11 +257,14 @@ describe('a ledger 9 scoped transaction of two or more calls lands whole', () =>
       async (txCtx) => {
         await submitCallTx(providers, count(address), txCtx);
         await submitCallTx(providers, count(address), txCtx);
-      }
+      },
+      { beforeSubmit }
     );
 
-    // Assert: RED WHEN the balanced transaction is submitted unchecked.
+    // Assert: RED WHEN the balanced transaction is submitted unchecked, or beforeSubmit is handed one
+    // the check refuses.
     const error = await rejectionOf(scope);
+    expect(beforeSubmit).not.toHaveBeenCalled();
     expect(error).toBeInstanceOf(Ledger9ScopeFalliblePartError);
     expect(error).toMatchObject({ stage: 'balanced' });
     expect((error as Ledger9ScopeFalliblePartError).parts).toEqual([

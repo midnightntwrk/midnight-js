@@ -31,7 +31,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { isLedger8Result } from '../era-results';
-import { IncompleteCallTxPrivateStateConfig, TxFailedError } from '../errors';
+import { IncompleteCallTxPrivateStateConfig, Ledger9PrivateStatesNotStoredError, TxFailedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import type * as InternalUtils from '../internal/utils';
 import { createUnprovenLedgerCallTx } from '../internal/utils';
@@ -146,8 +146,10 @@ describe('submit-call-tx', () => {
     );
     expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, {
       unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-      circuitId: 'testCircuit'
-    });
+      circuitId: 'testCircuit',
+      // The scope prepares the submission of the balanced transaction: a rejection carries its identifiers.
+      prepareSubmission: expect.any(Function)
+    }, expect.any(Function));
     expect(result).toEqual({
       era: CURRENT_LEDGER_ERA,
       circuitId: 'testCircuit',
@@ -558,7 +560,10 @@ describe('submit-call-tx', () => {
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
         contractStatesOf(mockProviders.privateStateProvider).set = vi.fn().mockRejectedValue(stateError);
 
-        await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Failed to set private state');
+        const rejection = submitCallTx(mockProviders, options);
+
+        await expect(rejection).rejects.toThrow(Ledger9PrivateStatesNotStoredError);
+        await expect(rejection).rejects.toMatchObject({ cause: stateError, notStored: [{ privateStateId: mockPrivateStateId, cause: stateError }] });
       });
     });
 
@@ -586,8 +591,10 @@ describe('submit-call-tx', () => {
 
         expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-          circuitId: 'testCircuit'
-        });
+          circuitId: 'testCircuit',
+          // The scope prepares the submission of the balanced transaction: a rejection carries its identifiers.
+          prepareSubmission: expect.any(Function)
+        }, expect.any(Function));
         expect(result).toEqual({
           era: CURRENT_LEDGER_ERA,
           circuitId: 'testCircuit',

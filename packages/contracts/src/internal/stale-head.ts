@@ -156,9 +156,9 @@ export const diagnosedSubmit =
     circuitIds: string | readonly string[] | undefined,
     logger?: BreadcrumbSink
   ): SubmitRunner =>
-  async (call) => {
+  async (call, carry) => {
     try {
-      return await atProviderMethod('submitTx', circuitIds, call);
+      return await atProviderMethod('submitTx', circuitIds, call, carry);
     } catch (rejection) {
       return handleSubmitRejection(pdp, operation, rejection, logger);
     }

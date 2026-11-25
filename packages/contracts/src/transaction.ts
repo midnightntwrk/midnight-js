@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { CoinPublicKey, ContractAddress, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { type AnyProvableCircuitId, type PrivateStateId, type PublicStatesRead } from '@midnightntwrk/midnight-js-types';
 import { assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
@@ -158,6 +158,55 @@ export interface ScopedTransactionOptions {
    * keys for coins created during circuit execution.
    */
   readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
+
+  /**
+   * Awaited once the wallet has balanced a ledger 9 scope's transaction and the scope's checks passed,
+   * and before the transaction is handed to the midnight provider's `submitTx`, with every identifier
+   * of the transaction and every private state the scope's calls left, which the scope stores only once
+   * the transaction succeeds entirely. It is for a caller that must keep those states whatever follows,
+   * a process or a page that stops while `submitTx` runs included: write them where they survive a
+   * restart, keyed by every identifier, and match them against the transaction's outcome later. The
+   * transaction may still not be submitted, and once submitted may not land.
+   *
+   * A midnight provider's `submitTx` returns one of these identifiers, and which one differs by
+   * provider (the DApp-connector providers return the first, the wallet SDK the last); the scope's
+   * result and its errors name the one `submitTx` returned. Any of them finds the transaction once it
+   * lands. A balanced transaction with no identifier is refused with an `InvalidArgumentError`, and
+   * nothing is submitted.
+   *
+   * The scope awaits it, without a time limit: one that never settles holds the scope, which then
+   * submits nothing. If it throws or rejects, nothing is submitted and its error is thrown as it is,
+   * carrying nothing to revert the wallet's bookings with: the coins the wallet booked while balancing
+   * stay booked until the transaction's time to live passes, and its Dust until the Dust spend's grace
+   * period ends.
+   *
+   * If `submitTx` then rejects, its `ProviderFailedError` also carries the private states on
+   * `pendingPrivateStates` and every identifier of the transaction on `txIds`, both hidden. A coded
+   * error a midnight provider raised is passed on as itself and carries neither, so keep the states
+   * here. If the wait for the chain's answer fails once `submitTx` has returned, the
+   * `Ledger9SubmittedTxUnconfirmedError` carries them.
+   *
+   * Only the scope that submits calls it: it is refused, with an `InvalidArgumentError` before any
+   * call runs, when given to a nested scope or to a scope that runs on a ledger 8 network.
+   *
+   * @param txIds Every identifier of the transaction, in the order the ledger lists them.
+   * @param pendingPrivateStates Every private state a call of the scope left, one per contract and
+   * private state id, in the order the scope first reached each.
+   */
+  readonly beforeSubmit?: (
+    txIds: readonly string[],
+    pendingPrivateStates: readonly Ledger9PendingPrivateState[]
+  ) => void | Promise<void>;
+}
+
+/** A private state a scoped transaction's calls left, which it stores once the transaction succeeds entirely. */
+export interface Ledger9PendingPrivateState {
+  /** The contract the private state belongs to. */
+  readonly contractAddress: ContractAddress;
+  /** The private state id the state is stored under. */
+  readonly privateStateId: PrivateStateId;
+  /** The private state the calls left. */
+  readonly privateState: unknown;
 }
 
 /**
@@ -249,7 +298,9 @@ type Ledger8ScopeBody = (txCtx: AnyLedger8TransactionContext) => Promise<void>;
  * chains from call to call, through the private state provider it was first read through: a call
  * that reaches it through another provider, as a second wallet using the same id would, is refused
  * with an `InvalidArgumentError`. When the transaction succeeds entirely, the state each id was left
- * in is stored through that provider. Each call is typed by its own contract
+ * in is stored through that provider; every state is tried, and those a provider refuses are thrown
+ * together in one `Ledger9PrivateStatesNotStoredError`. To keep the states should the process stop
+ * before the chain answers, pass `beforeSubmit` in `options`. Each call is typed by its own contract
  * and circuit. `C` and `PCK` type the scope's result, the data of its last call: type the scope by the
  * contract and circuit of its last call, since they are not checked against it, or read only the
  * result's transaction-level fields (`public`, `private.unprovenTx`, `private.newCoins`). The
@@ -323,6 +374,7 @@ export async function withContractScopedTransaction<C extends Contract.Any, PCK 
     case 'v9':
       return Internal.scopedTransaction(providers, ledger9Body, options, { ...reading, head: reading.head });
     case 'v8':
+      Internal.assertSubmitOptionsHonoured(options, 'ledger8');
       return Ledger8Scope.runLedger8Scope(providers, ledger8Body, options, reading);
     default:
       return assertNever(reading.head, 'withContractScopedTransaction');
@@ -366,6 +418,7 @@ export async function withLedger8ContractScopedTransaction(
     default:
       return assertNever(outerEra, 'withLedger8ContractScopedTransaction');
   }
+  Internal.assertSubmitOptionsHonoured(options, 'ledger8');
   const reading = await Internal.readScopeHead(providers.publicDataProvider, providers.loggerProvider);
   // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 8 path refuses every other era
   if (reading.head !== 'v8') {

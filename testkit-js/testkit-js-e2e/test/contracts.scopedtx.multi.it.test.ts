@@ -263,4 +263,24 @@ describe('Scoped transactions over several calls and contracts', () => {
     expect(transaction.guaranteedOffer!.transients).toHaveLength(1);
     expect(transaction.fallibleOffer).toBeUndefined();
   });
+
+  test('should hand beforeSubmit, once, the identifiers of the transaction that lands and the private states the scope then stores [@slow]', async () => {
+    const handed: { txIds: readonly string[]; privateStates: readonly { privateState: unknown }[] }[] = [];
+
+    const callTxData = await withContractScopedTransaction<CounterContract>(
+      counterProviders,
+      async (txCtx) => {
+        await submitCallTx(counterProviders, incrementOptions(), txCtx);
+        await submitCallTx(counterProviders, decrementOptions(1n), txCtx);
+      },
+      { beforeSubmit: (txIds, privateStates) => void handed.push({ txIds, privateStates }) }
+    );
+
+    expect(callTxData.public.status).toBe(SucceedEntirely);
+    expect(handed).toHaveLength(1);
+    expect(handed[0].txIds).toContain(callTxData.public.txId);
+    const stored = await counterApi.getCounterPrivateState(counterProviders, counterAddress, CounterPrivateStateId);
+    expect(handed[0].privateStates).toHaveLength(1);
+    expect(handed[0].privateStates[0].privateState).toEqual(stored);
+  });
 });
