@@ -102,8 +102,8 @@ import {
 import { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } from '../../submit-call-tx';
 import type { Ledger9SubmitTxProviders } from '../../submit-tx';
 import {
+  type AnyLedger9TransactionContext,
   type Ledger8TransactionContext,
-  type Ledger9TransactionContext,
   withContractScopedTransaction,
   withLedger8ContractScopedTransaction
 } from '../../transaction';
@@ -831,8 +831,9 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<ReturnType<Ledger9FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
       Promise<Ledger9CallResult<Twin018, 'increment'>>
     >();
+    // A call made in a scope takes the scope's context whatever contract the scope is typed by.
     expectTypeOf<Parameters<Ledger9FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
-      [txCtx: Ledger9TransactionContext<Twin018, 'increment'>]
+      [txCtx: AnyLedger9TransactionContext]
     >();
 
     expectTypeOf(retainedCallTx).toBeCallableWith();
@@ -1182,7 +1183,7 @@ describe('adding era overloads leaves the pre-existing entry points public surfa
       [
         providers: Ledger9SubmitTxProviders<Contract<undefined>, string>,
         options: Ledger9CallTxOptionsBase<Contract<undefined>, string>,
-        transactionContext: Ledger9TransactionContext<Contract<undefined>, string>
+        transactionContext: AnyLedger9TransactionContext
       ]
     >();
   });

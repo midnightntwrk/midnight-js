@@ -14,159 +14,54 @@
  */
 
 import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
-import {
-  type CoinPublicKey,
-  type ContractAddress,
-  type EncPublicKey,
-  Transaction as Ledger9Transaction
-} from '@midnightntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { ChargedState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import { LEDGER_ERAS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
-import {
-  type AnyProvableCircuitId,
-  LedgerTransaction,
-  type LoggerProvider,
-  type PrivateStateId,
-  type PublicStatesRead,
-  SerializedContractState,
-  SucceedEntirely
-} from '@midnightntwrk/midnight-js-types';
+import { type LoggerProvider } from '@midnightntwrk/midnight-js-types';
 import { assertNever } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9CallResult } from '../call';
 import { type Ledger9ContractProviders } from '../contract-providers';
-import {
-  EraMismatchError,
-  ScopedTransactionIdentityMismatchError,
-  TxFailedError
-} from '../errors';
-import { type Ledger9PayloadSubmitOptions, submitLedger9Payload } from '../submit-tx';
+import { EraMismatchError } from '../errors';
 import type * as Transaction from '../transaction';
-import { type Ledger9FinalizedCallTxData, type Ledger9UnsubmittedCallTxData } from '../tx-model';
+import { type Ledger9FinalizedCallTxData } from '../tx-model';
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
 import {
   acquireHeadEra,
   type HeadEraReading,
   type HeadVersionSource,
-  type Ledger9ContractStates,
-  type Ledger9PublicStates,
   readHeadEra,
   type ResolvedOperationEra
 } from './era';
-import { mergeUnprovenTransactions } from './utils/merge-unproven';
+import { LastCallResult, RecordCall, ScopeEra, Submit, TransactionContextImpl, TypeId } from './ledger9-scope';
 
-/**
- * Where a call's next private state is stored once the call succeeds.
- *
- * @internal
- */
-export interface PrivateStateTarget {
-  readonly contractAddress: ContractAddress;
-  readonly privateStateId: PrivateStateId;
-}
-
-/** @internal */
-export interface CachedStateIdentity {
-  readonly contractAddress: string;
-  readonly privateStateId?: PrivateStateId;
-}
-
-/** @internal */
-export interface CachedStatesWithIdentity<PS> {
-  readonly identity: CachedStateIdentity;
-  readonly states: Ledger9ContractStates<PS> | Ledger9PublicStates;
-  /** The public states as read, as bytes. Its contract state is the one the scope started from. */
-  readonly read: PublicStatesRead;
-  /**
-   * The hash of the block the states were read as of. A scoped transaction is a single chain
-   * snapshot: the first read pins this block and every subsequent call in the scope reuses it, so
-   * the cached `zswapChainState`/`ledgerParameters` and the block used for `parentBlockHash` and
-   * cross-contract callee reads all refer to one coherent block.
-   */
-  readonly blockHash: string;
-}
-
-/** @internal The states pinned to a block within a scoped transaction. */
-export interface PinnedContractStates<PS> {
-  readonly states: Ledger9ContractStates<PS> | Ledger9PublicStates;
-  readonly blockHash: string;
-}
-
-/** @internal */
-export const TypeId: Transaction.TypeId = Symbol.for('@midnight-ntwrk/midnight-js#Transaction') as Transaction.TypeId;
-/** @internal */
-export const Submit = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/Submit');
-/** @internal */
-export const MergeUnsubmittedCallTxData = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/MergeUnsubmittedCallTxData');
-/** @internal */
-export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/CacheStates');
-/** @internal */
-export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
-/** @internal The ledger era a scope context composes for. */
-export const ScopeEra = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/ScopeEra');
-
-/**
- * @internal The states a scope caches between its calls, decoded by the framework's own runtime.
- */
-export interface ScopeStateCache<C extends Contract.Any> {
-  readonly [CacheStates]: (
-    states: Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates,
-    read: PublicStatesRead,
-    identity: CachedStateIdentity,
-    blockHash: string
-  ) => void;
-  readonly [GetCurrentStatesForIdentity]: (identity: CachedStateIdentity) => PinnedContractStates<Contract.PrivateState<C>> | undefined;
-}
-
-const hasScopeStateCache = <C extends Contract.Any>(context: object): context is ScopeStateCache<C> =>
-  typeof Reflect.get(context, CacheStates) === 'function' &&
-  typeof Reflect.get(context, GetCurrentStatesForIdentity) === 'function';
-
-/**
- * @internal The state cache of a transaction context, or `undefined` when there is no context.
- *
- * @throws InvalidArgumentError if the context was not made by a scoped transaction.
- */
-export const scopeStateCacheOf = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  context: Transaction.Ledger9TransactionContext<C, PCK> | undefined
-): ScopeStateCache<C> | undefined => {
-  if (context === undefined) {
-    return undefined;
-  }
-  if (!hasScopeStateCache<C>(context)) {
-    throw new InvalidArgumentError(
-      'The transaction context was not made by withContractScopedTransaction, so it holds no scope states. ' +
-        'Pass the context the scope handed to your function.'
-    );
-  }
-  return context;
-};
-
-const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
-  current: Ledger9PayloadSubmitOptions<PCK> | undefined,
-  next: Ledger9PayloadSubmitOptions<PCK>
-): Ledger9PayloadSubmitOptions<PCK> => {
-  if (!current) {
-    return next;
-  }
-  const circuitIds = new Set([
-      ...(Array.isArray(current.circuitId) ? current.circuitId! : [current.circuitId!]),
-      ...(Array.isArray(next.circuitId) ? next.circuitId! : [next.circuitId!])
-    ]);
-
-  return {
-    unprovenTx: LedgerTransaction.seal(
-      'v9',
-      'Unproven',
-      mergeUnprovenTransactions(
-        current.unprovenTx.deserialize({ v9: Ledger9Transaction }),
-        next.unprovenTx.deserialize({ v9: Ledger9Transaction })
-      )
-    ),
-    circuitId: Array.from(circuitIds)
-  };
-};
+export {
+  CacheStates,
+  GetCurrentStatesForIdentity,
+  LastCallResult,
+  PinnedBlockHash,
+  PublicStatesOf,
+  RecordCall,
+  recordScopedCall,
+  ScopeEra,
+  type ScopeStateCache,
+  scopeStateCacheOf,
+  Submit,
+  TransactionContextImpl,
+  TypeId,
+  withOwnTransaction
+} from './ledger9-scope';
+export { assembleLedger9CallTx } from './ledger9-scope-build';
+export {
+  type AnyLedger9ExecutedCall,
+  type CachedStateIdentity,
+  contractAddressKey,
+  type Ledger9CallAssembly,
+  type Ledger9CallEncryption,
+  type Ledger9ExecutedCall,
+  type PinnedContractStates,
+  type PrivateStateTarget,
+  type ScopeContractStates
+} from './ledger9-scope-states';
 
 /**
  * Makes the ONE head read of a scope and breadcrumbs it, before any refusal.
@@ -224,177 +119,6 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
   }
 
   return acquireHeadEra(reading);
-};
-
-/** @internal */
-export class TransactionContextImpl<
-  C extends Contract.Any,
-  PCK extends Contract.ProvableCircuitId<C>
-> implements Transaction.Ledger9TransactionContext<C, PCK>, ScopeStateCache<C> {
-  readonly [TypeId]: Transaction.TypeId = TypeId;
-  readonly [ScopeEra] = 'v9';
-  readonly providers: Ledger9ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  readonly options?: Transaction.ScopedTransactionOptions;
-  /**
-   * The era facts this scope resolved when it was created, or `undefined` for a
-   * context built without them.
-   *
-   * OPTIONAL, and the two cases are genuinely different rather than one being a
-   * degraded form of the other. A scope created through
-   * `withContractScopedTransaction` always carries a reading, resolved once by
-   * {@link readScopeHead}. A context built for a SINGLE call outside any
-   * scope carries none, because the current-era single-call path resolves no
-   * era of its own and reading the head for it would add a network round trip
-   * to every call in the framework to answer a question that path does not ask.
-   */
-  readonly resolvedEra?: ResolvedOperationEra;
-
-  cachedStates: CachedStatesWithIdentity<Contract.PrivateState<C>> | undefined = undefined;
-  /**
-   * The call this scope will transact, with the circuit that made it.
-   *
-   * One field rather than a call and a circuit id side by side: the two must
-   * be set together or the result names a circuit from a different call, and
-   * holding them in one object is what makes the existing "no calls were
-   * submitted" guard prove both. The circuit is kept here rather than read
-   * back off `submitTxOptions`, whose own `circuitId` accumulates EVERY
-   * circuit merged into the scope and becomes an array.
-   */
-  currentUnsubmittedCall:
-    | { readonly callTxData: Ledger9UnsubmittedCallTxData<C, PCK>; readonly privateStateTarget?: PrivateStateTarget; readonly circuitId: PCK }
-    | undefined;
-  submitTxOptions: Ledger9PayloadSubmitOptions<PCK> | undefined = undefined;
-
-  constructor(
-    providers: Ledger9ContractProviders<C, PCK>,
-    options?: Transaction.ScopedTransactionOptions,
-    resolvedEra?: ResolvedOperationEra
-  ) {
-    this.providers = providers;
-    this.options = options;
-    this.resolvedEra = resolvedEra;
-  }
-
-  getAdditionalMappings(): ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined {
-    return this.options?.additionalCoinEncPublicKeyMappings;
-  }
-
-  /**
-   * @deprecated This method bypasses identity validation and may return states from a different
-   * contract or private state ID than expected. Use {@link GetCurrentStatesForIdentity} instead
-   * for validated access to cached states within scoped transactions.
-   */
-  getCurrentStates(): PublicStatesRead | undefined {
-    if (!this.cachedStates) {
-      return undefined;
-    }
-    const { read, states } = this.cachedStates;
-    return { ...read, contractState: SerializedContractState.fromBytes('v9', states.contractState.serialize()) };
-  }
-
-  [GetCurrentStatesForIdentity](
-    identity: CachedStateIdentity
-  ): PinnedContractStates<Contract.PrivateState<C>> | undefined {
-    if (!this.cachedStates) {
-      return undefined;
-    }
-    const cached = this.cachedStates.identity;
-    if (cached.contractAddress !== identity.contractAddress || cached.privateStateId !== identity.privateStateId) {
-      throw new ScopedTransactionIdentityMismatchError(
-        { contractAddress: cached.contractAddress, privateStateId: cached.privateStateId },
-        { contractAddress: identity.contractAddress, privateStateId: identity.privateStateId }
-      );
-    }
-    return { states: this.cachedStates.states, blockHash: this.cachedStates.blockHash };
-  }
-
-  getLastUnsubmittedCallTxDataToTransact(): [Ledger9UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
-    return this.currentUnsubmittedCall === undefined
-      ? undefined
-      : [this.currentUnsubmittedCall.callTxData, this.currentUnsubmittedCall.privateStateTarget?.privateStateId];
-  }
-
-  async [Submit](): Promise<Ledger9FinalizedCallTxData<C, PCK>> {
-    const current = this.currentUnsubmittedCall;
-    if (current === undefined) {
-      throw new InvalidArgumentError('No calls were submitted.');
-    }
-    const { callTxData: unprovenCallTxData, privateStateTarget, circuitId } = current;
-    const finalizedTxData = await submitLedger9Payload(this.providers, this.submitTxOptions!);
-    if (finalizedTxData.status !== SucceedEntirely) {
-      throw new TxFailedError('call', finalizedTxData, { circuitId: this.submitTxOptions!.circuitId ?? circuitId });
-    }
-    if (privateStateTarget) {
-      await this.providers.privateStateProvider!
-        .forContract(privateStateTarget.contractAddress)
-        .set(privateStateTarget.privateStateId, unprovenCallTxData.private.nextPrivateState);
-    }
-    return {
-      era: 'v9',
-      circuitId,
-      private: unprovenCallTxData.private,
-      public: {
-        ...unprovenCallTxData.public,
-        ...finalizedTxData
-      },
-      calls: unprovenCallTxData.calls
-    }
-  }
-
-  [CacheStates](
-    states: Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates,
-    read: PublicStatesRead,
-    identity: CachedStateIdentity,
-    blockHash: string
-  ): void {
-    this.cachedStates = { states, read, identity, blockHash };
-  }
-
-  [MergeUnsubmittedCallTxData](circuitId: PCK, callData: Ledger9UnsubmittedCallTxData<C, PCK>, privateStateTarget?: PrivateStateTarget): void {
-    this.currentUnsubmittedCall = { callTxData: callData, privateStateTarget, circuitId };
-    this.submitTxOptions = mergeSubmitTxOptions(
-      this.submitTxOptions,
-      {
-        unprovenTx: callData.private.unprovenTx,
-        circuitId
-       }
-    );
-
-    // If there is no currently cached state, then return...
-    if (!this.cachedStates) return;
-
-    // ...otherwise apply the changes in `callData` to the cached state, preserving the identity.
-    const privateState = callData.private.nextPrivateState;
-    const contractState = this.cachedStates.states.contractState;
-    const zswapChainState = this.cachedStates.states.zswapChainState; // Preserve the current Zswap chain state.
-    const ledgerParameters = this.cachedStates.states.ledgerParameters; // Preserve the current ledger parameters.
-
-    // compact-runtime minted the StateValue and decoded the ContractState, therefore ChargedState comes from
-    // compact-runtime too: a WASM class rejects objects from another copy of onchain-runtime.
-    contractState.data = new ChargedState(callData.public.nextContractState);
-
-    // Preserve the pinned block: in-scope calls advance the contract state in memory but the scope
-    // stays pinned to the block its states were first read at.
-    this[CacheStates](
-      { contractState, zswapChainState, ledgerParameters, privateState },
-      this.cachedStates.read,
-      this.cachedStates.identity,
-      this.cachedStates.blockHash
-    );
-  }
-}
-
-/** @internal */
-export const mergeUnsubmittedCallTxData = <
-  C extends Contract.Any,
-  PCK extends Contract.ProvableCircuitId<C>
->(
-  txCtx: Transaction.Ledger9TransactionContext<C, PCK>,
-  circuitId: PCK,
-  callData: Ledger9UnsubmittedCallTxData<C, PCK>,
-  privateStateTarget?: PrivateStateTarget
-): void => {
-  txCtx[MergeUnsubmittedCallTxData](circuitId, callData, privateStateTarget);
 };
 
 /**
@@ -465,10 +189,12 @@ export const unrecognisedScopeContext = (entryPoint: ScopeEntryPoint): InvalidAr
       'knows. Pass the context withContractScopedTransaction hands to its function.'
   );
 
-/** @internal The refusal of a ledger 8 scope context made by another copy of this package. */
-export const foreignLedger8ScopeContext = (entryPoint: ScopeEntryPoint): InvalidArgumentError =>
+const LEDGER_NUMBER: Readonly<Record<LedgerEra, number>> = { v8: 8, v9: 9 };
+
+/** @internal The refusal of a scope context made by another copy of this package that it cannot use. */
+export const foreignScopeContext = (entryPoint: ScopeEntryPoint, era: LedgerEra): InvalidArgumentError =>
   new InvalidArgumentError(
-    `${entryPoint} was passed a ledger 8 transaction context made by another copy of ` +
+    `${entryPoint} was passed a ledger ${LEDGER_NUMBER[era]} transaction context made by another copy of ` +
       '@midnightntwrk/midnight-js-contracts. Install one copy of the package.'
   );
 
@@ -477,7 +203,8 @@ export const foreignLedger8ScopeContext = (entryPoint: ScopeEntryPoint): Invalid
  *
  * @internal
  * @throws EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 8 scope.
- * @throws InvalidArgumentError for a value that is not a scope context, or one of an unknown era.
+ * @throws InvalidArgumentError for a value that is not a scope context, or one of an unknown era, or a
+ *         ledger 9 one made by a copy of this package that records its calls another way.
  */
 export const ledger9ScopeOf = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   transactionContext: unknown,
@@ -488,6 +215,10 @@ export const ledger9ScopeOf = <C extends Contract.Any, PCK extends Contract.Prov
     return undefined;
   }
   if (isLedger9ScopeContext<C, PCK>(transactionContext)) {
+    // A copy of this package that records calls another way has no member to record through.
+    if (typeof Reflect.get(transactionContext, RecordCall) !== 'function') {
+      throw foreignScopeContext(entryPoint, 'v9');
+    }
     return transactionContext;
   }
   switch (readScopeEra(transactionContext)) {
@@ -522,7 +253,7 @@ export const assertScopeAdmitsLedger8Call = (
     case 'v9':
       throw new EraMismatchError('ledger8-call-in-scope', { detail: `Circuit: '${circuitId}'.`, circuitId });
     case 'v8':
-      throw foreignLedger8ScopeContext(entryPoint);
+      throw foreignScopeContext(entryPoint, 'v8');
     case 'unrecognised':
       throw unrecognisedScopeContext(entryPoint);
     default:
@@ -564,7 +295,7 @@ export const logScopeFailure = (
  *
  * Split out from {@link scoped} so the two entry points below differ in exactly
  * ONE thing -- whether an era was resolved for the scope -- rather than each
- * re-implementing the execute-then-submit-or-rebuild logic here.
+ * re-implementing the execute-then-submit-or-return logic here.
  */
 const runScope = async <
   C extends Contract.Any,
@@ -590,35 +321,13 @@ const runScope = async <
       return await innerTxCtx[Submit]();
     }
 
-    // ...otherwise, return the `Ledger9CallResult` from the last submitted call within the scope of the transaction context.
-    const [unprovenCallTxData] = innerTxCtx.getLastUnsubmittedCallTxDataToTransact() ?? [];
-    if (!unprovenCallTxData) {
-      //disable-next-line: no-throw-literal
+    // ...otherwise, return the `Ledger9CallResult` of the last call recorded into the scope. Nothing is
+    // built here: the scope that submits builds one transaction of all its calls.
+    const lastCallResult: Ledger9CallResult<C, PCK> | undefined = innerTxCtx[LastCallResult]();
+    if (!lastCallResult) {
       throw new InvalidArgumentError('No calls were submitted.');
     }
-    // ANNOTATED, not asserted: this function answers both scope cases and so
-    // returns `any`, which on its own would let a member fall off this rebuild
-    // and reach a caller as `undefined` at a non-optional member.
-    const nestedCallResult: Ledger9CallResult<C, PCK> = {
-      era: 'v9',
-      public: {
-        nextContractState: unprovenCallTxData.public.nextContractState,
-        nextContractStateEncoded: unprovenCallTxData.public.nextContractStateEncoded,
-        partitionedTranscript: unprovenCallTxData.public.partitionedTranscript,
-        publicTranscript: unprovenCallTxData.public.publicTranscript,
-        logEvents: unprovenCallTxData.public.logEvents
-      },
-      private: {
-        input: unprovenCallTxData.private.input,
-        output: unprovenCallTxData.private.output,
-        privateTranscriptOutputs: unprovenCallTxData.private.privateTranscriptOutputs,
-        result: unprovenCallTxData.private.result,
-        nextPrivateState: unprovenCallTxData.private.nextPrivateState,
-        nextZswapLocalState: unprovenCallTxData.private.nextZswapLocalState
-      },
-      calls: unprovenCallTxData.calls
-    };
-    return nestedCallResult;
+    return lastCallResult;
   } catch (err: unknown) {
     throw logScopeFailure(providers, outerTxCtx, txOptions, 'submitting', err);
   }
@@ -671,7 +380,7 @@ export const scoped: {
  *
  * The era read happens BEFORE the context exists, so a scope on a head of another
  * era is refused before any circuit runs -- see {@link resolveScopeEra}. Every call
- * merged into the scope afterwards inherits that one reading, which is what makes
+ * recorded into the scope afterwards inherits that one reading, which is what makes
  * the head read once per scope rather than once per call.
  *
  * @internal

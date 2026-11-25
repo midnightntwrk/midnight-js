@@ -41,10 +41,11 @@ import {
 } from './ledger8-contract';
 import type { Ledger9SubmitTxProviders } from './submit-tx';
 import { submitLedger9PayloadAsync } from './submit-tx';
-import { type AnyLedger8TransactionContext, type Ledger8TransactionContext, type Ledger9TransactionContext } from './transaction';
+import { type AnyLedger8TransactionContext, type AnyLedger9TransactionContext, type Ledger8TransactionContext, type Ledger9TransactionContext } from './transaction';
 import type { Ledger9FinalizedCallTxData, Ledger9SubmittedCallTx } from './tx-model';
 import {
   createLedger9UnprovenCallTx,
+  executeLedger9CallWithProviders,
   type Ledger9CallTxOptions,
   type Ledger9CallTxOptionsBase,
   type Ledger9CallTxOptionsWithPrivateStateId} from './unproven-call-tx';
@@ -76,7 +77,7 @@ const assertPrivateStateIdNamed = (privateStateId: PrivateStateId | undefined | 
 const ledger8CallFlow = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9SubmitCallTxProviders<C, PCK>,
   options: AnyLedger8CallTxOptions,
-  transactionContext: Ledger9TransactionContext<C, PCK> | AnyLedger8TransactionContext | undefined
+  transactionContext: AnyLedger9TransactionContext | AnyLedger8TransactionContext | undefined
 ): Promise<AnyLedger8FinalizedCallTxData | AnyLedger8UnsubmittedCallTxData> => {
   const scope = ledger8ScopeOf(options.circuitId, transactionContext, 'submitCallTx');
   return scope === undefined
@@ -87,7 +88,7 @@ const ledger8CallFlow = <C extends Contract.Any, PCK extends Contract.ProvableCi
 const ledger9CallFlow = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9SubmitCallTxProviders<C, PCK>,
   options: Ledger9CallTxOptions<C, PCK>,
-  transactionContext: Ledger9TransactionContext<C, PCK> | AnyLedger8TransactionContext | undefined
+  transactionContext: AnyLedger9TransactionContext | AnyLedger8TransactionContext | undefined
 ): Promise<Ledger9FinalizedCallTxData<C, PCK> | Ledger9CallResult<C, PCK>> => {
   const ledger9Context = Transaction.ledger9ScopeOf<C, PCK>(transactionContext, options.circuitId, 'submitCallTx');
   assertIsContractAddress(options.contractAddress);
@@ -108,12 +109,20 @@ const ledger9CallFlow = async <C extends Contract.Any, PCK extends Contract.Prov
     assertPrivateStateIdNamed(options.privateStateId);
   }
 
+  // The call is recorded into the scope after the calls already made in it, and builds no transaction
+  // of its own: the scope builds one transaction of all its calls, in order, when it submits.
   const callTxFn = async (txCtx: Ledger9TransactionContext<C, PCK>) => {
-    Transaction.mergeUnsubmittedCallTxData(
+    await Transaction.recordScopedCall(
       txCtx,
       options.circuitId,
-      await createLedger9UnprovenCallTx(providers, options, txCtx),
-      hasPrivateStateId ? { contractAddress: options.contractAddress, privateStateId: options.privateStateId } : undefined
+      () => executeLedger9CallWithProviders(providers, options, txCtx),
+      hasPrivateStateId
+        ? {
+            contractAddress: options.contractAddress,
+            privateStateId: options.privateStateId,
+            privateStateProvider: 'privateStateProvider' in providers ? providers.privateStateProvider : undefined
+          }
+        : undefined
     );
   };
 
@@ -185,16 +194,18 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9ContractProviders<C>,
   options: Ledger9CallTxOptionsWithPrivateStateId<C, PCK>,
-  transactionContext: Ledger9TransactionContext<C, PCK>
+  transactionContext: AnyLedger9TransactionContext
 ): Promise<Ledger9CallResult<C, PCK>>;
 
 /**
- * Calls a circuit inside a scoped transaction, on a contract that declares no private state.
+ * Calls a circuit inside a scoped transaction, on a contract that declares no private state. The
+ * call is typed by the circuit `options` names, whether `providers` are typed by that circuit or by
+ * every circuit of the contract.
  */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: Ledger9SubmitTxProviders<C, PCK>,
+  providers: Ledger9SubmitTxProviders<C, NoInfer<PCK>> | Ledger9SubmitTxProviders<C, Contract.ProvableCircuitId<C>>,
   options: Ledger9CallTxOptionsBase<C, PCK>,
-  transactionContext: Ledger9TransactionContext<C, PCK>
+  transactionContext: AnyLedger9TransactionContext
 ): Promise<Ledger9CallResult<C, PCK>>;
 
  /**
@@ -246,7 +257,7 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9SubmitCallTxProviders<C, PCK>,
   options: Ledger9CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
-  transactionContext?: Ledger9TransactionContext<C, PCK> | AnyLedger8TransactionContext
+  transactionContext?: AnyLedger9TransactionContext | AnyLedger8TransactionContext
 ): Promise<
   Ledger9FinalizedCallTxData<C, PCK> | Ledger9CallResult<C, PCK> | AnyLedger8FinalizedCallTxData | AnyLedger8UnsubmittedCallTxData
 > {

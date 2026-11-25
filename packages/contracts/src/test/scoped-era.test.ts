@@ -39,20 +39,28 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import { assertScopeAdmitsLedger8Call, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
+import type * as InternalUtils from '../internal/utils';
 import { submitCallTx } from '../submit-call-tx';
 import { submitLedger9Payload } from '../submit-tx';
 import { withContractScopedTransaction, withLedger9ContractScopedTransaction } from '../transaction';
-import { createLedger9UnprovenCallTx,type Ledger9CallTxOptions } from '../unproven-call-tx';
+import { executeLedger9CallWithProviders, type Ledger9CallTxOptions } from '../unproven-call-tx';
 import {
   createMockCompiledContract,
   createMockContractAddress,
   createMockFinalizedTxData,
   createMockProviders,
-  createMockUnprovenCallTxData
-} from './test-mocks';
+  executedInScope} from './test-mocks';
 
 vi.mock('../unproven-call-tx');
 vi.mock('../submit-tx');
+// The scope's one transaction, assembled from its recorded calls when it submits.
+vi.mock('../internal/utils', async (importOriginal) => {
+  const ledger = await import('@midnightntwrk/midnight-js-protocol/v9');
+  return {
+    ...(await importOriginal<typeof InternalUtils>()),
+    createUnprovenLedgerCallTx: vi.fn(() => ledger.Transaction.fromParts('undeployed'))
+  };
+});
 
 /**
  * Every era acquisition this file's flows attempt, and an optional era to make
@@ -103,7 +111,7 @@ describe('per-scope era resolution', () => {
     providers = createMockProviders();
     compiledContract = createMockCompiledContract();
     contractAddress = createMockContractAddress();
-    vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(createMockUnprovenCallTxData());
+    vi.mocked(executeLedger9CallWithProviders).mockImplementation(executedInScope());
     vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
   });
 
@@ -233,7 +241,7 @@ describe('per-scope era resolution', () => {
     // could answer differently mid-scope and leave the batched transaction
     // composed half against each era.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
-    expect(createLedger9UnprovenCallTx).toHaveBeenCalledTimes(2);
+    expect(executeLedger9CallWithProviders).toHaveBeenCalledTimes(2);
     expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
   });
 
@@ -257,7 +265,7 @@ describe('per-scope era resolution', () => {
     // Refused at CREATION: the body never ran, so no circuit was executed and
     // no private state was touched on a scope that could never be submitted.
     expect(body).not.toHaveBeenCalled();
-    expect(createLedger9UnprovenCallTx).not.toHaveBeenCalled();
+    expect(executeLedger9CallWithProviders).not.toHaveBeenCalled();
     expect(submitLedger9Payload).not.toHaveBeenCalled();
   });
 

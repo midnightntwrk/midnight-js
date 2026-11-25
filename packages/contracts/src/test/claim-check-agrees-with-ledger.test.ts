@@ -22,6 +22,8 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import { assertEffectsMatchTransaction } from '../internal/utils/ledger-utils';
+import { submitCallTx } from '../submit-call-tx';
+import { withContractScopedTransaction } from '../transaction';
 import { createLedger9UnprovenCallTx } from '../unproven-call-tx';
 import {
   callee,
@@ -32,9 +34,13 @@ import {
   chainWithShieldedMap,
   deployedCallee,
   deployedCaller,
+  deployedUnshieldedBalance,
   deposit,
   ledgerWellFormed,
-  shieldedCoin
+  provenInput,
+  shieldedCoin,
+  unshieldedBalance,
+  unshieldedBalanceKeys
 } from './scoped-transaction-fixtures';
 import { createMockContractAddress } from './test-mocks';
 
@@ -172,5 +178,30 @@ describe('the claim check and the ledger refuse the same transactions', () => {
     // Assert: RED WHEN either check takes it.
     expect(String(ours)).toMatch(/A contract call a transcript claims must be a call of the same intent/);
     expect(ledger).toMatch(/claimed_calls is not a subset of real_calls/);
+  });
+
+  it('an unshielded payment claimed that no unshielded offer makes', async () => {
+    // Arrange: a payment out of the contract to a user, its unshielded offer taken away.
+    const tokens = createMockContractAddress();
+    const chain = await chainOf(new Map([[tokens, deployedUnshieldedBalance()]]));
+    const { providers } = chain.withKeys(unshieldedBalanceKeys);
+    const user = { bytes: new Uint8Array(32).fill(5) };
+    await withContractScopedTransaction(providers, async (txCtx) => {
+      const color = (
+        await submitCallTx(providers, { compiledContract: unshieldedBalance, contractAddress: tokens, circuitId: 'mintToSelf', args: [new Uint8Array(32).fill(1), 100n] }, txCtx)
+      ).private.result;
+      await submitCallTx(providers, { compiledContract: unshieldedBalance, contractAddress: tokens, circuitId: 'sendToUser', args: [color, 40n, user] }, txCtx);
+    });
+    const tx = provenInput(providers.proofProvider.proveTx);
+    const [[segment, intent]] = [...tx.intents!.entries()];
+    intent.guaranteedUnshieldedOffer = undefined;
+    tx.intents = new Map([[segment, intent]]);
+
+    // Act
+    const { ours, ledger } = judged(tx);
+
+    // Assert: RED WHEN either check takes it.
+    expect(String(ours)).toMatch(/An unshielded payment a transcript claims must be met in the same intent and half/);
+    expect(ledger).toMatch(/claimed_unshielded_spends is not a subset of real_unshielded_spends/);
   });
 });

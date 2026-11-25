@@ -172,7 +172,7 @@ const intentTxOf = async (): Promise<UnprovenTx> => {
   return LedgerTransaction.seal(
     'v8',
     'Unproven',
-    v8.Transaction.fromPartsRandomized('undeployed', undefined, undefined, v8.Intent.new(new Date(Date.now() + 600_000)))
+    v8.Transaction.fromParts('undeployed', undefined, undefined, v8.Intent.new(new Date(Date.now() + 600_000)))
   );
 };
 
@@ -775,9 +775,9 @@ describe('how a call recognises a scope of either era', () => {
   });
 
   it.each([
-    ['an unknown era', 'v7'],
-    ['the ledger 8 era but comes from another copy of midnight-js', 'v8']
-  ])('refuses a scope context that names %s', async (_label, era) => {
+    ['an unknown era', 'v7', /was passed a transaction context that names no ledger era/],
+    ['the ledger 8 era but comes from another copy of midnight-js', 'v8', /was passed a ledger 8 transaction context made by another copy/]
+  ])('refuses a scope context that names %s', async (_label, era, message) => {
     // Arrange
     const { providers } = await retainedProviders();
     const context = { [TypeId]: TypeId, [Symbol.for('@midnight-ntwrk/midnight-js#Transaction/ScopeEra')]: era };
@@ -788,6 +788,7 @@ describe('how a call recognises a scope of either era', () => {
 
     // Assert
     expect(error).toBeInstanceOf(InvalidArgumentError);
+    expect((error as Error).message).toMatch(message);
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
 });

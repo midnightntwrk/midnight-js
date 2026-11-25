@@ -258,6 +258,12 @@ export const atProviderMethod = async <T>(
  */
 export type SubmitRunner = (call: () => Promise<string>) => Promise<string>;
 
+/**
+ * Awaited with the transaction the wallet balanced, before it is submitted. It refuses by throwing,
+ * and what it throws reaches the caller as it is, with nothing submitted.
+ */
+export type PrepareSubmission = (balanced: FinalizedTx) => Promise<void>;
+
 const sanitizedSubmit =
   (circuitId: CircuitIds): SubmitRunner =>
   (call) =>
@@ -286,6 +292,8 @@ const logTransaction = (circuitId: CircuitIds, tx: FinalizedTx): void => {
  * @param unprovenTx The unproven transaction handle.
  * @param circuitId The circuit, or circuits, named in any refusal.
  * @param submit How the `submitTx` call is run. Defaults to the sanitizing wrapper.
+ * @param prepareSubmission Awaited with the balanced transaction after the wallet answers and before
+ *        it is submitted, outside the provider wrapper. Passed only by a ledger 9 scope.
  * @returns The transaction id the network assigned.
  * @throws ProviderFailedError if a provider rejects.
  * @throws InvalidTransactionHandleError if a provider answers with something
@@ -296,7 +304,8 @@ export const proveBalanceSubmit = async (
   providers: PayloadSubmitProviders,
   unprovenTx: UnprovenTx,
   circuitId: CircuitIds,
-  submit: SubmitRunner = sanitizedSubmit(circuitId)
+  submit: SubmitRunner = sanitizedSubmit(circuitId),
+  prepareSubmission?: PrepareSubmission
 ): Promise<string> => {
   const { era } = unprovenTx;
   const proven = requireProviderResult(
@@ -317,5 +326,7 @@ export const proveBalanceSubmit = async (
   if (__DEBUG__) {
     logTransaction(circuitId, balanced);
   }
+  // Outside the provider wrapper: a refusal here is the caller's, not a provider failure.
+  await prepareSubmission?.(balanced);
   return submit(() => providers.midnightProvider.submitTx(balanced));
 };

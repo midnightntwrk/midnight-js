@@ -44,7 +44,7 @@ import type { Ledger9CallTxOptions, Ledger9CallTxOptionsWithPrivateStateId } fro
 export type Ledger9CircuitCallTxInterface<C extends Contract.Any> = {
   [PCK in Contract.ProvableCircuitId<C>]: {
     (...args: Contract.CircuitParameters<C, PCK>): Promise<Ledger9FinalizedCallTxData<C, PCK>>,
-    (txCtx: Transaction.Ledger9TransactionContext<C, PCK>, ...args: Contract.CircuitParameters<C, PCK>): Promise<Ledger9CallResult<C, PCK>>
+    (txCtx: Transaction.AnyLedger9TransactionContext, ...args: Contract.CircuitParameters<C, PCK>): Promise<Ledger9CallResult<C, PCK>>
   };
 };
 

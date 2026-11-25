@@ -73,6 +73,10 @@ export {
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
+  type Ledger9ScopeCheckStage,
+  Ledger9ScopeFalliblePartError,
+  Ledger9ScopeOutsideTimeToDismissError,
+  type Ledger9ScopeRefusalOptions,
   LedgerParametersUnservedError,
   NetworkVersionReadFailedError,
   NetworkVersionStateMismatchError,
@@ -220,6 +224,7 @@ export { Ledger9DeployTxOptions, submitDeployTx, submitLedger8DeployTx, submitLe
 export { Ledger9SubmitTxProviders, submitTx, submitTxAsync, SubmitTxOptions } from './submit-tx';
 export {
   type AnyLedger8TransactionContext,
+  type AnyLedger9TransactionContext,
   isLedger8TransactionContext,
   isLedger9TransactionContext,
   type Ledger8TransactionContext,

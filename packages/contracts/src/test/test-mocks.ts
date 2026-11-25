@@ -79,6 +79,9 @@ import type { Mock } from 'vitest';
 import { type Ledger9CallOptions, type Ledger9CallOptionsWithPrivateState } from '../call';
 import { type Ledger9ContractConstructorResult } from '../call-constructor';
 import type { Ledger9ContractProviders } from '../contract-providers';
+import { CacheStates, scopeStateCacheOf } from '../internal/ledger9-scope';
+import type { Ledger9ExecutedCall, ScopeContractStates } from '../internal/ledger9-scope-states';
+import { type AnyLedger9TransactionContext } from '../transaction';
 import { type Ledger9UnsubmittedCallTxData, type Ledger9UnsubmittedDeployTxData } from '../tx-model';
 import { handles } from './ledger-transaction-fixtures';
 
@@ -483,6 +486,33 @@ export const createMockUnprovenCallTxData = (overrides: Partial<Ledger9Unsubmitt
     calls: overrides.calls ?? []
 });
 
+/**
+ * What the execute step of a ledger 9 call records for the call whose data is `callTxData`: its
+ * result, the coins it creates, and an assembly over its calls, with `statesBuiltAgainst` as the
+ * states they ran against. The assembly's coins are the wallet's own.
+ */
+export const createMockExecutedCall = (
+  callTxData: Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> = createMockUnprovenCallTxData(),
+  statesBuiltAgainst: ReadonlyMap<string, ScopeContractStates> = new Map()
+): Ledger9ExecutedCall<Contract.Any, AnyProvableCircuitId> => {
+  const { unprovenTx: _unprovenTx, newCoins, ...callResultPrivate } = callTxData.private;
+  const coinPublicKey = createMockCoinPublicKey();
+  return {
+    result: { era: callTxData.era, public: callTxData.public, private: callResultPrivate, calls: callTxData.calls },
+    newCoins,
+    assembly: {
+      calls: callTxData.calls,
+      statesBuiltAgainst,
+      encryption: {
+        networkId: MOCK_CONFIG.networkId,
+        zswapLocalState: { ...createMockZswapLocalState(), coinPublicKey },
+        coinPublicKey,
+        walletEncryptionPublicKey: createMockEncryptionPublicKey()
+      }
+    }
+  };
+};
+
 export const createMockCallOptions = (overrides: Partial<Ledger9CallOptions<Contract.Any, AnyProvableCircuitId>> = {}): Ledger9CallOptions<Contract.Any, AnyProvableCircuitId> => ({
   compiledContract: createMockCompiledContract(),
   circuitId: 'testCircuit',
@@ -601,3 +631,20 @@ export const publicStatesReadStub = (version: LedgerEra, protocolVersion = 2_000
   zswapChainState: SerializedZswapChainState.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.ZswapChainState[version])),
   ledgerParameters: SerializedLedgerParameters.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
 });
+
+/**
+ * A stand-in for the execute step of a ledger 9 call that reads its states through the scope it is
+ * recorded into, as the real step does, then answers `executed`. The scope's ledger parameters are
+ * the initial ones.
+ */
+export const executedInScope =
+  (executed: Ledger9ExecutedCall<Contract.Any, AnyProvableCircuitId> = createMockExecutedCall()) =>
+  (_providers: unknown, options: { readonly contractAddress: string }, txCtx?: AnyLedger9TransactionContext) => {
+    scopeStateCacheOf(txCtx)?.[CacheStates](
+      { contractState: new ContractState(), zswapChainState: new ZswapChainState(), ledgerParameters: LedgerParameters.initialParameters() },
+      publicStatesReadStub('v9'),
+      { contractAddress: options.contractAddress },
+      '00'.repeat(32)
+    );
+    return Promise.resolve(executed);
+  };

@@ -398,11 +398,13 @@ export const assertEffectsMatchTransaction = (tx: UnprovenTransaction): void => 
 
 /**
  * Assembles an unproven call transaction from the proof data of every contract call made while
- * executing a circuit, and checks what their transcripts claim against it (see
- * {@link assertEffectsMatchTransaction}) before anything is proven.
+ * executing a circuit, or while executing every circuit of a scoped transaction, and checks what
+ * their transcripts claim against it (see {@link assertEffectsMatchTransaction}) before anything is
+ * proven.
  *
  * @param calls Proof data for each contract call, in execution-trace order: cross-contract callees
- * first, the root call last. For a circuit with no cross-contract calls this is a single entry.
+ * first, the root call last. For a circuit with no cross-contract calls this is a single entry. For a
+ * scoped transaction, every circuit's calls in that order, the circuits in the order they were called.
  * @param contractStateFor Resolves the on-chain contract state for a given address — the root
  * contract's input state, and each cross-contract callee's resolved state.
  * @param chainStateFor Resolves the Zswap chain state for a given address — the root contract's

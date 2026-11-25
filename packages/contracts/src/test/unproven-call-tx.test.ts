@@ -38,9 +38,9 @@ import { CONTRACTS_ERROR_CODES, UTILS_ERROR_CODES } from '@midnightntwrk/midnigh
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
-import { GetCurrentStatesForIdentity, MergeUnsubmittedCallTxData, TransactionContextImpl, TypeId } from '../internal/transaction';
+import { GetCurrentStatesForIdentity, RecordCall, TransactionContextImpl, TypeId } from '../internal/transaction';
 import { createUnprovenLedgerCallTx, makeCalleeStateResolver, zswapCallsToNewCoins } from '../internal/utils';
-import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
+import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates, executeLedger9CallWithProviders } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
   createDefaultCircuit,
@@ -73,7 +73,7 @@ vi.mock('../internal/utils', async () => {
     createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', new runtime.ContractState(), ledger.Transaction.fromParts('undeployed')]),
     createUnprovenLedgerCallTx: vi.fn(() => ledger.Transaction.fromParts('undeployed')),
     createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
-    encryptionPublicKeyResolverForZswapState: vi.fn().mockReturnValue(() => 'encrypted-key'),
+    assertZswapStateOfWallet: vi.fn(),
     // Both: the call path uses zswapCallsToNewCoins, and the deploy this file sets up with reaches
     // zswapStateToNewCoins through unproven-deploy-tx.
     zswapCallsToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
@@ -584,7 +584,8 @@ describe('unproven-call-tx', () => {
 
       await createUnprovenCallTx(providers, options, transactionContext).catch(() => undefined);
 
-      expect(lookUpScopeStates).toHaveBeenCalledTimes(1);
+      // Looked up before the read, and again after it, for the states the scope holds.
+      expect(lookUpScopeStates).toHaveBeenCalledWith({ contractAddress: options.contractAddress });
     });
 
     it('runs the second call of a scope on the state the first left, pinned to the block of the first read', async () => {
@@ -606,8 +607,12 @@ describe('unproven-call-tx', () => {
       const runningState = StateValue.newArray();
 
       // Act
-      const first = await createUnprovenCallTx(providers, options, scope);
-      scope[MergeUnsubmittedCallTxData]('testCircuit', { ...first, public: { ...first.public, nextContractState: runningState } });
+      const first = await executeLedger9CallWithProviders(providers, options, scope);
+      const [rootCall] = first.assembly.calls;
+      await scope[RecordCall]('testCircuit', () => Promise.resolve({
+        ...first,
+        assembly: { ...first.assembly, calls: [{ ...rootCall!, public: { ...rootCall!.public, contractState: runningState } }] }
+      }));
       await createUnprovenCallTx(providers, options, scope);
 
       // Assert

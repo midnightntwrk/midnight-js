@@ -12,6 +12,10 @@
   "intentionallyNotExported": [
     "TypeId",
     "Ledger9SubmitCallTxProviders",
-    "CachedStateIdentity"
+    "CachedStateIdentity",
+    "ScopeEra",
+    "RecordCall",
+    "PrivateStateTarget",
+    "AnyLedger9ExecutedCall"
   ]
 }

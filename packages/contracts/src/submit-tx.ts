@@ -30,7 +30,7 @@ import { type Ledger9ContractProviders } from './contract-providers';
 import { EraInvariantViolationError,EraMismatchError, type EraMismatchReason, type SubmittedTransaction } from './errors';
 import { readHeadEra, requireLedger9Record, requireTaggedRecord } from './internal/era';
 import { diagnosedSubmit } from './internal/stale-head';
-import { proveBalanceSubmit } from './internal/submit-payload';
+import { type PrepareSubmission, proveBalanceSubmit } from './internal/submit-payload';
 
 /**
  * Configuration for {@link submitTx}.
@@ -65,6 +65,11 @@ export type Ledger9SubmitTxProviders<C extends Contract.Any, PCK extends Contrac
 export interface Ledger9PayloadSubmitOptions<PCK extends AnyProvableCircuitId> {
   readonly unprovenTx: UnprovenTx;
   readonly circuitId?: PCK | PCK[];
+  /**
+   * Awaited with the transaction the wallet balanced, before it is submitted: it may refuse it by
+   * throwing.
+   */
+  readonly prepareSubmission?: PrepareSubmission;
 }
 
 /**
@@ -87,7 +92,7 @@ export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK exte
   // refused before a proof is paid for, not at `balanceTx`.
   assertProvidersSupportEra('v9', providers);
   assertValidMidnightConfig(providers.config);
-  return proveBalanceSubmit(providers, unprovenTx, options.circuitId);
+  return proveBalanceSubmit(providers, unprovenTx, options.circuitId, undefined, options.prepareSubmission);
 };
 
 /** @internal {@link submitLedger9PayloadAsync}, then waits for the v9 record. */

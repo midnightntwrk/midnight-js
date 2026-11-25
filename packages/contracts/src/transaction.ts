@@ -15,9 +15,10 @@
 
 import type { CoinPublicKey, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { type PrivateStateId, type PublicStatesRead } from '@midnightntwrk/midnight-js-types';
+import { type AnyProvableCircuitId, type PrivateStateId, type PublicStatesRead } from '@midnightntwrk/midnight-js-types';
 import { assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
+import { type Ledger9CallResult } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';
 import * as Ledger8Scope from './internal/ledger8-scope';
 import * as Internal from './internal/transaction';
@@ -37,6 +38,10 @@ export type TypeId = typeof TypeId;
 
 /**
  * Encapsulates the context for managing a scoped contract transaction.
+ *
+ * `C` and `PCK` type what the scope returns: the data of its last call, typed by this contract. A
+ * call made in the scope is typed by its own contract and circuit, whichever circuit the scope is
+ * typed by, so one scope takes calls of several circuits without a cast.
  */
 export interface Ledger9TransactionContext<
   C extends Contract.Any,
@@ -45,11 +50,14 @@ export interface Ledger9TransactionContext<
   readonly [TypeId]: TypeId;
   readonly [Internal.ScopeEra]: 'v9';
   readonly [Internal.Submit]: () => Promise<Ledger9FinalizedCallTxData<C, PCK>>;
-  readonly [Internal.MergeUnsubmittedCallTxData]: (
-    circuitId: PCK,
-    callData: Ledger9UnsubmittedCallTxData<C, PCK>,
+  /** @internal Runs one call of the scope and records it; refuses a call that overlaps another. */
+  readonly [Internal.RecordCall]: (
+    circuitId: AnyProvableCircuitId,
+    run: () => Promise<Internal.AnyLedger9ExecutedCall>,
     privateStateTarget?: Internal.PrivateStateTarget
-  ) => void;
+  ) => Promise<void>;
+  /** @internal The result of the last call recorded into the scope, read without building a transaction. */
+  readonly [Internal.LastCallResult]: () => Ledger9CallResult<C, PCK> | undefined;
 
   /**
    * Gets the additional scoped {@link CoinPublicKey} to {@link EncPublicKey} mappings.
@@ -60,16 +68,17 @@ export interface Ledger9TransactionContext<
   getAdditionalMappings(): ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined;
 
   /**
-   * Gets the public states of the contract within the transaction context, as bytes. Decode them with
-   * your own runtime, as with `getStates`: `states.contractState.deserialize({ v9: ContractState })`.
+   * Gets the public states, as bytes, of the contract the scope's last call was made to, or, before
+   * any call, of the first contract the scope read. Decode them with your own runtime, as with
+   * `getStates`: `states.contractState.deserialize({ v9: ContractState })`.
    *
-   * @return The public states, or `undefined` if circuit calls are yet to be made.
+   * @return The public states, or `undefined` if the scope has read no states yet.
    *
    * @remarks
    * The contract state is the unsubmitted _running_ state of the contract within the transaction context,
    * reflecting any unsubmitted circuit calls made to the contract during the scope of the transaction. The
-   * ledger parameters and the zswap chain state are those of the block the scope was first read at. The
-   * running private state is `getLastUnsubmittedCallTxDataToTransact()?.[0].private.nextPrivateState`.
+   * zswap chain state is the one that contract was read with, at the block the scope was first read at. The
+   * running private state of the last call is `getLastUnsubmittedCallTxDataToTransact()?.[0].private.nextPrivateState`.
    */
   getCurrentStates(): PublicStatesRead | undefined;
 
@@ -78,6 +87,11 @@ export interface Ledger9TransactionContext<
    *
    * @return A tuple containing an {@link Ledger9UnsubmittedCallTxData} instance, and an optional private state
    * ID, or `undefined` if circuit calls are yet to be made.
+   *
+   * @remarks
+   * Its `private.unprovenTx` is the one transaction of every call made so far, in the order they were
+   * made, and its `private.newCoins` their new coins in that order: what the scope submits if no
+   * further call is made. Both are built when this is called.
    */
   getLastUnsubmittedCallTxDataToTransact(): [Ledger9UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined;
 }
@@ -113,6 +127,19 @@ export interface Ledger8TransactionContext<
    */
   getLastUnsubmittedCallTxDataToTransact(): [Ledger8UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined;
 }
+
+/**
+ * A {@link Ledger9TransactionContext} as a call made in the scope takes it: the members that are
+ * the same whatever contract and circuit the scope is typed by, so a scope typed by one circuit takes
+ * calls of others, each typed by its own contract and circuit.
+ */
+export type AnyLedger9TransactionContext = Pick<
+  Ledger9TransactionContext<Contract.Any, AnyProvableCircuitId>,
+  | typeof TypeId
+  | typeof Internal.ScopeEra
+  | typeof Internal.RecordCall
+  | 'getAdditionalMappings'
+>;
 
 /** A {@link Ledger8TransactionContext} of any ledger 8 contract. */
 export type AnyLedger8TransactionContext = Ledger8TransactionContext<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
@@ -172,7 +199,75 @@ type Ledger8ScopeBody = (txCtx: AnyLedger8TransactionContext) => Promise<void>;
  * Where `fn` makes circuit calls, these are batched together and submitted as a single transaction when
  * the function completes successfully. If `fn` throws an error, any unsubmitted circuit calls are discarded.
  *
- * The ledger era this scope runs against is read ONCE, before `fn` runs, and every call merged into
+ * On a ledger 9 network the calls are applied in the order `fn` makes them. Each call runs on the
+ * public states, data and balance, the calls before it left, and builds no transaction of its own;
+ * when `fn` returns, the scope builds one transaction of one intent from all of them, which the ledger
+ * applies as it applies any intent: circuits in the order of the scope, each circuit's calls together,
+ * a caller before the callees it claims, each on the state the one before it left. The result describes the last
+ * call; its `private.unprovenTx` is the transaction the scope submitted, and its `private.newCoins`
+ * the new coins of every call, in the order they were made. Only the ledger 9 scope keeps this
+ * order: the ledger 8 scope merges one transaction per call.
+ *
+ * A ledger 9 scope of two or more calls lands whole or not at all: its transaction has no fallible
+ * half. A call whose whole call tree the ledger's partitioner placed in the fallible half is moved
+ * whole into the guaranteed half before anything is proven; a call whose transcript is split at a
+ * checkpoint, and coins or an unshielded offer a call places in the fallible half, are refused with a
+ * `Ledger9ScopeFalliblePartError`, and nothing is submitted. So is a fallible part in the transaction the
+ * wallet balanced: a wallet adds one only to balance a fallible part the transaction already has,
+ * and this check covers one that adds it otherwise. That refusal carries the balanced transaction:
+ * the coins the wallet booked for it stay booked until its time to live passes, and its Dust until
+ * the Dust spend's grace period ends, unless the wallet reverts it. A scope of one call is built,
+ * checked and submitted exactly as that call made alone.
+ *
+ * Before any proof is made, a scope of two or more calls is priced against the ledger's time to
+ * dismiss, with the ledger's own cost function under the ledger parameters of the block the scope
+ * read its states at, and refused with a `Ledger9ScopeOutsideTimeToDismissError` if it costs more than its
+ * size allows. The figure is an estimate: the transaction has no Dust spend yet and each proof is
+ * priced at the ledger's estimated size, so a transaction close to the limit can be refused though
+ * the one the wallet balances would fit. The balanced transaction is not priced again: the node
+ * refuses one over its time to dismiss at no fee, and the wallet then releases what it booked. The
+ * ledger charges a verifier key's read in whole 4,096-byte blocks; the check assumes each key fits
+ * one block, where the node reads its real size, so the node can be stricter only for a verifier key
+ * over 4,096 bytes. A call moved out of the fallible half counts in full against the time to dismiss:
+ * the partitioner placed it there because even its part before the first checkpoint costs more than
+ * the guaranteed half allows it, so it fits only beside calls whose size leaves spare allowance. The
+ * refusal names each call moved; send such a call in a transaction of its own, where it keeps its
+ * fallible placement. A scope that a release before this one landed in one transaction with a
+ * fallible part, possibly in part, can therefore be refused.
+ *
+ * Make the calls of a ledger 9 scope one after another, awaiting each before the next: a call
+ * started while another call of the scope is still running is refused with an
+ * `InvalidArgumentError`, since both would start from the same states. A call still running when `fn`
+ * returns, or made once the scope has begun to submit, is refused with an `InvalidArgumentError`
+ * too: the transaction holds the calls recorded when `fn` returns, and only their private states are
+ * stored.
+ *
+ * A ledger 9 scope takes calls to one contract and private state id; a call that reads another is
+ * refused with a `ScopedTransactionIdentityMismatchError`.
+ * Every state is read at the block of the scope's first read, and a contract address is one contract
+ * in either case. A callee
+ * the scope holds is given the state the scope's earlier calls left it in. Each private state id
+ * chains from call to call, through the private state provider it was first read through: a call
+ * that reaches it through another provider, as a second wallet using the same id would, is refused
+ * with an `InvalidArgumentError`. When the transaction succeeds entirely, the state each id was left
+ * in is stored through that provider. Each call is typed by its own contract
+ * and circuit. `C` and `PCK` type the scope's result, the data of its last call: type the scope by the
+ * contract and circuit of its last call, since they are not checked against it, or read only the
+ * result's transaction-level fields (`public`, `private.unprovenTx`, `private.newCoins`). The
+ * coins the calls create are encrypted with the wallet keys of every call and the coin key mappings
+ * of the scope and of every call, merged; a coin key mapped to two encryption keys, a wallet's own
+ * included, is refused. Proving the one transaction needs the keys of
+ * every contract its calls reach: give the scope a proof provider that resolves them all, for example
+ * `httpClientProofProvider` over a `ZKConfigRegistry` of each contract's keys.
+ *
+ * One transaction links everything its calls state publicly. A wrap of unshielded tokens into
+ * shielded ones states its amount; merged with a deposit into a contract that keeps its holdings
+ * private, or with any other receiver meant to stay private, it puts that amount, the token and the
+ * receiver together on chain, where the deposit of an already-shielded coin sent as a transaction of
+ * its own states no amount. Merge a wrap with what follows it only where the receiver is not
+ * private. See ADR-0027.
+ *
+ * The ledger era this scope runs against is read ONCE, before `fn` runs, and every call made in
  * the scope shares that one reading. Before the hard fork the scope takes calls against contracts
  * produced by the ledger 8 Compact toolchain; type `fn`'s parameter as {@link Ledger8TransactionContext}
  * to call them. After the fork it takes calls against contracts produced by the ledger 9 toolchain, and a

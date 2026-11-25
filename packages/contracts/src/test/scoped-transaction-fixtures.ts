@@ -17,11 +17,19 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import {
+  type ContractCall,
+  CostModel,
+  Intent,
   LedgerParameters,
   LedgerState,
+  type PreProof,
+  type ProvingProvider,
   sampleCoinPublicKey,
   sampleEncryptionPublicKey,
+  sampleUserAddress,
+  Transaction,
   type UnprovenTransaction,
+  UnshieldedOffer,
   WellFormedStrictness,
   ZswapChainState
 } from '@midnightntwrk/midnight-js-protocol/v9';
@@ -29,6 +37,8 @@ import { CompiledContract } from '@midnightntwrk/midnight-js-protocol/v9/compact
 import { sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   createVerifierKey,
+  type FinalizedTx,
+  LedgerTransaction,
   type ProverKey,
   type SerializedContractState,
   type VerifierKey,
@@ -43,6 +53,8 @@ import { handles } from './ledger-transaction-fixtures';
 import * as Callee from './resources/compiled/callee/contract/index.js';
 import * as Caller from './resources/compiled/caller/contract/index.js';
 import * as ShieldedMap from './resources/compiled/shielded-map/contract/index.js';
+import * as Stamps from './resources/compiled/stamps/contract/index.js';
+import * as UnshieldedBalance from './resources/compiled/unshielded-balance/contract/index.js';
 import {
   createMockContractAddress,
   createMockEncryptionPublicKey,
@@ -60,6 +72,11 @@ import {
  * - `shielded-map`: `deposit(coin)` receives the coin, records it and increments `counter`;
  * - `callee`: `deposit(coin)` receives the coin, `mintAndSend` mints a coin and sends part of it on;
  * - `caller`: calls the `callee` given to its constructor, so every call of it has a callee;
+ * - `unshielded-balance`: `mintToSelf` mints unshielded tokens to the contract, `sendToUser` pays them
+ *   to a user, `balanceOf` reads the contract's balance of a token;
+ * - `stamps`: `step` takes the next stamp from a witness that advances the caller's private state, and
+ *   refuses a stamp that is not one more than the last, so a second call succeeds only on the private
+ *   and public states the first left; `fillOne` to `fillThree` insert into a Merkle tree.
  */
 
 const compiledDirectory = (name: string): string =>
@@ -90,9 +107,17 @@ export type ShieldedMapContract = ShieldedMap.Contract<undefined>;
 export type CountingShieldedMapContract = ShieldedMap.Contract<CountingState>;
 export type CalleeContract = Callee.Contract<undefined>;
 export type CallerContract = Caller.Contract<undefined>;
+export type UnshieldedBalanceContract = UnshieldedBalance.Contract<undefined>;
+export type StampsContract = Stamps.Contract<StampState>;
+
 /** A private state its witness counts up, one at each call. */
 export interface CountingState {
   readonly count: number;
+}
+
+/** The private state of `stamps`: the last stamp its `step` took. */
+export interface StampState {
+  readonly stamp: number;
 }
 
 export const shieldedMap = CompiledContract.make<ShieldedMapContract>('shielded-map', ShieldedMap.Contract).pipe(
@@ -116,9 +141,25 @@ export const caller = CompiledContract.make<CallerContract>('caller', Caller.Con
   CompiledContract.withCompiledFileAssets(compiledDirectory('caller'))
 );
 
+export const unshieldedBalance = CompiledContract.make<UnshieldedBalanceContract>('unshielded-balance', UnshieldedBalance.Contract).pipe(
+  CompiledContract.withVacantWitnesses,
+  CompiledContract.withCompiledFileAssets(compiledDirectory('unshielded-balance'))
+);
+
+/** `stamps`, whose `nextStamp` witness takes the stamp after the private state's and keeps it. */
+export const stamps = CompiledContract.make<StampsContract>('stamps', Stamps.Contract).pipe(
+  CompiledContract.withWitnesses({
+    nextStamp: (ctx): [StampState, bigint] => [{ stamp: ctx.privateState.stamp + 1 }, BigInt(ctx.privateState.stamp + 1)]
+  }),
+  CompiledContract.withCompiledFileAssets(compiledDirectory('stamps'))
+);
+
 export const shieldedMapKeys = new CompiledKeys<'deposit'>('shielded-map');
+export const unshieldedBalanceKeys = new CompiledKeys<'mintToSelf' | 'sendToUser' | 'balanceOf'>('unshielded-balance');
 export const calleeKeys = new CompiledKeys<'deposit' | 'mintAndSend'>('callee');
 export const callerKeys = new CompiledKeys<'depositToCallee' | 'mintAndSendFromCallee'>('caller');
+export const stampsKeys = new CompiledKeys<'step' | 'count' | 'fillOne' | 'fillTwo' | 'fillThree'>('stamps');
+
 const deployedStates = new Map<string, Promise<SerializedContractState<'v9'>>>();
 
 const deployOnce = (key: string, deploy: () => Promise<SerializedContractState<'v9'>>): Promise<SerializedContractState<'v9'>> => {
@@ -135,6 +176,34 @@ export const deployedShieldedMap = (): Promise<SerializedContractState<'v9'>> =>
         shieldedMapKeys,
         sampleCoinPublicKey(),
         { compiledContract: shieldedMap, signingKey: sampleSigningKey() },
+        createMockEncryptionPublicKey(),
+        MOCK_CONFIG
+      )
+    ).public.initialContractState
+  );
+
+/** The state `unshielded-balance` is deployed with. */
+export const deployedUnshieldedBalance = (): Promise<SerializedContractState<'v9'>> =>
+  deployOnce('unshielded-balance', async () =>
+    (
+      await createLedger9UnprovenDeployTxFromVerifierKeys(
+        unshieldedBalanceKeys,
+        sampleCoinPublicKey(),
+        { compiledContract: unshieldedBalance, signingKey: sampleSigningKey() },
+        createMockEncryptionPublicKey(),
+        MOCK_CONFIG
+      )
+    ).public.initialContractState
+  );
+
+/** The state `stamps` is deployed with: no stamp taken yet. */
+export const deployedStamps = (): Promise<SerializedContractState<'v9'>> =>
+  deployOnce('stamps', async () =>
+    (
+      await createLedger9UnprovenDeployTxFromVerifierKeys(
+        stampsKeys,
+        sampleCoinPublicKey(),
+        { compiledContract: stamps, signingKey: sampleSigningKey(), initialPrivateState: { stamp: 0 } },
         createMockEncryptionPublicKey(),
         MOCK_CONFIG
       )
@@ -216,6 +285,12 @@ export const chainOf = async (
   return { providers: shared, withKeys, zswapChainState, coinPublicKey, encryptionPublicKey };
 };
 
+/** The unproven transaction the scope handed to be proven. */
+export const provenInput = (proveTx: unknown): UnprovenTransaction => {
+  const [[unprovenTx]] = vi.mocked(proveTx as (tx: { deserialize: (d: object) => unknown }) => unknown).mock.calls;
+  return unprovenTx.deserialize({ v9: Transaction }) as UnprovenTransaction;
+};
+
 /**
  * Whether the ledger finds `tx` well formed, every check it makes of what the transcripts claim
  * included; balancing, proofs, signatures and limits are not checked, since the transaction is
@@ -235,6 +310,65 @@ export const ledgerWellFormed = (tx: UnprovenTransaction): true | string => {
     return String(error);
   }
 };
+
+/** The contract calls of a transaction, intent by intent. */
+export const callsOf = (tx: UnprovenTransaction): ContractCall<PreProof>[] =>
+  [...(tx.intents?.values() ?? [])].flatMap((intent) => intent.actions as ContractCall<PreProof>[]);
+
+const inertProvingProvider: ProvingProvider = {
+  check: () => Promise.resolve([]),
+  prove: () => Promise.resolve(new Uint8Array()),
+  lookupKey: () => Promise.resolve(undefined)
+};
+
+export const unshieldedOffer = (outputs: number) =>
+  UnshieldedOffer.new(
+    [],
+    Array.from({ length: outputs }, () => ({ value: 5n, owner: sampleUserAddress(), type: '00'.repeat(32) })),
+    []
+  );
+
+/** A finalized transaction of one intent with `outputs` unshielded outputs in `half`, as a wallet could answer. */
+export const finalizedWithUnshieldedOutputs = async (outputs: number, half: 'guaranteed' | 'fallible') => {
+  const intent = Intent.new(new Date(Date.now() + 3_600_000));
+  if (half === 'guaranteed') intent.guaranteedUnshieldedOffer = unshieldedOffer(outputs);
+  else intent.fallibleUnshieldedOffer = unshieldedOffer(outputs);
+  const unbound = await Transaction.fromParts(MOCK_CONFIG.networkId, undefined, undefined, intent).prove(
+    inertProvingProvider,
+    CostModel.initialCostModel()
+  );
+  return LedgerTransaction.seal('v9', 'Finalized', unbound.bind());
+};
+
+/**
+ * A finalized transaction of `count` intents, at segments 1 to `count`, each with one guaranteed
+ * unshielded output, as a wallet could answer: it has one identifier per intent.
+ */
+export const finalizedOfIntents = async (count: number) => {
+  const tx = Transaction.fromParts(MOCK_CONFIG.networkId);
+  tx.intents = new Map(
+    Array.from({ length: count }, (_, index) => {
+      const intent = Intent.new(new Date(Date.now() + 3_600_000));
+      intent.guaranteedUnshieldedOffer = unshieldedOffer(1);
+      return [index + 1, intent];
+    })
+  );
+  const unbound = await tx.prove(inertProvingProvider, CostModel.initialCostModel());
+  return LedgerTransaction.seal('v9', 'Finalized', unbound.bind());
+};
+
+/** The identifiers of a finalized ledger 9 transaction, in the order the ledger lists them. */
+export const identifiersOf = (finalized: FinalizedTx): string[] =>
+  LedgerTransaction.fromBytes('v9', 'Finalized', finalized.serialize()).deserialize({ v9: Transaction }).identifiers();
+
+/** A coin public key of the `undeployed` network in Bech32m, the notation a wallet hands out. */
+export const BECH32M_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
+
+/** An encryption public key of the `undeployed` network in Bech32m, and the same key in hex. */
+export const BECH32M_ENCRYPTION_PUBLIC_KEY = {
+  bech32m: 'mn_shield-epk_undeployed12lylpluzqw85h3wwdntasa4ugrgwt3fyn5ev6832fhxl5nw8v5ks8sn908',
+  hex: '57c9f0ff82038f4bc5ce6cd7d876bc40d0e5c5249d32cd1e2a4dcdfa4dc7652d'
+} as const;
 
 /** Providers over a chain holding one deployed `shielded-map`, at `contractAddress`. */
 export const chainWithShieldedMap = async () => {
@@ -257,3 +391,43 @@ export const deposit = (contractAddress: string, nonce: number) => ({
 /** The `counter` a `shielded-map` deposit left. */
 export const counterOf = (result: Ledger9CallResult<ShieldedMapContract, 'deposit'>): bigint =>
   ShieldedMap.ledger(result.public.nextContractState).counter;
+
+/** Providers over a chain holding a deployed `stamps` at each of `addresses`. */
+export const chainWithStamps = async (count = 1) => {
+  const addresses = Array.from({ length: count }, () => createMockContractAddress());
+  const chain = await chainOf(new Map(addresses.map((address) => [address, deployedStamps()])));
+  return { ...chain, addresses };
+};
+
+export const step = (contractAddress: string, privateStateId: string) => ({
+  compiledContract: stamps,
+  contractAddress,
+  circuitId: 'step' as const,
+  privateStateId
+});
+
+/**
+ * Providers over a chain holding one `stamps`, which record when the transaction is submitted and
+ * when it is waited for. The wallet balances every transaction into `balanced`, of two intents, whose
+ * identifiers are `identifiers`; `submitTx` answers `'tx-id'`.
+ */
+export const chainRecordingOrder = async () => {
+  const {
+    withKeys,
+    addresses: [address]
+  } = await chainWithStamps();
+  const wallet = withKeys(stampsKeys);
+  wallet.stored.set(`${address}:id`, { stamp: 0 });
+  const balanced = await finalizedOfIntents(2);
+  vi.mocked(wallet.providers.walletProvider.balanceTx).mockResolvedValue(balanced);
+  const events: string[] = [];
+  vi.mocked(wallet.providers.midnightProvider.submitTx).mockImplementation(() => {
+    events.push('submitted');
+    return Promise.resolve('tx-id');
+  });
+  vi.mocked(wallet.providers.publicDataProvider.watchForTxData).mockImplementation(() => {
+    events.push('waited');
+    return Promise.resolve(createMockFinalizedTxData());
+  });
+  return { address, providers: wallet.providers, stored: wallet.stored, events, balanced, identifiers: identifiersOf(balanced) };
+};

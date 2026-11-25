@@ -194,6 +194,25 @@ export const zswapCallsToNewCoins = (
   );
 
 /**
+ * Refuses a ZswapLocalState whose coin public key is not the wallet's: its coins could not be
+ * encrypted to a key the wallet holds.
+ *
+ * @throws ZswapOutputResolutionError if the state's coin public key is not the wallet's.
+ */
+export const assertZswapStateOfWallet = (
+  networkId: NetworkId,
+  zswapState: ZswapLocalState,
+  walletCoinPublicKey: CoinPublicKey
+): void => {
+  const walletCpkHex = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
+  const localCpkHex = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
+
+  if (localCpkHex !== walletCpkHex) {
+    throw new ZswapOutputResolutionError('Unable to lookup encryption public key (Unsupported coin)');
+  }
+};
+
+/**
  * Creates an EncryptionPublicKeyResolver for a ZswapLocalState, validating that the
  * state's coin public key matches the wallet's. Handles the burn address and optional
  * additional recipient mappings.
@@ -205,12 +224,7 @@ export const encryptionPublicKeyResolverForZswapState = (
   walletEncryptionPublicKey: EncPublicKey,
   additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>
 ): EncryptionPublicKeyResolver => {
-  const walletCpkHex = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
-  const localCpkHex = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
-
-  if (localCpkHex !== walletCpkHex) {
-    throw new ZswapOutputResolutionError('Unable to lookup encryption public key (Unsupported coin)');
-  }
+  assertZswapStateOfWallet(networkId, zswapState, walletCoinPublicKey);
 
   return createEncryptionPublicKeyResolver(
     networkId,

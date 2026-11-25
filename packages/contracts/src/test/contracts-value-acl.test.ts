@@ -63,6 +63,8 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'PrivateStateNotFoundError',
   'ProviderFailedError',
   'ScopedTransactionIdentityMismatchError',
+  'Ledger9ScopeFalliblePartError',
+  'Ledger9ScopeOutsideTimeToDismissError',
   'SubmitRejectionUndiagnosedError',
   'TxFailedError',
   'VerifierKeyMismatchError',
