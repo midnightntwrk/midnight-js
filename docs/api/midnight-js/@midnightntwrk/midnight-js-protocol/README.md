@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.2**](../../README.md)
+[**Midnight.js API Reference v5.0.3**](../../README.md)
 
 ***
 
