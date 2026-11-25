@@ -31,6 +31,7 @@ import {
   refuseFallibleCalls,
   refuseFallibleTransaction
 } from './ledger9-scope-checks';
+import { oneTimeKeyMapping, type OneTimeKeys } from './ledger9-scope-one-time-keys';
 import {
   contractAddressKey,
   type Ledger9CallAssembly,
@@ -74,25 +75,32 @@ type ContractCall = ContractExecutable.ContractExecutable.ContractCall;
  * the scope and of every call, merged; each call's coins are checked to be its own wallet's, as each
  * call's own build checks them.
  *
+ * Given one-time keys, every coin a call makes for their coin key is spent again inside the
+ * transaction as a transient, for one call as for many, and their coin key is mapped to their own
+ * encryption key.
+ *
  * @internal
  * @param assemblies What each call of the scope left for assembly, in the order the calls were made.
  * @param config The network the transaction is built for and how long it stays valid.
  * @param scopeMappings The coin key to encryption key mappings of the scope's options.
+ * @param oneTimeKeys The one-time keys of the scope's options, with the scope's wallet key.
  * @param ledgerParameters The ledger parameters a scope of two or more calls is priced under; with
  *        none, it is not priced.
  * @throws Ledger9ScopeFalliblePartError if a scope of two or more calls would have a fallible part.
  * @throws Ledger9ScopeOutsideTimeToDismissError if a scope of two or more calls, given ledger parameters,
  *         costs more to dismiss than its size allows.
  * @throws InvalidArgumentError if there are no calls, if what the transcripts claim of contract
- *         calls or unshielded payments does not match the transaction.
+ *         calls or unshielded payments does not match the transaction, or if the one-time keys are a
+ *         wallet's own or spend no coin the calls make.
  * @throws ZswapOutputResolutionError if a call's coins are not its wallet's, if a coin key is mapped
- *         to two encryption keys (a wallet's own included), or if what
+ *         to two encryption keys (a wallet's own and the one-time keys' own included), or if what
  *         the transcripts claim of shielded coins does not match the offers.
  */
 export const assembleLedger9CallTx = (
   assemblies: readonly Ledger9CallAssembly[],
   config: MidnightConfig,
   scopeMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>,
+  oneTimeKeys?: OneTimeKeys,
   ledgerParameters?: LedgerParameters
 ): UnprovenTransaction => {
   const [first] = assemblies;
@@ -101,13 +109,23 @@ export const assembleLedger9CallTx = (
   }
   const { networkId, coinPublicKey, walletEncryptionPublicKey } = first.encryption;
   const callMappings = assemblies.map(({ encryption }) => encryption.additionalCoinEncPublicKeyMappings);
+  const oneTimeMapping =
+    oneTimeKeys === undefined
+      ? undefined
+      : oneTimeKeyMapping(
+          oneTimeKeys,
+          networkId,
+          assemblies.map(({ encryption }) => encryption.coinPublicKey)
+        );
   const mappings = mergedMappings(
     networkId,
     [
       ...assemblies.map(({ encryption }) => new Map([[encryption.coinPublicKey, encryption.walletEncryptionPublicKey]])),
+      oneTimeMapping,
       scopeMappings,
       ...callMappings
-    ]
+    ],
+    new Set(oneTimeMapping?.keys())
   );
   // Each call's coins are checked against its wallet's coin key, as each call's own build checks them.
   for (const { encryption } of assemblies) {
@@ -130,7 +148,8 @@ export const assembleLedger9CallTx = (
     (address) => builtAgainst(address)?.contractState,
     (address) => builtAgainst(address)?.zswapChainState,
     createEncryptionPublicKeyResolver(networkId, coinPublicKey, walletEncryptionPublicKey, mappings),
-    config
+    config,
+    oneTimeKeys?.keys
   );
   if (whole) {
     refuseFallibleTransaction(tx, 'unproven');

@@ -948,7 +948,8 @@ describe('unproven-call-tx', () => {
         expect.anything(),
         expect.anything(),
         expect.anything(),
-        config
+        config,
+        undefined
       );
     });
   });

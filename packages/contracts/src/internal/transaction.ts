@@ -35,6 +35,7 @@ import {
 import { LastCallResult, RecordCall, ScopeEra, Submit, TransactionContextImpl, TypeId } from './ledger9-scope';
 
 export {
+  assertNoOneTimeKeys,
   CacheStates,
   GetCurrentStatesForIdentity,
   LastCallResult,
@@ -295,13 +296,13 @@ export const logScopeFailure = (
  *
  * @internal
  * @param scope `'nested'` for a scope run inside another, `'ledger8'` for a scope on a ledger 8 head.
- * @throws InvalidArgumentError if `beforeSubmit` is given.
+ * @throws InvalidArgumentError if `beforeSubmit` or `spentHere` is given.
  */
 export const assertSubmitOptionsHonoured = (
   options: Transaction.ScopedTransactionOptions | undefined,
   scope: 'nested' | 'ledger8'
 ): void => {
-  const given = (['beforeSubmit'] as const).filter((name) => options?.[name] !== undefined);
+  const given = (['beforeSubmit', 'spentHere'] as const).filter((name) => options?.[name] !== undefined);
   if (given.length === 0) {
     return;
   }

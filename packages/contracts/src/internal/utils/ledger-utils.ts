@@ -35,7 +35,8 @@ import {
   type UnprovenTransaction,
   UnshieldedOffer,
   type UtxoOutput,
-  type ZswapChainState
+  type ZswapChainState,
+  type ZswapSecretKeys
 } from '@midnightntwrk/midnight-js-protocol/v9';
 import type { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
 import {
@@ -412,6 +413,9 @@ export const assertEffectsMatchTransaction = (tx: UnprovenTransaction): void => 
  * during execution. Only consulted for a call that spends a coin already settled on chain.
  * @param encryptionPublicKey Resolver for output encryption keys.
  * @param config The network the transaction is built for and how long it stays valid.
+ * @param spentHere One-time keys whose coins, made by these calls, are spent again in the same
+ * transaction as transients, before the claim check runs.
+ * @throws InvalidArgumentError if `spentHere` is given and the calls make no coin for it.
  *
  * @remarks Precondition: every operation resolved via `contractStateFor` for an invoked circuit must
  * carry its deployed verifier key — the call's key location embeds the key's hash so provers resolve
@@ -425,7 +429,8 @@ export const createUnprovenLedgerCallTx = (
     address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']
   ) => ZswapChainState | undefined,
   encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver,
-  config: MidnightConfig
+  config: MidnightConfig,
+  spentHere?: ZswapSecretKeys
 ): UnprovenTransaction => {
   const ttl = intentTtl(config);
   const { networkId } = config;
@@ -503,7 +508,8 @@ export const createUnprovenLedgerCallTx = (
       zswapChainState: chainStateFor(call.contractAddress),
       partitionedTranscript: call.public.partitionedTranscript
     })),
-    encryptionPublicKey
+    encryptionPublicKey,
+    spentHere
   );
 
   const tx = Transaction.fromPartsRandomized(

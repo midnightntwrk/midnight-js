@@ -35,6 +35,7 @@ import { type Ledger9FinalizedCallTxData, type Ledger9UnsubmittedCallTxData } fr
 import { type Ledger9ContractStates, type Ledger9PublicStates, type ResolvedOperationEra } from './era';
 import { assembleLedger9CallTx, landsWhole } from './ledger9-scope-build';
 import { refuseFallibleBalanced } from './ledger9-scope-checks';
+import { type OneTimeKeys } from './ledger9-scope-one-time-keys';
 import {
   advancePublicStates,
   type AnyLedger9ExecutedCall,
@@ -73,6 +74,11 @@ export const PinnedBlockHash = Symbol.for('@midnight-ntwrk/midnight-js#Transacti
 export const PublicStatesOf = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/PublicStatesOf');
 /** @internal */
 export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
+/**
+ * @internal Whether a scope was given one-time keys, read by its global key so a context made by
+ * another installed copy of the package answers too.
+ */
+export const HoldsOneTimeKeys = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/HoldsOneTimeKeys');
 /** @internal The ledger era a scope context composes for. */
 export const ScopeEra = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/ScopeEra');
 
@@ -155,6 +161,7 @@ export class TransactionContextImpl<
 > implements Transaction.Ledger9TransactionContext<C, PCK>, ScopeStateCache {
   readonly [TypeId]: Transaction.TypeId = TypeId;
   readonly [ScopeEra] = 'v9';
+  readonly [HoldsOneTimeKeys]: boolean;
   readonly providers: Ledger9ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
   /**
@@ -201,6 +208,7 @@ export class TransactionContextImpl<
     this.providers = providers;
     // One frozen copy, read by the build and every refusal: keys set on the caller's object later change nothing.
     this.options = options === undefined ? undefined : Object.freeze({ ...options });
+    this[HoldsOneTimeKeys] = this.options?.spentHere !== undefined;
     this.resolvedEra = resolvedEra;
   }
 
@@ -214,6 +222,12 @@ export class TransactionContextImpl<
 
   [PinnedBlockHash](): string | undefined {
     return this.pinned?.blockHash;
+  }
+
+  /** The scope's one-time keys with its wallet's coin public key, or `undefined` if it was given none. */
+  private oneTimeKeys(): OneTimeKeys | undefined {
+    const keys = this.options?.spentHere;
+    return keys === undefined ? undefined : { keys, scopeWalletCoinPublicKey: this.providers.walletProvider.getCoinPublicKey() };
   }
 
   private lastRecordedCall(): Ledger9RecordedCall | undefined {
@@ -292,6 +306,7 @@ export class TransactionContextImpl<
       this.recordedCalls.map(({ executed }) => executed.assembly),
       this.providers.config,
       this.options?.additionalCoinEncPublicKeyMappings,
+      this.oneTimeKeys(),
       ledgerParameters
     );
     return {
@@ -307,7 +322,10 @@ export class TransactionContextImpl<
    * another.
    *
    * @throws ZswapOutputResolutionError if the calls recorded so far do not make a transaction, for
-   *         example when a coin one of them sends to a contract is claimed by no call yet.
+   *         example when a coin one of them sends to a contract is claimed by no call yet, or if a
+   *         mapping maps the coin public key of the scope's one-time keys to another encryption key.
+   * @throws InvalidArgumentError if the scope's one-time keys are a wallet's own, or spend no coin the
+   *         calls recorded so far make (as before the call that makes their coin).
    */
   getLastUnsubmittedCallTxDataToTransact(): [Ledger9UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
     const last = this[LastCallResult]();
@@ -392,8 +410,11 @@ export class TransactionContextImpl<
    * moment the scope begins to submit it takes no call.
    *
    * @throws InvalidArgumentError if a call of the scope is still running, before anything is built,
-   *         or if a scope of two or more calls read no states, so holds no ledger parameters to price
-   *         its transaction; all before anything is proven.
+   *         if a scope of two or more calls read no states, so holds no ledger parameters to price
+   *         its transaction, or if the scope's one-time keys are a wallet's own or spend no coin its
+   *         calls make; all before anything is proven.
+   * @throws ZswapOutputResolutionError if a mapping maps the coin public key of the scope's one-time
+   *         keys to another encryption key, before anything is proven.
    * @throws Ledger9ScopeFalliblePartError if a scope of two or more calls has a fallible part, before proving
    *         or as the wallet balanced it; nothing is submitted.
    * @throws Ledger9ScopeOutsideTimeToDismissError if a scope of two or more calls costs more to dismiss than
@@ -546,6 +567,24 @@ export class TransactionContextImpl<
     }
   }
 }
+
+/**
+ * Refuses to build a call's own transaction with a scope that was given one-time keys: that
+ * transaction would not spend again the coins the call makes for them, which would then rest at a
+ * key nobody keeps. Names the option, never a key.
+ *
+ * @internal
+ * @throws InvalidArgumentError if `context` is a scope given `spentHere`.
+ */
+export const assertNoOneTimeKeys = (context: Transaction.AnyLedger9TransactionContext | undefined): void => {
+  if (context !== undefined && Reflect.get(context, HoldsOneTimeKeys) === true) {
+    throw new InvalidArgumentError(
+      "A call was built as a transaction of its own with a scoped transaction given one-time keys ('spentHere'). " +
+        'That transaction would not spend again the coins the call makes for them. Submit the call through the ' +
+        'scope instead, with submitCallTx or callTx, so the scope builds the one transaction that spends them.'
+    );
+  }
+};
 
 /**
  * @internal Runs one call of a scope with `run` and records it into the scope.

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey, ContractAddress, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { CoinPublicKey, ContractAddress, EncPublicKey, ZswapSecretKeys } from '@midnightntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { type AnyProvableCircuitId, type PrivateStateId, type PublicStatesRead } from '@midnightntwrk/midnight-js-types';
 import { assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
@@ -197,6 +197,37 @@ export interface ScopedTransactionOptions {
     txIds: readonly string[],
     pendingPrivateStates: readonly Ledger9PendingPrivateState[]
   ) => void | Promise<void>;
+
+  /**
+   * One-time keys made for this transaction alone. Every coin a call of the scope makes for their
+   * coin public key is spent again inside the same transaction, as a transient: the coin is made
+   * and spent in one transaction, so it is never left unspent at that key, though the chain still
+   * records its commitment and nullifier, and its value can balance what a later call of the scope
+   * takes in. This holds for a scope of one call as for many.
+   *
+   * Never give a wallet's keys. The scope maps their coin public key to their own encryption public
+   * key, keeps them only while it runs, and never puts them, or any key of theirs, in an error or a
+   * log. Their coin secret key does leave the scope inside the transaction: proving a transient needs
+   * it, so it goes to the proof provider with the unproven transaction, and it is in the scope
+   * result's `private.unprovenTx`. Give keys made for this transaction alone, which never receive a
+   * coin outside it.
+   *
+   * A call built as a transaction of its own (`createLedger9UnprovenCallTx`, `createUnprovenCallTx`)
+   * with a scope given these keys is refused, before its circuit runs: submit the call through the
+   * scope instead.
+   *
+   * Refused with an `InvalidArgumentError`, before any proof is made:
+   * - keys whose coin public key is the coin public key of the scope's wallet or of the wallet of any
+   *   of its calls, each read from hex or Bech32m;
+   * - keys that spend no coin the scope's calls make;
+   * - keys given to a nested scope, which builds nothing: give them to the outermost scope;
+   * - keys given to a scope that runs on a ledger 8 network, whose scope does not apply them.
+   *
+   * A mapping in `additionalCoinEncPublicKeyMappings`, of the scope or of a call, that maps their
+   * coin public key to another encryption public key is refused with a
+   * `ZswapOutputResolutionError`, before any proof is made.
+   */
+  readonly spentHere?: ZswapSecretKeys;
 }
 
 /** A private state a scoped transaction's calls left, which it stores once the transaction succeeds entirely. */
@@ -308,14 +339,16 @@ type Ledger8ScopeBody = (txCtx: AnyLedger8TransactionContext) => Promise<void>;
  * of the scope and of every call, merged; a coin key mapped to two encryption keys, a wallet's own
  * included, is refused. Proving the one transaction needs the keys of
  * every contract its calls reach: give the scope a proof provider that resolves them all, for example
- * `httpClientProofProvider` over a `ZKConfigRegistry` of each contract's keys.
+ * `httpClientProofProvider` over a `ZKConfigRegistry` of each contract's keys. To spend again, in the
+ * same transaction, the coins the calls make for keys made for this transaction alone, pass
+ * `spentHere` in `options` ({@link ScopedTransactionOptions.spentHere}).
  *
  * One transaction links everything its calls state publicly. A wrap of unshielded tokens into
  * shielded ones states its amount; merged with a deposit into a contract that keeps its holdings
  * private, or with any other receiver meant to stay private, it puts that amount, the token and the
  * receiver together on chain, where the deposit of an already-shielded coin sent as a transaction of
  * its own states no amount. Merge a wrap with what follows it only where the receiver is not
- * private. See ADR-0027.
+ * private, a coin spent again through `spentHere` included. See ADR-0027.
  *
  * The ledger era this scope runs against is read ONCE, before `fn` runs, and every call made in
  * the scope shares that one reading. Before the hard fork the scope takes calls against contracts

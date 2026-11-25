@@ -21,7 +21,7 @@ import {
 } from '@midnightntwrk/midnight-js-contracts';
 import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
 import { nodeZkConfigRegistry } from '@midnightntwrk/midnight-js-node-zk-config-provider';
-import { type ContractAddress, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type ContractAddress, Transaction, ZswapSecretKeys } from '@midnightntwrk/midnight-js-protocol/v9';
 import { sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import { SucceedEntirely } from '@midnightntwrk/midnight-js-types';
 import {
@@ -33,13 +33,15 @@ import {
   type MidnightWalletProvider,
   type TestEnvironment
 } from '@midnightntwrk/testkit-js';
+import { randomBytes } from 'crypto';
 import path from 'path';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import {
   CompiledCounterContract,
   CompiledDoubleCounterContract,
-  CompiledScopeShapesContract
+  CompiledScopeShapesContract,
+  CompiledShieldedContract
 } from '../src/contract';
 import * as counterApi from '../src/counter-api';
 import * as doubleCounterApi from '../src/double-counter-api';
@@ -51,6 +53,7 @@ import {
   privateStateZero
 } from '../src/types/double-counter-types';
 import { type ScopeShapesContract, type ScopeShapesContractProviders } from '../src/types/scope-shapes-types';
+import { type ShieldedContractProviders } from '../src/types/shielded-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `scoped_tx_multi_${new Date().toISOString()}.log`)
@@ -69,9 +72,11 @@ describe('Scoped transactions over several calls and contracts', () => {
   let doubleCounterProviders: DoubleCounterProviders;
   let counterProviders: CounterProviders;
   let scopeShapesProviders: ScopeShapesContractProviders;
+  let shieldedProviders: ShieldedContractProviders;
   let doubleCounterAddress: ContractAddress;
   let counterAddress: ContractAddress;
   let scopeShapesAddress: ContractAddress;
+  let shieldedAddress: ContractAddress;
 
   const incrementOptions = (): CallTxOptionsWithPrivateStateId<CounterContract, 'increment'> => ({
     compiledContract: CompiledCounterContract,
@@ -128,6 +133,13 @@ describe('Scoped transactions over several calls and contracts', () => {
       }),
       proofProvider
     };
+    shieldedProviders = {
+      ...initializeMidnightProviders(wallet, environmentConfiguration, {
+        privateStateStoreName: `shielded-private-state-${suffix}`,
+        zkConfigPath: path.join(COMPILED_ROOT, 'shielded')
+      }),
+      proofProvider
+    };
 
     doubleCounterAddress = (await doubleCounterApi.deploy(doubleCounterProviders, privateStateZero)).deployTxData
       .public.contractAddress;
@@ -140,6 +152,14 @@ describe('Scoped transactions over several calls and contracts', () => {
     const scopeShapes = await deployContract(scopeShapesProviders, scopeShapesDeployOptions);
     await expectSuccessfulDeployTx(scopeShapesProviders, scopeShapes.deployTxData, scopeShapesDeployOptions);
     scopeShapesAddress = scopeShapes.deployTxData.public.contractAddress;
+    const shieldedDeployOptions = {
+      compiledContract: CompiledShieldedContract,
+      signingKey: sampleSigningKey(),
+      initialPrivateState: undefined
+    };
+    const shielded = await deployContract(shieldedProviders, shieldedDeployOptions);
+    await expectSuccessfulDeployTx(shieldedProviders, shielded.deployTxData, shieldedDeployOptions);
+    shieldedAddress = shielded.deployTxData.public.contractAddress;
   });
 
   afterAll(async () => {
@@ -261,6 +281,59 @@ describe('Scoped transactions over several calls and contracts', () => {
     // The coin minted to the contract is spent inside the transaction, as a transient: it is never left unspent.
     const transaction = callTxData.private.unprovenTx.deserialize({ v9: Transaction });
     expect(transaction.guaranteedOffer!.transients).toHaveLength(1);
+    expect(transaction.fallibleOffer).toBeUndefined();
+  });
+
+  test('should spend inside the transaction a coin a call makes for one-time keys, its value taken in by the next call [@slow]', async () => {
+    const oneTimeKeys = ZswapSecretKeys.fromSeed(new Uint8Array(randomBytes(32)));
+    const oneTimeKey = { bytes: new Uint8Array(Buffer.from(oneTimeKeys.coinPublicKey, 'hex')) };
+    const submitted: (readonly string[])[] = [];
+
+    const callTxData = await withContractScopedTransaction(
+      scopeShapesProviders,
+      async (txCtx) => {
+        const minted = await submitCallTx(
+          scopeShapesProviders,
+          {
+            compiledContract: CompiledScopeShapesContract,
+            contractAddress: scopeShapesAddress,
+            circuitId: 'mintToSelf',
+            args: [DOMAIN_SEPARATOR, MINT_AMOUNT, new Uint8Array(randomBytes(32))]
+          },
+          txCtx
+        );
+        // The minted coin is sent to the one-time keys, then taken into another contract.
+        await submitCallTx(
+          scopeShapesProviders,
+          {
+            compiledContract: CompiledScopeShapesContract,
+            contractAddress: scopeShapesAddress,
+            circuitId: 'sendMinted',
+            args: [minted.private.result, oneTimeKey, MINT_AMOUNT]
+          },
+          txCtx
+        );
+        await submitCallTx(
+          shieldedProviders,
+          {
+            compiledContract: CompiledShieldedContract,
+            contractAddress: shieldedAddress,
+            circuitId: 'depositShielded',
+            args: [{ nonce: new Uint8Array(randomBytes(32)), color: minted.private.result.color, value: MINT_AMOUNT }]
+          },
+          txCtx
+        );
+      },
+      { spentHere: oneTimeKeys, beforeSubmit: (txIds) => void submitted.push(txIds) }
+    );
+
+    expect(callTxData.public.status).toBe(SucceedEntirely);
+    expect(submitted).toHaveLength(1);
+    expect(submitted[0]).toContain(callTxData.public.txId);
+    // Two coins are spent inside the transaction, as transients, and never left unspent: the one minted to the
+    // contract and the one sent to the one-time keys.
+    const transaction = callTxData.private.unprovenTx.deserialize({ v9: Transaction });
+    expect(transaction.guaranteedOffer!.transients).toHaveLength(2);
     expect(transaction.fallibleOffer).toBeUndefined();
   });
 

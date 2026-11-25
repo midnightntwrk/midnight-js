@@ -550,6 +550,9 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
  *         ledger 8, before anything else.
  * @throws EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 8 scope.
  * @throws InvalidArgumentError If `transactionContext` was not made by `withContractScopedTransaction`.
+ * @throws InvalidArgumentError If `transactionContext` is a scope given one-time keys (`spentHere`),
+ *         before the circuit runs: the transaction built here would not spend their coins again.
+ *         Submit the call through the scope instead.
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.
@@ -569,6 +572,7 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
   options: Ledger9CallTxOptions<C, PCK>,
   transactionContext?: AnyLedger9TransactionContext
 ): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
+  Transaction.assertNoOneTimeKeys(transactionContext);
   return Transaction.withOwnTransaction(
     await executeLedger9CallWithProviders(providers, options, transactionContext),
     providers.config
@@ -772,6 +776,8 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
  *         with a ledger 8 transaction context.
  * @throws InvalidArgumentError for a ledger 8 contract given without `publicDataProvider`,
  *         `proofProvider` or `midnightProvider`, before the network is read.
+ * @throws InvalidArgumentError for a ledger 9 contract called with a scope given one-time keys
+ *         (`spentHere`), before the circuit runs (see {@link createLedger9UnprovenCallTx}).
  *
  * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,

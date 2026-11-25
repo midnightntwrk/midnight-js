@@ -71,7 +71,9 @@ recorded, in the order the calls were made.
   the private states and the transaction's identifiers, hidden, since it does not prove the node
   never took the transaction; a coded error the midnight provider raised is passed on as itself and
   carries neither. A call made after submitting begins is refused.
-- **`beforeSubmit` is refused where it would be dropped:** given to a scope that does not
+- **One-time keys.** `spentHere` names keys made for one transaction: every coin a call makes for
+  them is spent again in the same transaction. The scope refuses a wallet's own keys, keys that
+  spend no coin the scope made, and `spentHere` or `beforeSubmit` given to a scope that does not
   submit (a nested scope) or that runs on a ledger 8 network.
 - **Errors.** The four new errors are raised only on the ledger 9 path, so they carry the
   `Ledger9` prefix (ADR 0018). `Ledger9SubmittedTxUnconfirmedError` and
@@ -106,7 +108,7 @@ recorded, in the order the calls were made.
   merged with a deposit into a receiver meant to stay private puts the wrap's amount, the token
   and the receiver together on chain; sent apart, the deposit of an already-shielded coin states
   no amount. The scope's documentation says to merge a wrap with what follows it only where the
-  receiver is not private.
+  receiver is not private, one-time keys included.
 - **Follow-ups:** the ledger's own time to dismiss as a figure, exposed through ledger-wasm,
   would replace the client's text-matching of the ledger's refusal.
 

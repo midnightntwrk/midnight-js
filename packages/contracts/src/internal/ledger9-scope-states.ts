@@ -192,17 +192,26 @@ export const privateStateKey = (contractAddress: string, privateStateId: Private
  * normalised hex. The calls' own mappings are kept: a call made with `submitCallTx` passes its own,
  * which the scope's options do not hold.
  *
+ * @param oneTimeCoinKeys The coin public keys, in hex, of the scope's one-time keys: a conflict over
+ *        one of them is refused without naming any key.
  * @throws ZswapOutputResolutionError if one coin key is mapped to two different encryption keys.
  */
 export const mergedMappings = (
   networkId: NetworkId,
-  mappings: readonly (ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined)[]
+  mappings: readonly (ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined)[],
+  oneTimeCoinKeys: ReadonlySet<string>
 ): ReadonlyMap<CoinPublicKey, EncPublicKey> => {
   const merged = new Map<CoinPublicKey, EncPublicKey>();
   for (const [coinPublicKey, encPublicKey] of mappings.flatMap((mapping) => Array.from(mapping ?? []))) {
     const coinKey = parseCoinPublicKeyToHex(coinPublicKey, networkId);
     const encKey = parseEncPublicKeyToHex(encPublicKey, networkId);
     const known = merged.get(coinKey);
+    if (known !== undefined && known !== encKey && oneTimeCoinKeys.has(coinKey)) {
+      throw new ZswapOutputResolutionError(
+        "A mapping given to the scope or to one of its calls maps the coin public key of the one-time keys in 'spentHere' " +
+          'to another encryption public key. The scope maps it to their own; remove the other mapping.'
+      );
+    }
     if (known !== undefined && known !== encKey) {
       throw new ZswapOutputResolutionError(
         `The coin public key '${coinKey}' is mapped to two different encryption public keys in one transaction, ` +
