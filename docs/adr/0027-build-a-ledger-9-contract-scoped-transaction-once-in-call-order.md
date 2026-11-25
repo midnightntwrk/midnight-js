@@ -60,6 +60,9 @@ recorded, in the order the calls were made.
   naming each call moved). The balanced transaction is left to the node, which refuses one over
   the limit at no fee, after which the wallet releases what it booked. A lone call takes neither
   check, as before.
+- **Or, opted in, in the fallible section.** With `inFallibleSection`, every call of the scope, a
+  lone call included, is placed in the fallible section of the one intent, in order, so the scope
+  lands whole or fails whole on chain. Set out below.
 - **Private states are stored only when the transaction succeeds entirely.** The scope takes one
   snapshot of every private state before it submits, hands it with every identifier of the
   transaction to `beforeSubmit` once the wallet has balanced the transaction and the scope's checks
@@ -82,6 +85,50 @@ recorded, in the order the calls were made.
   authority replacement's signing key and send the caller to check the contract's address, the
   ledger 9 classes carry the private states calls left and send the caller to store them.
 - The ledger 8 scope is unchanged (ADR 0025).
+
+### Placing the calls in the fallible section (`inFallibleSection`)
+
+The choice. By default a scope of two or more calls lands whole in the guaranteed section, as
+above. With `inFallibleSection`, the scope moves every call tree whole into the fallible section
+instead: a transcript the partitioner placed in the guaranteed section moves, one it placed in the
+fallible section stays, callees with their root. A proof binds the guaranteed program then the
+fallible one, concatenated, so a transcript proves the same in either section; the coins and
+unshielded payments each transcript claims follow it into the fallible offer and the fallible
+unshielded offer of the intent's segment. Where the calls are placed (the fallible section, whole
+in the guaranteed section, or a lone call made alone) is decided once, when the scope builds. A
+call the partitioner split at a checkpoint is refused before proving
+(`Ledger9ScopeFalliblePartError`), a lone call included: only the ledger's runtime can join its two
+transcripts into one, and its guaranteed part alone would be kept when the rest fails. Any
+guaranteed part the calls leave is refused before proving too. Two or more calls are priced
+against the time to dismiss before proving, as by default; a lone call is not, as by default,
+since the ledger counts the guaranteed section's application and not the fallible one's, so in the
+fallible section a call costs no more to dismiss than made alone. The balanced transaction is not
+checked for fallible parts, since the wallet adds only its Dust spend to the guaranteed section and
+balances a fallible part in that part's own segment, which the ledger holds to its own balance. The
+ledger applies a segment's fallible section whole or not at all: a failure on chain is
+`FailFallible`, one fee paid and nothing of the calls kept, and the scope then stores no private
+state and throws `TxFailedError`, whose message says so, with the states the calls left, which are
+not to be kept. A nested scope and a scope on a ledger 8 network refuse the option before any call
+runs, whenever it is given.
+
+The two placements, measured on a local chain (node 2.1.101, indexer 4.4.101, proof server
+9.0.2) with two calls of one contract: a raise, then a seal that checks the id was not already
+sealed and inserts it three times into a Merkle tree (wholly fallible when sent alone). Fees are
+the ledger's `fees` of the transaction submitted, in DUST specks, medians.
+
+| Placement | Natural runs | Made to fail on chain (another party seals the id first) |
+|---|---|---|
+| Sent as two transactions | 11 of 11 landed, two approvals, about 42 s, 4.7 x 10^14 | the raise landed (one fee, 1.8 x 10^14), the seal was refused before proving: in part |
+| Default (guaranteed section) | 10 of 10 refused before proving (priced about 29 ms against about 21 ms allowed), no fee; sent as two transactions | refused before proving, no fee |
+| `inFallibleSection` | 11 of 11 landed whole in one transaction, one approval, about 24 s, 3.6 x 10^14 | 8 of 8 `FailFallible`: one fee (3.5 x 10^14), nothing of the calls kept |
+| A guaranteed prefix and a fallible suffix (for comparison; not offered) | 11 of 11 landed whole, one approval, about 24 s, 4.0 x 10^14 | 4 of 8 `FailFallible` with the raise kept (landed in part, 3.2 x 10^14); 4 of 8 refused by the node, no fee |
+
+Why opt-in. The default keeps what a scope of several calls has meant since it was built: it
+lands whole or not at all, and whatever cannot is refused before proving or, failing on chain, by
+the node, at no cost. In the
+fallible section a scope that fails on chain still pays its fee, so the caller chooses it for
+calls that must take effect together and that the default cannot fit in one transaction, knowing
+the failure is whole and paid for.
 
 ## Consequences
 
@@ -109,6 +156,10 @@ recorded, in the order the calls were made.
   and the receiver together on chain; sent apart, the deposit of an already-shielded coin states
   no amount. The scope's documentation says to merge a wrap with what follows it only where the
   receiver is not private, one-time keys included.
+- **Positive:** with `inFallibleSection`, calls the default would send as two transactions land
+  whole in one, with one approval, in about 24 s against about 42 s measured, or fail whole.
+- **Negative:** with `inFallibleSection`, a failure on chain pays the transaction's fee and keeps
+  nothing of the calls; a call split at a checkpoint cannot be sent in such a scope.
 - **Follow-ups:** the ledger's own time to dismiss as a figure, exposed through ledger-wasm,
   would replace the client's text-matching of the ledger's refusal.
 
@@ -123,10 +174,12 @@ recorded, in the order the calls were made.
 - **Price the balanced transaction too.** Rejected: the node refuses the same transaction at no
   fee and the wallet then releases what it booked, where a refusal in the client leaves the
   bookings held, and a wallet reached through the DApp connector offers no revert.
-- **Keep a fallible part, in order.** The ledger applies every guaranteed transcript first and then
-  each fallible segment, so two placements keep the scope's order: calls with only guaranteed
-  parts, then at most one call split at a checkpoint, then wholly fallible calls in one fallible
-  segment (a guaranteed prefix and a fallible suffix); or every call in one fallible segment.
-  Not taken: each pays the fee when its fallible part fails, needs a second rule that stores the
-  guaranteed calls' private states on partial success and carries the rest, and neither has
-  landed on a chain yet; it is being measured.
+- **A guaranteed prefix and a fallible suffix.** The ledger applies every guaranteed transcript
+  first and then each fallible segment, so calls with only guaranteed parts, then at most one
+  call split at a checkpoint, then wholly fallible calls in one fallible segment keep the scope's
+  order. Rejected: made to fail on chain it landed in part, keeping the prefix (measured above),
+  and it would need a second rule that stores the guaranteed calls' private states on a partial
+  success and carries the rest.
+- **Every call in the fallible section by default.** Rejected: a failure on chain would pay a fee
+  where the default refuses at no cost, for every scope, including those the default already
+  lands whole. Offered as an option instead.

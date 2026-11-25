@@ -33,8 +33,7 @@ import { IncompleteCallTxPrivateStateConfig } from '../errors';
 import type * as Transaction from '../transaction';
 import { type Ledger9FinalizedCallTxData, type Ledger9UnsubmittedCallTxData } from '../tx-model';
 import { type Ledger9ContractStates, type Ledger9PublicStates, type ResolvedOperationEra } from './era';
-import { assembleLedger9CallTx, landsWhole } from './ledger9-scope-build';
-import { refuseFallibleBalanced } from './ledger9-scope-checks';
+import { assembleLedger9CallTx, landsWhole, placementOf, type ScopePlacement } from './ledger9-scope-build';
 import { type OneTimeKeys } from './ledger9-scope-one-time-keys';
 import {
   advancePublicStates,
@@ -293,13 +292,13 @@ export class TransactionContextImpl<
   }
 
   /**
-   * The transaction of every call recorded so far, in the order they were made, which is what the
-   * scope submits if no further call is made, with the new coins of all those calls in that order.
+   * The transaction of every call recorded so far, placed as `placement` says, in the order they were
+   * made, which is what the scope submits if no further call is made, with their new coins in order.
    *
-   * @param ledgerParameters The ledger parameters a scope of two or more calls is priced under
-   *        before proving; with none, it is not priced.
+   * @param ledgerParameters What the transaction is priced under before proving; with none, it is not priced.
    */
   private scopeTransaction(
+    placement: ScopePlacement,
     ledgerParameters?: LedgerParameters
   ): Pick<Ledger9UnsubmittedCallTxData<C, PCK>['private'], 'unprovenTx' | 'newCoins'> {
     const tx = assembleLedger9CallTx(
@@ -307,7 +306,8 @@ export class TransactionContextImpl<
       this.providers.config,
       this.options?.additionalCoinEncPublicKeyMappings,
       this.oneTimeKeys(),
-      ledgerParameters
+      ledgerParameters,
+      placement
     );
     return {
       unprovenTx: LedgerTransaction.seal('v9', 'Unproven', tx),
@@ -332,7 +332,8 @@ export class TransactionContextImpl<
     if (last === undefined) {
       return undefined;
     }
-    return [{ ...last, private: { ...last.private, ...this.scopeTransaction() } }, this.lastRecordedCall()?.privateStateTarget?.privateStateId];
+    const built = this.scopeTransaction(placementOf(this.recordedCalls.length, this.options));
+    return [{ ...last, private: { ...last.private, ...built } }, this.lastRecordedCall()?.privateStateTarget?.privateStateId];
   }
 
   /**
@@ -376,12 +377,10 @@ export class TransactionContextImpl<
   }
 
   /**
-   * The ledger parameters a scope of two or more calls is priced under before proving: those of the
-   * block it read its states at. A scope of one call is not priced: it is submitted as that call made
-   * alone is.
+   * The ledger parameters a scope of two or more calls, in either section, is priced under before
+   * proving: those of the block it read its states at. A scope of one call is not priced.
    *
-   * @throws InvalidArgumentError if a scope of two or more calls read no states, so holds no ledger
-   *         parameters to price its transaction under.
+   * @throws InvalidArgumentError if a scope priced read no states, so holds no ledger parameters.
    */
   private pricedUnder(): LedgerParameters | undefined {
     if (!landsWhole(this.recordedCalls.length)) {
@@ -399,15 +398,15 @@ export class TransactionContextImpl<
 
   /**
    * Builds the scope's ONE transaction over every recorded call, in the order the calls were made,
-   * with the checks of a scope of two or more calls before proving ({@link assembleLedger9CallTx},
-   * priced under {@link pricedUnder}) and its fallible-part check on the transaction the wallet
-   * balanced, awaits the scope's `beforeSubmit` (what it throws is thrown, and nothing is submitted),
-   * submits the transaction, waits for it, and once it succeeded entirely stores the private state each
-   * of its private state ids was left in, through the provider it was read through (for a state the
-   * scope never read, the call's or the scope's), in the order the scope first reached each. Every
-   * state is tried; those not stored are thrown together, after the rest are stored. The private
-   * states handed to `beforeSubmit` and stored are one snapshot, taken before submitting; from the
-   * moment the scope begins to submit it takes no call.
+   * placed once by {@link placementOf}, with its checks before proving ({@link assembleLedger9CallTx},
+   * priced under {@link pricedUnder}) and, placed whole in the guaranteed section, its fallible-part
+   * check on the transaction the wallet balanced, awaits the scope's `beforeSubmit` (what it throws is
+   * thrown, and nothing is submitted), submits the transaction, waits for it, and once it succeeded
+   * entirely stores the private state each of its private state ids was left in, through the provider
+   * it was read through (for a state the scope never read, the call's or the scope's), in the order the
+   * scope first reached each. Every state is tried; those not stored are thrown together, after the
+   * rest are stored. The private states handed to `beforeSubmit` and stored are one snapshot, taken
+   * before submitting; from the moment the scope begins to submit it takes no call.
    *
    * @throws InvalidArgumentError if a call of the scope is still running, before anything is built,
    *         if a scope of two or more calls read no states, so holds no ledger parameters to price
@@ -415,13 +414,14 @@ export class TransactionContextImpl<
    *         calls make; all before anything is proven.
    * @throws ZswapOutputResolutionError if a mapping maps the coin public key of the scope's one-time
    *         keys to another encryption key, before anything is proven.
-   * @throws Ledger9ScopeFalliblePartError if a scope of two or more calls has a fallible part, before proving
-   *         or as the wallet balanced it; nothing is submitted.
-   * @throws Ledger9ScopeOutsideTimeToDismissError if a scope of two or more calls costs more to dismiss than
-   *         its size allows, before proving; nothing is proven or submitted.
+   * @throws Ledger9ScopeFalliblePartError if its placement's checks find a part that could land apart,
+   *         before proving or, placed whole in the guaranteed section, as the wallet balanced it.
+   * @throws Ledger9ScopeOutsideTimeToDismissError if a scope of two or more calls costs more to dismiss
+   *         than its size allows, before proving; nothing is proven or submitted.
    * @throws ProviderFailedError if `submitTx` rejects, carrying the private states left and the identifiers.
    * @throws Ledger9SubmittedTxUnconfirmedError if the wait for the submitted transaction fails.
-   * @throws TxFailedError if the transaction did not succeed entirely, with the private states left.
+   * @throws TxFailedError if the transaction did not succeed entirely, with the private states left (in the
+   *         fallible section, a `FailFallible` kept nothing of the calls).
    *
    * The result describes the last call, typed by the scope's contract; its `private.unprovenTx` is
    * the transaction the scope submitted, and its `private.newCoins` the new coins of every call, in
@@ -440,7 +440,8 @@ export class TransactionContextImpl<
     if (last === undefined || lastResult === undefined) {
       throw new InvalidArgumentError('No calls were submitted.');
     }
-    const { unprovenTx, newCoins } = this.scopeTransaction(this.pricedUnder());
+    const placement = placementOf(this.recordedCalls.length, this.options);
+    const { unprovenTx, newCoins } = this.scopeTransaction(placement, this.pricedUnder());
     const circuitId = circuitIdsOf(this.recordedCalls);
     // One snapshot of the private states: what beforeSubmit is handed and what is stored.
     const held = Array.from(this.privateStates.values());
@@ -449,7 +450,7 @@ export class TransactionContextImpl<
       this.options,
       { unprovenTx, circuitId },
       held,
-      landsWhole(this.recordedCalls.length) ? refuseFallibleBalanced : undefined
+      placement
     );
     return {
       era: 'v9',

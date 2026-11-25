@@ -48,14 +48,17 @@ import {
   callerKeys,
   callsOf,
   chainOf,
+  count,
   deployedCallee,
   deployedCaller,
-  deployedStamps,
+  fillTwo,
   finalizedWithUnshieldedOutputs,
+  halvesOf,
   ledgerWellFormed,
+  parametersWithTimeToDismiss,
   provenInput,
-  stamps,
-  stampsKeys,
+  rejectionOf,
+  stampsChain,
   unshieldedOffer
 } from './scoped-transaction-fixtures';
 import { createMockContractAddress, MOCK_CONFIG } from './test-mocks';
@@ -85,73 +88,11 @@ vi.mock('../internal/utils', async (importOriginal) => {
   };
 });
 
-/** A ledger integer in the compact form its serialization uses. */
-const compactInteger = (value: bigint): Buffer => {
-  if (value < 1n << 6n) return Buffer.from([Number(value << 2n)]);
-  if (value < 1n << 14n) return Buffer.from(new Uint16Array([Number((value << 2n) | 1n)]).buffer);
-  if (value < 1n << 30n) return Buffer.from(new Uint32Array([Number((value << 2n) | 2n)]).buffer);
-  const bytes: number[] = [];
-  for (let rest = value; rest > 0n; rest >>= 8n) bytes.push(Number(rest & 0xffn));
-  return Buffer.from([((bytes.length - 4) << 2) | 3, ...bytes]);
-};
-
-/**
- * The initial ledger parameters with the time to dismiss a transaction may take set to
- * `perBytePicoseconds` per byte of its size, and at least `minimumPicoseconds`. The partitioner
- * reads the same limits, so they also decide which half a call is placed in.
- */
-const parametersWithTimeToDismiss = (perBytePicoseconds: bigint, minimumPicoseconds: bigint): LedgerParameters => {
-  const initial = Buffer.from(LedgerParameters.initialParameters().serialize());
-  const byteLimit = compactInteger(1n << 20n);
-  const initialLimits = Buffer.concat([byteLimit, compactInteger(2_000_000n), compactInteger(15_000_000_000n)]);
-  const at = initial.indexOf(initialLimits);
-  if (at < 0) {
-    throw new Error('The initial ledger parameters no longer hold the time to dismiss limits this test rewrites.');
-  }
-  return LedgerParameters.deserialize(
-    Buffer.concat([
-      initial.subarray(0, at),
-      byteLimit,
-      compactInteger(perBytePicoseconds),
-      compactInteger(minimumPicoseconds),
-      initial.subarray(at + initialLimits.length)
-    ])
-  );
-};
-
 /** Under these, `fillTwo` is placed wholly in the fallible half, and two of them fit once moved. */
 const ROOM_FOR_TWO_FILLS = parametersWithTimeToDismiss(2_800_000n, 15_000_000_000n);
 
 /** Under these, nothing fits. */
 const NO_TIME_TO_DISMISS = parametersWithTimeToDismiss(0n, 1n);
-
-/** Providers over a chain holding one deployed `stamps`, serving `ledgerParameters`. */
-const stampsChain = async (ledgerParameters?: LedgerParameters) => {
-  const address = createMockContractAddress();
-  const chain = await chainOf(new Map([[address, deployedStamps()]]), [], ledgerParameters);
-  const wallet = chain.withKeys(stampsKeys);
-  wallet.stored.set(`${address}:id`, { stamp: 0 });
-  return { address, providers: wallet.providers };
-};
-
-const fillTwo = (contractAddress: string, seed: number) => ({
-  compiledContract: stamps,
-  contractAddress,
-  circuitId: 'fillTwo' as const,
-  args: [new Uint8Array(32).fill(seed)] as [Uint8Array],
-  privateStateId: 'id'
-});
-
-const count = (contractAddress: string) => ({
-  compiledContract: stamps,
-  contractAddress,
-  circuitId: 'count' as const,
-  privateStateId: 'id'
-});
-
-/** Which halves each contract call of a transaction has a transcript in. */
-const halvesOf = (calls: ReturnType<typeof callsOf>): [boolean, boolean][] =>
-  calls.map((call) => [call.guaranteedTranscript !== undefined, call.fallibleTranscript !== undefined]);
 
 /** The refusal carries the balanced transaction, named but out of its message, keys and JSON. */
 const expectCarriesHidden = (error: Ledger9ScopeFalliblePartError, balanced: LedgerTransaction<'Finalized', 'v9'>): void => {
@@ -161,12 +102,6 @@ const expectCarriesHidden = (error: Ledger9ScopeFalliblePartError, balanced: Led
   expect(error.message).toContain("stay booked until the transaction's time to live passes, and its Dust until");
   expect(error.message).toContain('a wallet reached through the DApp connector offers no revert');
 };
-
-const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
-  promise.then(
-    () => undefined,
-    (reason: unknown) => reason
-  );
 
 describe('a ledger 9 scoped transaction of two or more calls lands whole', () => {
   it('moves calls placed wholly in the fallible half whole into the guaranteed half, and the ledger accepts the result', async () => {

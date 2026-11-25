@@ -934,6 +934,8 @@ export interface TxFailedDetails {
   readonly signingKey?: SigningKey;
   /** A ledger 9 call: the private states its calls left, which were not stored. */
   readonly pendingPrivateStates?: readonly Ledger9PendingPrivateState[];
+  /** A ledger 9 scope whose calls were placed in the fallible section (`inFallibleSection`). */
+  readonly inFallibleSection?: boolean;
 }
 
 const TX_FAILED_NOUNS: Readonly<Record<TxFailedOperation, string>> = {
@@ -947,6 +949,10 @@ const TX_FAILED_NOUNS: Readonly<Record<TxFailedOperation, string>> = {
 const FAIL_FALLIBLE_OUTCOME =
   "The guaranteed effects were kept, so some of this operation's effects may be on chain. No private state " +
   'was stored locally. Read the record and the chain before repeating the operation.';
+
+const FAIL_FALLIBLE_SECTION_OUTCOME =
+  'Its calls were placed in the fallible section, so its fee was paid and nothing of its calls was kept. No ' +
+  "private state was stored locally: do not keep this error's 'pendingPrivateStates', since no call landed.";
 
 const txFailedFollowUp = (operation: TxFailedOperation, fallible: boolean, circuits: string): string | undefined => {
   switch (operation) {
@@ -996,7 +1002,7 @@ const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead
   return [
     head,
     describeFailedSegments(record),
-    fallible ? FAIL_FALLIBLE_OUTCOME : undefined,
+    fallible ? (details.inFallibleSection === true ? FAIL_FALLIBLE_SECTION_OUTCOME : FAIL_FALLIBLE_OUTCOME) : undefined,
     txFailedFollowUp(operation, fallible, circuits)
   ]
     .filter((part): part is string => part !== undefined)
@@ -1019,7 +1025,10 @@ const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead
  *
  * {@link TxFailedError.pendingPrivateStates}, set for a ledger 9 call, holds the private states the
  * transaction's calls left, which were not stored: with a status of `'FailFallible'` the guaranteed
- * part's effects are on chain. Like the key it is never rendered into the message and not enumerable.
+ * part's effects are on chain. A scope placed in its fallible section (`inFallibleSection`) has no
+ * guaranteed part of its calls: on `'FailFallible'` its fee was paid and nothing of its calls was kept,
+ * so do not keep these states, as the message then says. Like the key it is never rendered into the
+ * message and not enumerable.
  *
  * Branch on the registered code rather than `instanceof` where more than one
  * copy of this package may be loaded.
@@ -1055,6 +1064,7 @@ export class TxFailedError extends MidnightJsError {
       readonly circuitId: string | readonly string[];
       readonly contractAddress?: ContractAddress;
       readonly pendingPrivateStates?: readonly Ledger9PendingPrivateState[];
+      readonly inFallibleSection?: boolean;
     }
   );
   constructor(
@@ -1352,6 +1362,8 @@ export type Ledger9ScopeCheckStage = 'unproven' | 'balanced';
 export type Ledger9ScopeRefusalOptions = ErrorOptions & {
   /** The transaction the wallet balanced, when the refusal is at the `'balanced'` stage. */
   readonly balancedTransaction?: FinalizedTx;
+  /** Whether the scope placed its calls in the fallible section (`inFallibleSection`), as the message says. */
+  readonly inFallibleSection?: boolean;
 };
 
 const BOOKED_BY_THE_WALLET =
@@ -1360,23 +1372,46 @@ const BOOKED_BY_THE_WALLET =
   "transaction on this error's 'balancedTransaction' (the wallet SDK facade has `revertTransaction` " +
   'for this; a wallet reached through the DApp connector offers no revert).';
 
+/** The message of a {@link Ledger9ScopeFalliblePartError}, by where the scope placed its calls. */
+const falliblePartMessage = (stage: Ledger9ScopeCheckStage, parts: readonly string[], inFallibleSection: boolean): string =>
+  inFallibleSection
+    ? 'A scoped transaction placed in its fallible section lands whole or fails whole, but its transaction ' +
+      `holds, before proving, a part the ledger would apply apart from the rest of its calls: ${parts.join('; ')}. ` +
+      'Nothing was submitted. Make a call split at a checkpoint, or one that needs a guaranteed part, outside ' +
+      'the scope, in a transaction of its own.'
+    : `A scoped transaction of two or more calls lands whole or not at all, but its ` +
+      `${stage === 'unproven' ? 'transaction holds, before proving,' : 'transaction holds, as the wallet balanced it,'} ` +
+      `a part the ledger may apply or drop on its own: ${parts.join('; ')}. Nothing was submitted. ` +
+      (stage === 'balanced' ? `${BOOKED_BY_THE_WALLET} ` : '') +
+      'Make a call that needs a fallible part outside the scope, in a transaction of its own.';
+
 /**
- * An error indicating that a scoped transaction of two or more calls holds a part the ledger may apply
- * or drop on its own: a fallible transcript, fallible coins (a fallible Zswap offer), a fallible
- * unshielded offer, or a contract deploy or maintenance update (both applied only with the fallible
- * parts). A scope of several calls lands whole or not at all, so every part of its transaction must
- * be guaranteed. A call tree the ledger placed wholly in the fallible half is moved whole into the
- * guaranteed half before this check; what is refused is a call split at a checkpoint, or coins or an
- * unshielded offer a call places in the fallible half. A wallet adds a fallible part while balancing
- * only to balance a fallible part the transaction already has, which the check before proving
- * refuses; the check of the balanced transaction covers a wallet that adds one otherwise.
+ * An error indicating that a scoped transaction holds a part the ledger would apply or drop apart from
+ * the rest of its calls, so it could land in part. Where the scope placed its calls decides which parts
+ * those are.
+ *
+ * By default a scope of two or more calls lands whole or not at all in the guaranteed section, so
+ * every part of its transaction must be guaranteed: a fallible transcript, fallible coins (a fallible
+ * Zswap offer), a fallible unshielded offer, or a contract deploy or maintenance update (both applied
+ * only with the fallible parts) is refused. A call tree the ledger placed wholly in the fallible half
+ * is moved whole into the guaranteed half before this check; what is refused is a call split at a
+ * checkpoint, or coins or an unshielded offer a call places in the fallible half. A wallet adds a
+ * fallible part while balancing only to balance a fallible part the transaction already has, which the
+ * check before proving refuses; the check of the balanced transaction covers a wallet that adds one
+ * otherwise. Make a call that needs a fallible part outside the scope, in a transaction of its own.
+ *
+ * A scope placed in its fallible section (`inFallibleSection`), of any number of calls, lands whole or
+ * fails whole there, so the parts refused are those the ledger would keep when its calls fail: a call
+ * split at a checkpoint, whose guaranteed transcript would be kept alone, and any guaranteed part its
+ * calls leave (guaranteed coins, a guaranteed unshielded offer or a guaranteed transcript). Both are
+ * refused before proving; the transaction the wallet balanced is not checked. Make a call split at a
+ * checkpoint outside the scope, in a transaction of its own.
  *
  * Nothing was proven when {@link Ledger9ScopeFalliblePartError.stage} is `'unproven'`, and nothing was
  * submitted at either stage. At `'balanced'`, {@link Ledger9ScopeFalliblePartError.balancedTransaction}
  * holds the transaction the wallet balanced, not enumerable: the coins the wallet booked for it stay
  * booked until its time to live passes, and its Dust until the Dust spend's grace period ends, unless
- * the wallet reverts it. Make a call that needs a fallible part outside the scope, in a transaction
- * of its own.
+ * the wallet reverts it.
  */
 export class Ledger9ScopeFalliblePartError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER9_SCOPE_FALLIBLE_PART;
@@ -1387,7 +1422,8 @@ export class Ledger9ScopeFalliblePartError extends MidnightJsError {
   /**
    * @param stage Whether the transaction was checked before proving or after the wallet balanced it.
    * @param parts Each fallible part found, with the call or the segment that holds it.
-   * @param options At `'balanced'`, the transaction the wallet balanced.
+   * @param options At `'balanced'`, the transaction the wallet balanced; whether the calls were placed
+   * in the fallible section.
    */
   constructor(
     readonly stage: Ledger9ScopeCheckStage,
@@ -1395,11 +1431,7 @@ export class Ledger9ScopeFalliblePartError extends MidnightJsError {
     options?: Ledger9ScopeRefusalOptions
   ) {
     super(
-      `A scoped transaction of two or more calls lands whole or not at all, but its ` +
-        `${stage === 'unproven' ? 'transaction holds, before proving,' : 'transaction holds, as the wallet balanced it,'} ` +
-        `a part the ledger may apply or drop on its own: ${parts.join('; ')}. Nothing was submitted. ` +
-        (stage === 'balanced' ? `${BOOKED_BY_THE_WALLET} ` : '') +
-        'Make a call that needs a fallible part outside the scope, in a transaction of its own.',
+      falliblePartMessage(stage, parts, options?.inFallibleSection === true),
       options?.cause === undefined ? undefined : { cause: options.cause }
     );
     this.name = 'Ledger9ScopeFalliblePartError';
@@ -1408,9 +1440,10 @@ export class Ledger9ScopeFalliblePartError extends MidnightJsError {
 }
 
 /**
- * An error indicating that a scoped transaction of two or more calls costs more to dismiss than its
- * size allows, priced before any proof is made with the ledger's own cost function under the ledger
- * parameters of the block the scope read its states at. Nothing was proven or submitted.
+ * An error indicating that a scoped transaction of two or more calls, in either section, costs more to
+ * dismiss than its size allows, priced before any proof is made with the ledger's own cost function
+ * under the ledger parameters of the block the scope read its states at. Nothing was proven or
+ * submitted.
  *
  * The figure is an estimate: the transaction is priced before the wallet adds its Dust spend, and
  * each proof at the ledger's estimated size, so a transaction close to the limit can be refused here

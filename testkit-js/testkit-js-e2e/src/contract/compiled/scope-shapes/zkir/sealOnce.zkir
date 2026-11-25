@@ -1,0 +1,43 @@
+{
+  "version": { "major": 3, "minor": 1 },
+  "do_communications_commitment": true,
+  "inputs": [
+    { "name": "%after.0", "type": "Scalar<BLS12-381>" },
+    { "name": "%after.1", "type": "Scalar<BLS12-381>" },
+    { "name": "%id.2", "type": "Scalar<BLS12-381>" },
+    { "name": "%id.3", "type": "Scalar<BLS12-381>" }
+  ],
+  "outputs": [
+  ],
+  "instructions": [
+    { "op": "constrain_bits", "val": "%after.0", "bits": 8 },
+    { "op": "constrain_bits", "val": "%after.1", "bits": 248 },
+    { "op": "constrain_bits", "val": "%id.2", "bits": 8 },
+    { "op": "constrain_bits", "val": "%id.3", "bits": 248 },
+    { "op": "test_eq", "output": "%t.4", "a": "%after.0", "b": "0x00" },
+    { "op": "test_eq", "output": "%t.5", "a": "%after.1", "b": "0x00" },
+    { "op": "cond_select", "output": "%t.6", "bit": "%t.4", "a": "%t.5", "b": "0x00" },
+    { "op": "cond_select", "output": "%t.7", "bit": "%t.6", "a": "0x00", "b": "0x01" },
+    { "op": "public_input", "type": "Scalar<BLS12-381>", "output": "%t.8", "guard": "%t.7" },
+    { "op": "impact", "guard": "%t.7", "inputs": ["0x30"] },
+    { "op": "impact", "guard": "%t.7", "inputs": ["0x50", "0x01", "0x01", "0x01"] },
+    { "op": "impact", "guard": "%t.7", "inputs": ["0x10", "0x01", "0x01", "0x20", "%after.0", "%after.1"] },
+    { "op": "impact", "guard": "%t.7", "inputs": ["0x18"] },
+    { "op": "impact", "guard": "%t.7", "inputs": ["0x0d", "0x01", "0x01", "%t.8"] },
+    { "op": "cond_select", "output": "%t.9", "bit": "%t.6", "a": "0x01", "b": "%t.8" },
+    { "op": "assert", "cond": "%t.9" },
+    { "op": "public_input", "type": "Scalar<BLS12-381>", "output": "%t.10", "guard": null },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x30"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x50", "0x01", "0x01", "0x01"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x10", "0x01", "0x01", "0x20", "%id.2", "%id.3"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x18"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x0d", "0x01", "0x01", "%t.10"] },
+    { "op": "cond_select", "output": "%t.11", "bit": "%t.10", "a": "0x00", "b": "0x01" },
+    { "op": "assert", "cond": "%t.11" },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x70", "0x01", "0x01", "0x01"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x10", "0x01", "0x01", "0x20", "%id.2", "%id.3"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x11", "0x00"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x91"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0xa1"] }
+  ]
+}

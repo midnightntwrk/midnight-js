@@ -165,8 +165,10 @@ export interface ScopedTransactionOptions {
    * of the transaction and every private state the scope's calls left, which the scope stores only once
    * the transaction succeeds entirely. It is for a caller that must keep those states whatever follows,
    * a process or a page that stops while `submitTx` runs included: write them where they survive a
-   * restart, keyed by every identifier, and match them against the transaction's outcome later. The
-   * transaction may still not be submitted, and once submitted may not land.
+   * restart, keyed by every identifier, and match them against the transaction's outcome later: keep
+   * them as the private states only once the transaction is recorded `SucceedEntirely`, since on any
+   * other outcome its calls did not all land (in the fallible section, none did). The transaction may
+   * still not be submitted, and once submitted may not land.
    *
    * A midnight provider's `submitTx` returns one of these identifiers, and which one differs by
    * provider (the DApp-connector providers return the first, the wallet SDK the last); the scope's
@@ -228,6 +230,42 @@ export interface ScopedTransactionOptions {
    * `ZswapOutputResolutionError`, before any proof is made.
    */
   readonly spentHere?: ZswapSecretKeys;
+
+  /**
+   * Places the calls of a ledger 9 scope together in the fallible section of its one intent, in the
+   * order they were made, so the scope lands whole or fails whole. Off by default.
+   *
+   * By default a scope of two or more calls lands whole in the guaranteed section, and when it cannot
+   * land it costs nothing: a call the ledger placed wholly in the fallible section is moved into the
+   * guaranteed section, where it counts in full against the time to dismiss, whatever is left fallible
+   * is refused before proving, and a transaction that would fail on the chain is refused by the node,
+   * with no fee paid. A call the ledger places in the fallible section for its cost then fits only
+   * beside calls that leave spare allowance, so the default refuses such a scope and its calls go as
+   * separate transactions. In the fallible section applying the calls does not count against the
+   * time to dismiss, so such a scope lands in one transaction. Choose this for calls that must take
+   * effect together and that the default cannot fit in one transaction, knowing that a failure on the
+   * chain is whole and paid for.
+   *
+   * The ledger applies the fallible section whole or not at all. A transaction it fails is recorded
+   * `FailFallible`: its fee is paid, and nothing of the calls is kept, not their state, coins or
+   * payments. The scope then stores no private state and throws a `TxFailedError` whose message says
+   * so and whose `pendingPrivateStates` hold the states the calls left: do not keep them, since nothing
+   * of the calls landed. What the wallet spends to pay into the calls is placed in the same segment's
+   * fallible section, and the ledger holds that segment to its own balance, so it is spent with the
+   * calls or not at all; the wallet's Dust spend, which pays the fee, is in the guaranteed section. A
+   * refusal before proving costs nothing.
+   *
+   * Applies to a scope of any number of calls, a lone call included. A scope of two or more calls is
+   * priced against the time to dismiss before proving, as by default; a lone call is not, as by
+   * default, since in the fallible section it costs no more to dismiss than made alone. A call the
+   * ledger split at a checkpoint into a guaranteed and a fallible part is refused with a
+   * `Ledger9ScopeFalliblePartError` before proving, a lone call included: its guaranteed part would be
+   * kept when the rest fails. The transaction the wallet balanced is not checked for fallible parts.
+   * Refused with an `InvalidArgumentError`, before any call runs, whenever it is given, `false`
+   * included, to a nested scope, whose calls the scope it joins places, or to a scope that runs on a
+   * ledger 8 network.
+   */
+  readonly inFallibleSection?: boolean;
 }
 
 /** A private state a scoped transaction's calls left, which it stores once the transaction succeeds entirely. */
@@ -297,7 +335,9 @@ type Ledger8ScopeBody = (txCtx: AnyLedger8TransactionContext) => Promise<void>;
  * and this check covers one that adds it otherwise. That refusal carries the balanced transaction:
  * the coins the wallet booked for it stay booked until its time to live passes, and its Dust until
  * the Dust spend's grace period ends, unless the wallet reverts it. A scope of one call is built,
- * checked and submitted exactly as that call made alone.
+ * checked and submitted exactly as that call made alone. To place the calls, of any number, in the
+ * fallible section instead, where they land whole or fail whole on the chain, pass `inFallibleSection`
+ * in `options` ({@link ScopedTransactionOptions.inFallibleSection}).
  *
  * Before any proof is made, a scope of two or more calls is priced against the ledger's time to
  * dismiss, with the ledger's own cost function under the ledger parameters of the block the scope

@@ -8,26 +8,26 @@
     "type": "directory",
     "contract-info.json": {
       "type": "file",
-      "size": 7127,
-      "hash": "98280b4f55193199fadd86f259a6b883ddc83256965da3c98b298223d2e58956"
+      "size": 7779,
+      "hash": "c78f598dcf98932ee763bb106f7114647be0a9d7fd424f142acbd966a83a444a"
     }
   },
   "contract": {
     "type": "directory",
     "index.d.ts": {
       "type": "file",
-      "size": 9063,
-      "hash": "8d1bd54f3d9e77a9b96bc1eb72357ac4910261ae1baf12296a018c2619afebee"
+      "size": 9717,
+      "hash": "90abd869eb7a7980bf8a53c45e7bd5df095d25b179e65da328bfaf5abb8294ec"
     },
     "index.js": {
       "type": "file",
-      "size": 68335,
-      "hash": "f5f6d2753e863ac353e958c8eb02d9315c47c3864c7c7e183a681989acec3e51"
+      "size": 84224,
+      "hash": "97d727b05752d64839aa890f36f4ea62d10b4791f456437d0047f81687fdd68b"
     },
     "index.js.map": {
       "type": "file",
-      "size": 3113,
-      "hash": "47834c5a9a44dee9b8cdc6ebe0a08133e9d6e4fbd0ab3753be4b43a12783c5be"
+      "size": 3595,
+      "hash": "300cf09cc6949908147baa0334986c47d88b3fe7f19058f820437f4625c21fba"
     }
   },
   "zkir": {
@@ -41,6 +41,16 @@
       "type": "file",
       "size": 5778,
       "hash": "a226733bf7e37883d42a76a2d76562b096931a9173d422f9b34b99f0d42bba9b"
+    },
+    "sealOnce.bzkir": {
+      "type": "file",
+      "size": 703,
+      "hash": "80aa831f324796cd1a06576d0f81bc75ff0661baf7023661546a8eb1fabc98c9"
+    },
+    "sealOnce.zkir": {
+      "type": "file",
+      "size": 2558,
+      "hash": "08d609b849988c44025ac57e0f6c28a06c2f522db448909e003eab26631eb06e"
     },
     "sendMinted.bzkir": {
       "type": "file",
@@ -74,6 +84,16 @@
       "type": "file",
       "size": 2121,
       "hash": "f15df42f0bb13b0b9cce29a88c691a0f9fc0a515d95e91d41f5ea9ea3b05d0c9"
+    },
+    "sealOnce.prover": {
+      "type": "file",
+      "size": 445839,
+      "hash": "26c913d9cf4d7ea106b8805693480309b8f6435e46199ee0023e8562f953525b"
+    },
+    "sealOnce.verifier": {
+      "type": "file",
+      "size": 1353,
+      "hash": "4dda82b95213b91d31dd4bd0d6f3878fabe9286465af11177e6fa3f5c1360903"
     },
     "sendMinted.prover": {
       "type": "file",

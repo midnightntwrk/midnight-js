@@ -234,6 +234,17 @@ transaction, since a wallet could add a fallible part; that refusal carries the
 balanced transaction, not enumerable, for the caller's wallet to revert. A scope
 of one call takes neither check.
 
+A scope given `inFallibleSection` lands whole or fails whole the other way: its
+calls, of any number, sit in the fallible section of its one intent. Before
+proving it refuses, with `Ledger9ScopeFalliblePartError`, a call split at a
+checkpoint and any guaranteed part its calls leave, since the ledger would keep
+those when the calls fail. Two or more calls are priced against the time to
+dismiss as by default; a lone call is not, since in the fallible section it
+costs no more to dismiss than made alone. The balanced transaction is not
+checked. On chain a failure is a `TxFailedError` with status `'FailFallible'`
+whose message says the fee was paid and nothing of the calls was kept, so the
+`pendingPrivateStates` it carries are not to be kept.
+
 ## After submission, the signing key rides along
 
 The retained-era deploy path has a region that begins the moment a deployment is

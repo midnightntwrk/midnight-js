@@ -48,6 +48,7 @@ import {
 import { vi } from 'vitest';
 
 import { type Ledger9CallResult } from '../call';
+import { type ScopedTransactionOptions } from '../transaction';
 import { createLedger9UnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import { handles } from './ledger-transaction-fixtures';
 import * as Callee from './resources/compiled/callee/contract/index.js';
@@ -461,3 +462,74 @@ export const chainRecordingOrder = async () => {
   });
   return { address, providers: wallet.providers, stored: wallet.stored, events, balanced, identifiers: identifiersOf(balanced) };
 };
+
+/** Providers over a chain holding one deployed `stamps`, serving `ledgerParameters`. */
+export const stampsChain = async (ledgerParameters?: LedgerParameters) => {
+  const address = createMockContractAddress();
+  const chain = await chainOf(new Map([[address, deployedStamps()]]), [], ledgerParameters);
+  const wallet = chain.withKeys(stampsKeys);
+  wallet.stored.set(`${address}:id`, { stamp: 0 });
+  return { address, providers: wallet.providers };
+};
+
+export const fillTwo = (contractAddress: string, seed: number) => ({
+  compiledContract: stamps,
+  contractAddress,
+  circuitId: 'fillTwo' as const,
+  args: [new Uint8Array(32).fill(seed)] as [Uint8Array],
+  privateStateId: 'id'
+});
+
+export const count = (contractAddress: string) => ({
+  compiledContract: stamps,
+  contractAddress,
+  circuitId: 'count' as const,
+  privateStateId: 'id'
+});
+
+/** Which halves each contract call of a transaction has a transcript in. */
+export const halvesOf = (calls: ReturnType<typeof callsOf>): [boolean, boolean][] =>
+  calls.map((call) => [call.guaranteedTranscript !== undefined, call.fallibleTranscript !== undefined]);
+
+export const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
+  promise.then(
+    () => undefined,
+    (reason: unknown) => reason
+  );
+
+/** A ledger integer in the compact form its serialization uses. */
+const compactInteger = (value: bigint): Buffer => {
+  if (value < 1n << 6n) return Buffer.from([Number(value << 2n)]);
+  if (value < 1n << 14n) return Buffer.from(new Uint16Array([Number((value << 2n) | 1n)]).buffer);
+  if (value < 1n << 30n) return Buffer.from(new Uint32Array([Number((value << 2n) | 2n)]).buffer);
+  const bytes: number[] = [];
+  for (let rest = value; rest > 0n; rest >>= 8n) bytes.push(Number(rest & 0xffn));
+  return Buffer.from([((bytes.length - 4) << 2) | 3, ...bytes]);
+};
+
+/**
+ * The initial ledger parameters with the time to dismiss a transaction may take set to
+ * `perBytePicoseconds` per byte of its size, and at least `minimumPicoseconds`. The partitioner
+ * reads the same limits, so they also decide which half a call is placed in.
+ */
+export const parametersWithTimeToDismiss = (perBytePicoseconds: bigint, minimumPicoseconds: bigint): LedgerParameters => {
+  const initial = Buffer.from(LedgerParameters.initialParameters().serialize());
+  const byteLimit = compactInteger(1n << 20n);
+  const initialLimits = Buffer.concat([byteLimit, compactInteger(2_000_000n), compactInteger(15_000_000_000n)]);
+  const at = initial.indexOf(initialLimits);
+  if (at < 0) {
+    throw new Error('The initial ledger parameters no longer hold the time to dismiss limits this test rewrites.');
+  }
+  return LedgerParameters.deserialize(
+    Buffer.concat([
+      initial.subarray(0, at),
+      byteLimit,
+      compactInteger(perBytePicoseconds),
+      compactInteger(minimumPicoseconds),
+      initial.subarray(at + initialLimits.length)
+    ])
+  );
+};
+
+/** The options of a scope that places its calls in the fallible section. */
+export const IN_FALLIBLE_SECTION: ScopedTransactionOptions = { inFallibleSection: true };

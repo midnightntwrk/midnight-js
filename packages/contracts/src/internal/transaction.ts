@@ -296,13 +296,15 @@ export const logScopeFailure = (
  *
  * @internal
  * @param scope `'nested'` for a scope run inside another, `'ledger8'` for a scope on a ledger 8 head.
- * @throws InvalidArgumentError if `beforeSubmit` or `spentHere` is given.
+ * @throws InvalidArgumentError if `beforeSubmit`, `spentHere` or `inFallibleSection` is given.
  */
 export const assertSubmitOptionsHonoured = (
   options: Transaction.ScopedTransactionOptions | undefined,
   scope: 'nested' | 'ledger8'
 ): void => {
-  const given = (['beforeSubmit', 'spentHere'] as const).filter((name) => options?.[name] !== undefined);
+  const given = (['beforeSubmit', 'spentHere', 'inFallibleSection'] as const).filter(
+    (name) => options?.[name] !== undefined
+  );
   if (given.length === 0) {
     return;
   }

@@ -34,6 +34,9 @@ export type ImpureCircuits<PS> = {
                                                                                                         color: Uint8Array,
                                                                                                         value: bigint
                                                                                                       }>>;
+  sealOnce(context: __compactRuntime.CircuitContext<PS>,
+           after_0: Uint8Array,
+           id_0: Uint8Array): Promise<__compactRuntime.CircuitResults<PS, []>>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -67,6 +70,9 @@ export type ProvableCircuits<PS> = {
                                                                                                         color: Uint8Array,
                                                                                                         value: bigint
                                                                                                       }>>;
+  sealOnce(context: __compactRuntime.CircuitContext<PS>,
+           after_0: Uint8Array,
+           id_0: Uint8Array): Promise<__compactRuntime.CircuitResults<PS, []>>;
 }
 
 export type PureCircuits = {
@@ -103,6 +109,9 @@ export type Circuits<PS> = {
                                                                                                         color: Uint8Array,
                                                                                                         value: bigint
                                                                                                       }>>;
+  sealOnce(context: __compactRuntime.CircuitContext<PS>,
+           after_0: Uint8Array,
+           id_0: Uint8Array): Promise<__compactRuntime.CircuitResults<PS, []>>;
 }
 
 export type Ledger = {
@@ -113,6 +122,12 @@ export type Ledger = {
     firstFree(): bigint;
     pathForLeaf(index_0: bigint, leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array>;
     findPathForLeaf(leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array> | undefined
+  };
+  seals: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
   };
 }
 

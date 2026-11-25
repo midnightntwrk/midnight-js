@@ -20,7 +20,8 @@ import { type FinalizedTx, type Ledger9FinalizedTxData, SucceedEntirely } from '
 import { Ledger9SubmittedTxUnconfirmedError, TxFailedError } from '../errors';
 import { type Ledger9PayloadSubmitOptions, type Ledger9SubmitTxProviders, submitLedger9Payload } from '../submit-tx';
 import type * as Transaction from '../transaction';
-import { ledgerTransactionOf } from './ledger9-scope-checks';
+import type { ScopePlacement } from './ledger9-scope-build';
+import { ledgerTransactionOf, refuseFallibleBalanced } from './ledger9-scope-checks';
 import { pendingPrivateStates, type ScopePrivateState, storePrivateStates } from './ledger9-scope-states';
 import { type PrepareSubmission } from './submit-payload';
 
@@ -58,8 +59,9 @@ const preparedBy =
  * handed and what is stored. A call recorded later is in neither.
  *
  * @param held The scope's private states when it began to submit, in the order it first reached each.
- * @param checkBalanced The scope's check of the transaction the wallet balanced, run before anything
- *        else is done with it.
+ * @param placement Where the scope placed its calls: whole in the guaranteed section, the transaction
+ *        the wallet balanced is checked for a fallible part before anything else is done with it; in
+ *        the fallible section, a failure's message says that nothing of the calls was kept.
  * @throws InvalidArgumentError if `beforeSubmit` is given and the balanced transaction has no identifier.
  * @throws ProviderFailedError if `submitTx` rejects, with the private states left and the transaction's
  *         identifiers on it, hidden; a coded error the midnight provider raised is thrown as itself.
@@ -67,6 +69,8 @@ const preparedBy =
  *         failed, with the identifier the midnight provider returned and the private states left.
  * @throws TxFailedError if the chain recorded another status than `SucceedEntirely`, with the private
  *         states left.
+ * @throws Ledger9ScopeFalliblePartError if a scope placed whole in the guaranteed section has a fallible
+ *         part as the wallet balanced it; nothing is submitted.
  * @throws Ledger9PrivateStatesNotStoredError if a provider refused to store a state, once every state was tried.
  */
 export const submitScopeTransaction = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
@@ -74,9 +78,10 @@ export const submitScopeTransaction = async <C extends Contract.Any, PCK extends
   options: Transaction.ScopedTransactionOptions | undefined,
   transaction: Ledger9PayloadSubmitOptions<PCK>,
   held: readonly ScopePrivateState[],
-  checkBalanced?: (balanced: FinalizedTx) => void
+  placement: ScopePlacement
 ): Promise<Ledger9FinalizedTxData> => {
   const pending = pendingPrivateStates(held);
+  const checkBalanced = placement === 'guaranteed-whole' ? refuseFallibleBalanced : undefined;
   const prepareSubmission = preparedBy(options, checkBalanced, pending);
   let submittedTxId: string | undefined;
   let finalizedTxData: Ledger9FinalizedTxData;
@@ -92,7 +97,8 @@ export const submitScopeTransaction = async <C extends Contract.Any, PCK extends
   if (finalizedTxData.status !== SucceedEntirely) {
     throw new TxFailedError('call', finalizedTxData, {
       circuitId: transaction.circuitId ?? [],
-      pendingPrivateStates: pending
+      pendingPrivateStates: pending,
+      inFallibleSection: placement === 'fallible-section'
     });
   }
   await storePrivateStates(finalizedTxData.txId, held);

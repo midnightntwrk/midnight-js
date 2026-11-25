@@ -194,8 +194,8 @@ export const ledgerTransactionOf = (balanced: FinalizedTx): FinalizedTransaction
 
 /**
  * The check a ledger 9 scope of two or more calls runs on the transaction the wallet balanced, before
- * it is submitted: no fallible part. A refusal carries the balanced transaction, so the caller can
- * have its wallet release what it booked for it.
+ * it is submitted, unless its calls are placed in the fallible section: no fallible part. A refusal
+ * carries the balanced transaction, so the caller can have its wallet release what it booked for it.
  */
 export const refuseFallibleBalanced = (balanced: FinalizedTx): void => {
   refuseFallibleTransaction(ledgerTransactionOf(balanced), 'balanced', balanced);

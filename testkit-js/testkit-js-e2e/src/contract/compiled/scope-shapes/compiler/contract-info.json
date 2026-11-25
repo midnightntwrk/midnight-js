@@ -277,6 +277,32 @@
           }
         ]
       }
+    },
+    {
+      "name": "sealOnce",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "after",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "id",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
     }
   ],
   "witnesses": [
@@ -290,6 +316,16 @@
       "exported": true,
       "storage": "MerkleTree",
       "depth": 20,
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "seals",
+      "index": 1,
+      "exported": true,
+      "storage": "Set",
       "type": {
         "type-name": "Bytes",
         "length": 32
