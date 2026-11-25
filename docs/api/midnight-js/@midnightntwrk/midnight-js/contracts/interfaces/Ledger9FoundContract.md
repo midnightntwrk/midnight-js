@@ -24,7 +24,8 @@ Base type for a deployed contract that has been found on the blockchain.
 
 > `readonly` **callTx**: [`Ledger9CircuitCallTxInterface`](../type-aliases/Ledger9CircuitCallTxInterface.md)\<`C`\>
 
-Interface for creating call transactions for a contract.
+Interface for creating call transactions for a contract. When the contract was found with
+`circuitIds`, a call to any other circuit rejects with InvalidArgumentError.
 
 ***
 
