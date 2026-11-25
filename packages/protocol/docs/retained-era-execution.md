@@ -182,7 +182,7 @@ it, and neither is a runtime check:
   declares (`npm:@midnight-ntwrk/compact-runtime@0.16.0`), so the three
   `StateValue`/`ChargedState`/`ContractState` values come from the 0.16 line by
   resolution rather than by assertion.
-- **compact-js's own era entry.** `@midnight-ntwrk/compact-js/v8/effect`
+- **compact-js's own era entry.** `@midnightntwrk/compact-js/v8/effect`
   supplies `ContractExecutable`, `CompiledContract` and `ZKConfiguration` for
   the retained era; the current era has its own entry, and the two cannot be
   mixed up by a member name.

@@ -26,4 +26,4 @@
  * the retained era's public surface was attempted and reverted; see ADR 0015.
  */
 
-export * from '@midnight-ntwrk/compact-js/v8/effect';
+export * from '@midnightntwrk/compact-js/v8/effect';

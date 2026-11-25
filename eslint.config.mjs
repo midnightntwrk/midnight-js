@@ -156,7 +156,7 @@ const protocolImportPatterns = [
       'Import from @midnightntwrk/midnight-js-protocol/v9/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
   },
   {
-    group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*'],
+    group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*', '@midnightntwrk/compact-js', '@midnightntwrk/compact-js/*'],
     message:
       'Import from @midnightntwrk/midnight-js-protocol/v9/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
   },

@@ -30,7 +30,7 @@ import { fixturePath } from './fixtures';
 //
 // What this does NOT claim, and used to: that no v8 WASM is instantiated at all.
 // compact-js's ledger-8 line brings ledger-v8 with it -- `Ledger` on
-// `@midnight-ntwrk/compact-js/v8/effect` IS ledger-v8, and `lib/v8/executable.ts`
+// `@midnightntwrk/compact-js/v8/effect` IS ledger-v8, and `lib/v8/executable.ts`
 // decodes chain bytes through it -- so a retained-era execution does load that
 // module now. The property still worth gating is that there is exactly ONE
 // acquisition path: `loadLedger8Protocol` exists for the composition legs, and an engine

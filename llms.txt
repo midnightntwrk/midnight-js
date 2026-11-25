@@ -698,7 +698,7 @@ midnight-js/
 ## External Dependencies
 
 ### Midnight Packages
-- `@midnight-ntwrk/compact-js` - Compact language runtime
+- `@midnightntwrk/compact-js` - Compact language runtime
 - `@midnightntwrk/ledger-v9` - Ledger types
 - `@midnightntwrk/onchain-runtime-v4` - On-chain VM
 - `@midnight-ntwrk/compact-runtime` - Circuit execution

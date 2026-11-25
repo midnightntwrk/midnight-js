@@ -30,18 +30,18 @@
  * @see {@link RetainedEraExecution}
  */
 
-import * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
-import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
+import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import * as PlatformContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
+import * as Contract from '@midnightntwrk/compact-js/effect/Contract';
+import * as ContractConfigurationError from '@midnightntwrk/compact-js/effect/ContractConfigurationError';
 import {
   CompiledContract,
   ContractExecutable,
   ZKConfiguration,
   ZKConfigurationReadError
-} from '@midnight-ntwrk/compact-js/v8/effect';
-import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import * as PlatformContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
-import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
+} from '@midnightntwrk/compact-js/v8/effect';
 import * as glue from 'compact-runtime-ledger8';
 import { Cause, Clock, Effect, Exit, Layer, Option, type Types } from 'effect';
 

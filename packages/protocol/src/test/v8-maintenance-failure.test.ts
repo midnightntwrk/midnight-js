@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type * as CompactJsLedger8 from '@midnight-ntwrk/compact-js/v8/effect';
+import type * as CompactJsLedger8 from '@midnightntwrk/compact-js/v8/effect';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { Effect } from 'effect';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -30,7 +30,7 @@ const failures = vi.hoisted(() => ({
   intent: undefined as unknown
 }));
 
-vi.mock('@midnight-ntwrk/compact-js/v8/effect', async (importOriginal) => {
+vi.mock('@midnightntwrk/compact-js/v8/effect', async (importOriginal) => {
   const actual = await importOriginal<typeof CompactJsLedger8>();
   const operation = () =>
     failures.operation === undefined

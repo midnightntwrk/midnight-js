@@ -16,8 +16,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import type * as CompactContract from '@midnightntwrk/compact-js/effect/Contract';
 import { ContractCallPrototype, ContractOperation, ContractState, Intent, sampleContractAddress } from '@midnightntwrk/ledger-v9';
 import type { ConstructorContext } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
