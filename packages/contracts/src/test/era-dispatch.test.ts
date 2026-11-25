@@ -54,7 +54,7 @@ const FIXTURES_DIR = resolve(fileURLToPath(new URL('../../../../', import.meta.u
 const readHexFixture = (name: string): Uint8Array =>
   Uint8Array.from(Buffer.from(readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim(), 'hex'));
 
-// The registered symbol `@midnight-ntwrk/compact-js` brands its `CompiledContract` prototype
+// The registered symbol `@midnightntwrk/compact-js` brands its `CompiledContract` prototype
 // with. Spelled out rather than imported, so the assertion below is about the literal key and
 // keeps holding if the vendor moves where the constant is exported from.
 const COMPILED_CONTRACT_BRAND = Symbol.for('compact-js/CompiledContract');

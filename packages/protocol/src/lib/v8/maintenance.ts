@@ -20,9 +20,9 @@
  * @see {@link RetainedEraExecution}
  */
 
-import * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
-import { ContractExecutable, Ledger } from '@midnight-ntwrk/compact-js/v8/effect';
 import * as PlatformContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import * as Contract from '@midnightntwrk/compact-js/effect/Contract';
+import { ContractExecutable, Ledger } from '@midnightntwrk/compact-js/v8/effect';
 import * as glue from 'compact-runtime-ledger8';
 import { Effect, Layer, Option } from 'effect';
 

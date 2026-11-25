@@ -49,8 +49,8 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 
-import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import type * as CompactContract from '@midnightntwrk/compact-js/effect/Contract';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import type { ConstructorContext } from 'compact-runtime-ledger8';
