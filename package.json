@@ -72,7 +72,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.6.1",
     "pinst": "^3.0.0",
-    "pnpm": "10.34.5",
+    "pnpm": "12.22.0",
     "prettier": "^3.10.1",
     "rollup": "^4.68.2",
     "rollup-plugin-dts": "^6.5.1",
