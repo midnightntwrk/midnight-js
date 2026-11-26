@@ -2187,7 +2187,7 @@ __metadata:
     husky: "npm:^9.1.7"
     lint-staged: "npm:^17.6.1"
     pinst: "npm:^3.0.0"
-    pnpm: "npm:10.34.5"
+    pnpm: "npm:12.22.0"
     prettier: "npm:^3.10.1"
     rollup: "npm:^4.68.2"
     rollup-plugin-dts: "npm:^6.5.1"
@@ -2809,6 +2809,111 @@ __metadata:
   version: 0.3.6
   resolution: "@pkgr/core@npm:0.3.6"
   checksum: 10/29082aa13d36f13fc41cdc64cb1feb36b630de0d6ebde84e2ff68e3d7a7f1dce4462cca91f76176c46e50bbca6b1e7f1fd9cf907af12d5d70da83bc981ca4ccf
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.android-arm64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.android-arm64@npm:12.22.0"
+  conditions: os=android & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.android-x64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.android-x64@npm:12.22.0"
+  conditions: os=android & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.darwin-arm64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.darwin-arm64@npm:12.22.0"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.darwin-x64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.darwin-x64@npm:12.22.0"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.freebsd-x64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.freebsd-x64@npm:12.22.0"
+  conditions: os=freebsd & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.linux-arm64-musl@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.linux-arm64-musl@npm:12.22.0"
+  conditions: os=linux & cpu=arm64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.linux-arm64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.linux-arm64@npm:12.22.0"
+  conditions: os=linux & cpu=arm64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.linux-ppc64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.linux-ppc64@npm:12.22.0"
+  conditions: os=linux & cpu=ppc64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.linux-riscv64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.linux-riscv64@npm:12.22.0"
+  conditions: os=linux & cpu=riscv64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.linux-s390x@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.linux-s390x@npm:12.22.0"
+  conditions: os=linux & cpu=s390x & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.linux-x64-musl@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.linux-x64-musl@npm:12.22.0"
+  conditions: os=linux & cpu=x64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.linux-x64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.linux-x64@npm:12.22.0"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.netbsd-x64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.netbsd-x64@npm:12.22.0"
+  conditions: os=netbsd & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.win32-arm64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.win32-arm64@npm:12.22.0"
+  conditions: os=win32 & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@pnpm/exe.win32-x64@npm:12.22.0":
+  version: 12.22.0
+  resolution: "@pnpm/exe.win32-x64@npm:12.22.0"
+  conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
 
@@ -9750,15 +9855,63 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pnpm@npm:10.34.5":
-  version: 10.34.5
-  resolution: "pnpm@npm:10.34.5"
+"pnpm@npm:12.22.0":
+  version: 12.22.0
+  resolution: "pnpm@npm:12.22.0"
   dependencies:
+    "@pnpm/exe.android-arm64": "npm:12.22.0"
+    "@pnpm/exe.android-x64": "npm:12.22.0"
+    "@pnpm/exe.darwin-arm64": "npm:12.22.0"
+    "@pnpm/exe.darwin-x64": "npm:12.22.0"
+    "@pnpm/exe.freebsd-x64": "npm:12.22.0"
+    "@pnpm/exe.linux-arm64": "npm:12.22.0"
+    "@pnpm/exe.linux-arm64-musl": "npm:12.22.0"
+    "@pnpm/exe.linux-ppc64": "npm:12.22.0"
+    "@pnpm/exe.linux-riscv64": "npm:12.22.0"
+    "@pnpm/exe.linux-s390x": "npm:12.22.0"
+    "@pnpm/exe.linux-x64": "npm:12.22.0"
+    "@pnpm/exe.linux-x64-musl": "npm:12.22.0"
+    "@pnpm/exe.netbsd-x64": "npm:12.22.0"
+    "@pnpm/exe.win32-arm64": "npm:12.22.0"
+    "@pnpm/exe.win32-x64": "npm:12.22.0"
     node-gyp: "npm:latest"
+  dependenciesMeta:
+    "@pnpm/exe.android-arm64":
+      optional: true
+    "@pnpm/exe.android-x64":
+      optional: true
+    "@pnpm/exe.darwin-arm64":
+      optional: true
+    "@pnpm/exe.darwin-x64":
+      optional: true
+    "@pnpm/exe.freebsd-x64":
+      optional: true
+    "@pnpm/exe.linux-arm64":
+      optional: true
+    "@pnpm/exe.linux-arm64-musl":
+      optional: true
+    "@pnpm/exe.linux-ppc64":
+      optional: true
+    "@pnpm/exe.linux-riscv64":
+      optional: true
+    "@pnpm/exe.linux-s390x":
+      optional: true
+    "@pnpm/exe.linux-x64":
+      optional: true
+    "@pnpm/exe.linux-x64-musl":
+      optional: true
+    "@pnpm/exe.netbsd-x64":
+      optional: true
+    "@pnpm/exe.win32-arm64":
+      optional: true
+    "@pnpm/exe.win32-x64":
+      optional: true
   bin:
-    pnpm: bin/pnpm.cjs
-    pnpx: bin/pnpx.cjs
-  checksum: 10/f1c3096017f191d6e9580e68f75e9ed704df9aea775f6f23f1b2e4f3fe42e4e0dc5125ff2d08cceb5e5948b3aea3f419ea12d0a013a551f968e20df71ab11fc4
+    pn: pn
+    pnpm: pnpm
+    pnpx: pnpx
+    pnx: pnx
+  checksum: 10/385042f8f3c8462b2a5235542ed0acd93f04fb1490f59e3fc79ea74fc3f8ddad9df51d118c59d0dbb343bcefc64e4d6179546530db2ce08705e4e592d72b96ce
   languageName: node
   linkType: hard
 
