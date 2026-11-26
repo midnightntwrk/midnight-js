@@ -14,7 +14,7 @@
 //
 // @ts-check
 //
-// Retained-era twins of the e2e suite's contracts.
+// Ledger 8 twins of the e2e suite's contracts.
 //
 // The fork-crossing question -- deployed below the boundary, called above it -- can only be
 // asked of a contract the PRE-fork toolchain emitted. This repository ships one
@@ -26,9 +26,9 @@
 // in, which is why `counter-016`, at 27 KB, could be a checked-in fixture and
 // these cannot be.
 //
-//   node consumer-e2e/build-retained-twins.mjs            # build what is missing
-//   node consumer-e2e/build-retained-twins.mjs --force    # rebuild everything
-//   node consumer-e2e/build-retained-twins.mjs unshielded # one contract
+//   node consumer-e2e/build-ledger8-twins.mjs            # build what is missing
+//   node consumer-e2e/build-ledger8-twins.mjs --force    # rebuild everything
+//   node consumer-e2e/build-ledger8-twins.mjs unshielded # one contract
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
@@ -36,12 +36,12 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
-import { REPOSITORY_ROOT, RETAINED_COMPILER, RETAINED_TWIN_DIR, RETAINED_TWINS, retainedTwinPath } from './personas.mjs';
+import { REPOSITORY_ROOT, LEDGER8_COMPILER, LEDGER8_TWIN_DIR, LEDGER8_TWINS, ledger8TwinPath } from './personas.mjs';
 
 const SOURCE_DIR = path.join(REPOSITORY_ROOT, 'testkit-js', 'testkit-js-e2e', 'src', 'contract');
 const RUN_COMPACTC = path.join(REPOSITORY_ROOT, 'packages', 'compact', 'src', 'run-compactc.cjs');
 const FETCH_COMPACTC = path.join(REPOSITORY_ROOT, 'packages', 'compact', 'dist', 'fetch-compact.mjs');
-const MANAGED_COMPACTC = path.join(REPOSITORY_ROOT, 'packages', 'compact', 'managed', RETAINED_COMPILER, 'compactc');
+const MANAGED_COMPACTC = path.join(REPOSITORY_ROOT, 'packages', 'compact', 'managed', LEDGER8_COMPILER, 'compactc');
 
 /**
  * Downloads `compactc` 0.31.1 if this checkout does not already have it.
@@ -56,15 +56,15 @@ const ensureCompiler = () => {
     return;
   }
   if (!existsSync(FETCH_COMPACTC)) {
-    throw new Error(`${FETCH_COMPACTC} is missing; run \`yarn build\` before building the retained twins`);
+    throw new Error(`${FETCH_COMPACTC} is missing; run \`yarn build\` before building the ledger 8 twins`);
   }
-  process.stdout.write(`Fetching compactc ${RETAINED_COMPILER}...\n`);
-  execFileSync(process.execPath, [FETCH_COMPACTC, `--version=${RETAINED_COMPILER}`], {
+  process.stdout.write(`Fetching compactc ${LEDGER8_COMPILER}...\n`);
+  execFileSync(process.execPath, [FETCH_COMPACTC, `--version=${LEDGER8_COMPILER}`], {
     cwd: REPOSITORY_ROOT,
     stdio: 'inherit'
   });
   if (!existsSync(MANAGED_COMPACTC)) {
-    throw new Error(`compactc ${RETAINED_COMPILER} is still absent after fetching it`);
+    throw new Error(`compactc ${LEDGER8_COMPILER} is still absent after fetching it`);
   }
 };
 
@@ -76,7 +76,7 @@ const ensureCompiler = () => {
  * done would hand the persona a package with no `Contract` in it.
  */
 const buildTwin = (key, force) => {
-  const target = retainedTwinPath(key);
+  const target = ledger8TwinPath(key);
   if (!force && existsSync(path.join(target, 'contract', 'index.js'))) {
     return false;
   }
@@ -85,8 +85,8 @@ const buildTwin = (key, force) => {
     cwd: REPOSITORY_ROOT,
     // The wrapper picks the newest managed version unless told otherwise, and
     // this checkout also has the current one -- so naming the version is what
-    // makes these twins retained rather than a second copy of the current era.
-    env: { ...process.env, COMPACTC_VERSION: RETAINED_COMPILER },
+    // makes these twins ledger 8 contracts rather than a second copy of the current era.
+    env: { ...process.env, COMPACTC_VERSION: LEDGER8_COMPILER },
     stdio: 'inherit'
   });
   return true;
@@ -99,14 +99,14 @@ const buildTwin = (key, force) => {
  * @param force Rebuild even where artifacts are already present.
  * @returns The keys that were compiled, which is empty on a warm run.
  */
-export const buildRetainedTwins = (keys = RETAINED_TWINS, force = false) => {
+export const buildLedger8Twins = (keys = LEDGER8_TWINS, force = false) => {
   // Before `ensureCompiler`, so a shard with no twin to build -- `events`, whose
-  // retained half cannot exist -- does not download a compiler it will not run.
+  // ledger 8 half cannot exist -- does not download a compiler it will not run.
   if (keys.length === 0) {
     return [];
   }
   ensureCompiler();
-  mkdirSync(RETAINED_TWIN_DIR, { recursive: true });
+  mkdirSync(LEDGER8_TWIN_DIR, { recursive: true });
   const built = [];
   for (const key of keys) {
     if (buildTwin(key, force)) {
@@ -120,17 +120,17 @@ const main = () => {
   const argv = process.argv.slice(2);
   const force = argv.includes('--force');
   const requested = argv.filter((argument) => !argument.startsWith('--'));
-  const unknown = requested.filter((key) => !RETAINED_TWINS.includes(key));
+  const unknown = requested.filter((key) => !LEDGER8_TWINS.includes(key));
   if (unknown.length > 0) {
-    process.stderr.write(`Not a retained-buildable contract: ${unknown.join(', ')}\n`);
+    process.stderr.write(`No ledger 8 twin can be built for: ${unknown.join(', ')}\n`);
     process.exit(1);
   }
-  const keys = requested.length > 0 ? requested : RETAINED_TWINS;
-  const built = buildRetainedTwins(keys, force);
+  const keys = requested.length > 0 ? requested : LEDGER8_TWINS;
+  const built = buildLedger8Twins(keys, force);
   process.stdout.write(
     built.length === 0
-      ? `All ${keys.length} retained twins were already built in ${RETAINED_TWIN_DIR}\n`
-      : `Built ${built.length} retained twin(s) in ${RETAINED_TWIN_DIR}: ${built.join(', ')}\n`
+      ? `All ${keys.length} ledger 8 twins were already built in ${LEDGER8_TWIN_DIR}\n`
+      : `Built ${built.length} ledger 8 twin(s) in ${LEDGER8_TWIN_DIR}: ${built.join(', ')}\n`
   );
 };
 

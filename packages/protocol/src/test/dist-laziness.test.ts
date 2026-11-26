@@ -18,11 +18,11 @@ import { dirname, join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { RETAINED_LEDGER_ERAS, type RetainedLedgerEra } from '../lib/shared/ledger-version';
+import { CURRENT_LEDGER_ERA, type CurrentLedgerEra, LEDGER_ERAS, type LedgerEra } from '../lib/shared/ledger-version';
 import { readHexFixture } from './fixtures';
 
 // This suite only makes sense against a real build: it inspects the rollup
-// output to guarantee no retained era's ledger WASM is ever inlined or
+// output to guarantee no lazily loaded era's ledger WASM is ever inlined or
 // statically imported into the eagerly-loaded index bundle — each may load only
 // through the dynamic import inside its era's loader.
 const PKG_ROOT = resolve(__dirname, '..', '..');
@@ -31,15 +31,18 @@ const DIST_TRANSACTION_PATH = 'dist/transaction.js';
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// What each retained era ships: the entry chunk its loader imports lazily, and
-// the packages that carry its runtime. Typed by `RetainedLedgerEra`, so an era
-// that becomes retained does not compile here until it has a row. List both
+type LazyLedgerEra = Exclude<LedgerEra, CurrentLedgerEra>;
+const LAZY_LEDGER_ERAS = LEDGER_ERAS.filter((era): era is LazyLedgerEra => era !== CURRENT_LEDGER_ERA);
+
+// What each lazily loaded era ships: the entry chunk its loader imports lazily, and
+// the packages that carry its runtime. Typed by `LazyLedgerEra`, so an era
+// that stops being current does not compile here until it has a row. List both
 // halves of an era's stack: v8's onchain-runtime-v3 carries its own
 // multi-megabyte WASM, so a static link to it costs a v9-only consumer as much
 // as one to ledger-v8.
-const RETAINED_ERA_ARTIFACTS = {
+const LAZY_ERA_ARTIFACTS = {
   v8: { chunk: 'v8', packages: ['ledger-v8', 'onchain-runtime-v3'] }
-} as const satisfies Record<RetainedLedgerEra, { readonly chunk: string; readonly packages: readonly string[] }>;
+} as const satisfies Record<LazyLedgerEra, { readonly chunk: string; readonly packages: readonly string[] }>;
 
 // An entry chunk as rollup writes it into whichever eagerly-loaded chunk
 // reaches the loader: the dynamic import of, for example, `../../v8.js` in
@@ -104,13 +107,13 @@ const eagerClosureOf = (entry: string): string[] => {
 const eagerContents = (entry: string): string => eagerClosureOf(entry).map((chunk) => readDistFile(chunk)).join('\n');
 
 describe('dist laziness gate', () => {
-  // The engine modules reference a retained runtime only through erased
-  // `import type`s and injected parameters, which is what keeps this green.
-  const retainedPackages = RETAINED_LEDGER_ERAS.flatMap((era) =>
-    RETAINED_ERA_ARTIFACTS[era].packages.map((pkg) => [era, pkg] as const)
+  // The engine modules reference a lazily loaded runtime only through erased
+  // `import type`s, which is what keeps this green.
+  const lazyPackages = LAZY_LEDGER_ERAS.flatMap((era) =>
+    LAZY_ERA_ARTIFACTS[era].packages.map((pkg) => [era, pkg] as const)
   );
 
-  it.each(retainedPackages)('nothing loaded eagerly by the index bundle links the %s package %s statically', (_era, pkg) => {
+  it.each(lazyPackages)('nothing loaded eagerly by the index bundle links the %s package %s statically', (_era, pkg) => {
     const content = eagerContents(DIST_INDEX_PATH);
 
     // The era facade is published through the root barrel, so `loadLedgerEra`
@@ -123,17 +126,17 @@ describe('dist laziness gate', () => {
     expect(content).not.toMatch(new RegExp(`(?:from|^\\s*import)\\s*['"][^'"]*${escapeRegExp(pkg)}['"]`, 'm'));
   });
 
-  it.each(RETAINED_LEDGER_ERAS)('the %s chunk is not part of what the index bundle loads eagerly', (era) => {
-    expect(eagerClosureOf(DIST_INDEX_PATH)).not.toContain(join('dist', `${RETAINED_ERA_ARTIFACTS[era].chunk}.js`));
+  it.each(LAZY_LEDGER_ERAS)('the %s chunk is not part of what the index bundle loads eagerly', (era) => {
+    expect(eagerClosureOf(DIST_INDEX_PATH)).not.toContain(join('dist', `${LAZY_ERA_ARTIFACTS[era].chunk}.js`));
   });
 
-  it.each(RETAINED_LEDGER_ERAS)('what the index bundle loads eagerly keeps the lazy dynamic import of the %s chunk', (era) => {
+  it.each(LAZY_LEDGER_ERAS)('what the index bundle loads eagerly keeps the lazy dynamic import of the %s chunk', (era) => {
     const content = eagerContents(DIST_INDEX_PATH);
 
-    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${chunkPattern(RETAINED_ERA_ARTIFACTS[era].chunk)}['"]\\s*\\)`));
+    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${chunkPattern(LAZY_ERA_ARTIFACTS[era].chunk)}['"]\\s*\\)`));
   });
 
-  it.each(RETAINED_LEDGER_ERAS.flatMap((era) => ['js', 'd.ts'].map((ext) => `dist/${RETAINED_ERA_ARTIFACTS[era].chunk}.${ext}`)))(
+  it.each(LAZY_LEDGER_ERAS.flatMap((era) => ['js', 'd.ts'].map((ext) => `dist/${LAZY_ERA_ARTIFACTS[era].chunk}.${ext}`)))(
     '%s referenced by the exports map exists',
     (path) => {
       expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
@@ -158,14 +161,14 @@ describe('dist laziness gate', () => {
     expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
   });
 
-  // Every route to each retained-era chunk and the engine chunk, in one place.
+  // Every route to each lazily loaded era's chunk and the engine chunk, in one place.
   // The tests above show each chunk is absent from the eager closure and that a dynamic import of it
   // survives; this one closes the remaining gap — that no chunk in that closure
   // reaches any of them by a STATIC specifier under some other name. A static
   // `from './v8.js'` anywhere in the closure would defeat both of the others
   // while still leaving the dynamic import in place.
   it.each([
-    ...RETAINED_LEDGER_ERAS.map((era) => [era, chunkPattern(RETAINED_ERA_ARTIFACTS[era].chunk)] as const),
+    ...LAZY_LEDGER_ERAS.map((era) => [era, chunkPattern(LAZY_ERA_ARTIFACTS[era].chunk)] as const),
     ['engine', ENGINE_CHUNK_PATTERN] as const
   ])('the %s chunk is reached from the eager closure only by dynamic import', (_name, pattern) => {
     const content = eagerContents(DIST_INDEX_PATH);
@@ -175,9 +178,9 @@ describe('dist laziness gate', () => {
   });
 
   // The ./transaction entry is what every provider loads to read a transaction,
-  // so it must reach a retained ledger only through that era's loader.
-  it.each(RETAINED_LEDGER_ERAS)('nothing loaded eagerly by the ./transaction entry links the %s ledger statically', (era) => {
-    const { chunk, packages } = RETAINED_ERA_ARTIFACTS[era];
+  // so it must reach a lazily loaded ledger only through that era's loader.
+  it.each(LAZY_LEDGER_ERAS)('nothing loaded eagerly by the ./transaction entry links the %s ledger statically', (era) => {
+    const { chunk, packages } = LAZY_ERA_ARTIFACTS[era];
     const content = eagerContents(DIST_TRANSACTION_PATH);
 
     expect(content).toContain('deserializeTransactionAtStage');
@@ -189,7 +192,7 @@ describe('dist laziness gate', () => {
     expect(content).toMatch(new RegExp(`import\\(\\s*['"]${chunkPattern(chunk)}['"]\\s*\\)`));
   });
 
-  // The static walk above says the v9 era CAN run without the retained chunks.
+  // The static walk above says the v9 era CAN run without the ledger 8 chunks.
   // This says it DOES: the built package is driven through `loadLedgerEra('v9')`
   // and made to do real work, so a v9-only consumer's path is exercised rather
   // than only inspected.

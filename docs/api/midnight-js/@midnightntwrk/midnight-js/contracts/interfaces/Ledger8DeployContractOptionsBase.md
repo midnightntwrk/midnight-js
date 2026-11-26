@@ -6,7 +6,7 @@
 
 # Interface: Ledger8DeployContractOptionsBase\<C\>
 
-The deploy options variant for a retained-era contract whose private state is stored
+The deploy options variant for a ledger 8 contract whose private state is stored
 NOWHERE: the constructor runs against `undefined` and nothing is written.
 
 The other variant is [Ledger8DeployContractOptionsWithPrivateState](Ledger8DeployContractOptionsWithPrivateState.md).
@@ -65,7 +65,7 @@ satisfies this one. The constructor then ran against `undefined`,
 The signing key to register as the deployed contract's maintenance
 authority. If undefined, a fresh one is sampled.
 
-The same `{ tag, value }` shape the current era takes. The retained era
+The same `{ tag, value }` shape the current era takes. Ledger 8
 signs with `schnorr` only, so any other key -- or a value that is not
 exactly 64 hexadecimal characters -- is refused with
 `Ledger8SigningKeyError` (reason `'unusable'`) before anything is composed.

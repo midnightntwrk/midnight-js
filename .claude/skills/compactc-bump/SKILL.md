@@ -17,7 +17,7 @@ description: Bump the Compact toolchain (compactc compiler, compact-runtime, com
      (`export GITHUB_TOKEN=$(gh auth token)`).
 2. **Runtime and compact-js versions**: set `@midnight-ntwrk/compact-runtime` to the same
    version in the root `package.json` `resolutions` and in the dependencies of
-   `packages/protocol` and `testkit-js/testkit-js`. Set `@midnight-ntwrk/compact-js` in the
+   `packages/protocol` and `testkit-js/testkit-js`. Set `@midnightntwrk/compact-js` in the
    `packages/protocol` dependencies. Then run `yarn install` and `yarn constraints`.
 3. **New runtime minor only**: replace the old minor's row in `RUNTIME_VERSION_TO_ERA`
    (`packages/contracts/src/internal/era.ts`). Unit tests mock the runtime version, so

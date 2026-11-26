@@ -30,7 +30,7 @@ decoded indexer `ContractEvent`.
   `Ledger9LogEvent`, so consumers name and decode events (`Ledger9ContractLog.decodeAll`) without
   a direct `compact-js` or `compact-runtime` dependency.
 - The deploy (constructor) path has no events: `compact-js`'s deploy result carries none.
-- `Ledger8CallResultPublic` has no `logEvents`. The retained toolchain has no log-event concept,
+- `Ledger8CallResultPublic` has no `logEvents`. The ledger 8 toolchain has no log-event concept,
   so there is no value to carry.
 
 We will **not** couple the indexer path to `compact-js`. Its authority is the generated indexer

@@ -10,8 +10,8 @@
 
 > **createCircuitCallTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `privateStateId`): [`Ledger8CircuitCallTxInterface`](../type-aliases/Ledger8CircuitCallTxInterface.md)\<`C`\>
 
-Creates a [Ledger9CircuitCallTxInterface](../type-aliases/Ledger9CircuitCallTxInterface.md), or the retained era's `Ledger8CircuitCallTxInterface`
-for a contract the retained Compact toolchain produced.
+Creates a [Ledger9CircuitCallTxInterface](../type-aliases/Ledger9CircuitCallTxInterface.md), or the ledger 8 `Ledger8CircuitCallTxInterface`
+for a contract the ledger 8 Compact toolchain produced.
 
 ### Type Parameters
 
@@ -63,8 +63,8 @@ contract nor a ledger 9 `CompiledContract`.
 
 > **createCircuitCallTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `privateStateId`): [`Ledger9CircuitCallTxInterface`](../type-aliases/Ledger9CircuitCallTxInterface.md)\<`C`\>
 
-Creates a [Ledger9CircuitCallTxInterface](../type-aliases/Ledger9CircuitCallTxInterface.md), or the retained era's `Ledger8CircuitCallTxInterface`
-for a contract the retained Compact toolchain produced.
+Creates a [Ledger9CircuitCallTxInterface](../type-aliases/Ledger9CircuitCallTxInterface.md), or the ledger 8 `Ledger8CircuitCallTxInterface`
+for a contract the ledger 8 Compact toolchain produced.
 
 ### Type Parameters
 

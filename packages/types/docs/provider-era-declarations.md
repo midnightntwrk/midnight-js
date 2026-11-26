@@ -20,7 +20,7 @@ is `docs/adr/0014-build-provider-seams-from-per-era-handlers.md`, with the handl
 providers, before the operation does any work.
 
 The point is the placement, not the test. Proving is the expensive step and it is
-the FIRST of the three. A wallet that cannot balance a retained-era transaction
+the FIRST of the three. A wallet that cannot balance a ledger 8 transaction
 otherwise costs a full proving cycle before anything notices. Read up front, the
 same gap costs one comparison.
 

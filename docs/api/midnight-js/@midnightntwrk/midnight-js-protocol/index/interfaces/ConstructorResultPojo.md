@@ -6,7 +6,7 @@
 
 # Interface: ConstructorResultPojo
 
-The freshly built state a retained-era constructor produced.
+The freshly built state a ledger 8 constructor produced.
 
 ## Properties
 
@@ -31,7 +31,7 @@ when one was named, otherwise the one compact-js sampled.
 
 REQUIRED, unlike the request's, and that asymmetry is the point — a sampled
 key exists nowhere else, so a result that did not report it would leave the
-deployment as unmaintainable as the empty committee the retained
+deployment as unmaintainable as the empty committee the ledger 8
 constructor writes on its own.
 
 ***

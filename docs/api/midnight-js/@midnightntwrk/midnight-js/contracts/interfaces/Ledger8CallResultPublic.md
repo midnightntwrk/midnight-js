@@ -6,11 +6,11 @@
 
 # Interface: Ledger8CallResultPublic
 
-The public, non-sensitive half of a retained-era circuit execution.
+The public, non-sensitive half of a ledger 8 circuit execution.
 
 Carries [CallResultPublicBase](../../types/interfaces/CallResultPublicBase.md) plus the post-call state. Against
 `Ledger9CallResultPublic` exactly ONE member is missing: `logEvents`,
-because the retained toolchain has no log-event concept at any layer, so
+because the ledger 8 toolchain has no log-event concept at any layer, so
 there is no value to carry rather than a value being dropped. That absence is
 named in the era key-set parity gate's allow-list, which is what keeps a
 second absence from joining it unnoticed.
@@ -28,7 +28,7 @@ second absence from joining it unnoticed.
 The state the execution ENDED on, as a LIVE `onchain-runtime-v3` handle
 rather than as bytes.
 
-Valid only while the retained runtime instance that produced it is loaded.
+Valid only while the ledger 8 runtime instance that produced it is loaded.
 It does not survive `structuredClone`, a `postMessage` to a worker, or
 serialization — anything that walks it sees `__wbg_ptr`, an integer that
 means nothing outside its module. Serialize it yourself if you need to

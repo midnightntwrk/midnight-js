@@ -6,7 +6,7 @@
 
 # Interface: Ledger8CallResultPrivate\<C, PCK\>
 
-The private, ZK-confidential half of a retained-era circuit execution.
+The private, ZK-confidential half of a ledger 8 circuit execution.
 
 Carries [CallResultPrivateBase](../../../midnight-js/types/interfaces/CallResultPrivateBase.md) and [UnsubmittedTxDataBase](../../../midnight-js/types/interfaces/UnsubmittedTxDataBase.md) — so
 the execution members and the caller's new coins come from the same

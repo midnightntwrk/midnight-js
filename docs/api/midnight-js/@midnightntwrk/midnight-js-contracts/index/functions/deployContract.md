@@ -40,13 +40,13 @@ EraMismatchError If `options.compiledContract` belongs to neither Compact era, i
 
 ## Throws
 
-Ledger8SigningKeyError with reason `'unusable'` If a retained-era deploy is given a `signingKey` that is not a
+Ledger8SigningKeyError with reason `'unusable'` If a ledger 8 deploy is given a `signingKey` that is not a
                                        `schnorr` key of 64 hex characters. Raised before anything
                                        is composed.
 
 ## Throws
 
-EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` If a retained-era artifact is deployed after the fork.
+EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` If a ledger 8 artifact is deployed after the fork.
                                Raised before the constructor runs and before any verifier key is
                                fetched.
 
@@ -58,7 +58,7 @@ EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` If a ledger
 
 ## Throws
 
-Ledger8UnconfirmedError with operation `'deploy'` If what the chain did with a submitted retained-era
+Ledger8UnconfirmedError with operation `'deploy'` If what the chain did with a submitted ledger 8
                                        deployment cannot be confirmed - the record unreadable, or
                                        back from an era the head it composed on cannot have
                                        recorded. Carries the signing key, and the underlying
@@ -84,12 +84,12 @@ InvalidArgumentError If `privateStateId` is present with an undefined value, whi
 
 > **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger8DeployedContract`](../interfaces/Ledger8DeployedContract.md)\<`C`\>\>
 
-The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
-Reachable only BEFORE THE FORK: the retained era has no post-fork deployment, so a retained
+Reachable only BEFORE THE FORK: ledger 8 has no post-fork deployment, so a ledger 8
 artifact after the fork is refused with `EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`). Recompile with the
-current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
+current toolchain and deploy that artifact instead; the ledger 8 artifact keeps working for calls
 against contracts deployed before the fork.
 
 A verifier key is registered for every entry point the artifact declares.

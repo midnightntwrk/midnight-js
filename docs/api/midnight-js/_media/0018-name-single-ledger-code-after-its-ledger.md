@@ -59,11 +59,12 @@ era?
    `./v9/onchain-runtime`. A new ledger adds `./v10` and `./v10/*`. There is no unnamed subpath that
    means "the current era". The `midnight-js` barrel publishes the ledger 9 runtime names under
    `./protocol/v9` and the namespace `ledger9Protocol`. `protocol` keeps `./compact-js/v8/effect`.
-7. **Era-generic code may say "current" and "retained"** only when its type follows the era table
-   (`CurrentLedgerEra`, `RetainedLedgerEra`, `CURRENT_LEDGER_ERA`, `RETAINED_LEDGER_ERAS`), so it stays
-   true after the next fork. The README glossary defines both terms.
+7. **Era-generic code may say "current"** only when its type follows the era table
+   (`CurrentLedgerEra`, `CURRENT_LEDGER_ERA`), so it stays true after the next fork. The README
+   glossary defines the term. There is no word for the older eras: code names the ledger
+   ([ADR 0026](./0026-drop-the-retained-era-term.md)).
 8. **Strings name the ledger too.** Error messages say "the ledger 8 (pre-fork) Compact toolchain",
-   never only "retained" or "current". Reason strings name the ledger: `EraMismatchError` reasons such
+   never only "current". Reason strings name the ledger: `EraMismatchError` reasons such
    as `'ledger8-deploy-on-ledger9-network'` and `'ledger9-artifact-on-ledger8-network'`.
 9. **Tests enforce it.** The `published-names.test.ts` of each published package uses
    `build-tools/published-names.mjs`:

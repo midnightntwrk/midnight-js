@@ -6,7 +6,7 @@
 
 # Interface: Ledger8FinalizedCallTxData\<C, PCK\>
 
-What a retained-era call transaction resolves with once finalized.
+What a ledger 8 call transaction resolves with once finalized.
 
 The SAME two-level structure the current era answers with -- `public` for the
 non-sensitive half, `private` for the confidential one -- so a caller reads
@@ -46,7 +46,7 @@ See [Ledger8UnsubmittedCallTxData.calls](Ledger8UnsubmittedCallTxData.md#calls).
 
 > `readonly` **era**: `"v8"`
 
-The pipeline that produced this result: always the retained era here, even
+The pipeline that produced this result: always ledger 8 here, even
 when the transaction that recorded it is a keep-state transaction tagged
 `'v9'`. Those are different facts, and only this one says which module
 produced the objects below.

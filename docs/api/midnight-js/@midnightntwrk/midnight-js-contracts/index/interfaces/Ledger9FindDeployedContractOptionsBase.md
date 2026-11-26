@@ -20,6 +20,27 @@ Base type for the configuration options for [findDeployedContract](../functions/
 
 ## Properties
 
+### circuitIds?
+
+> `readonly` `optional` **circuitIds?**: readonly [`ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>[]
+
+The circuits to check and to call. Use it for a contract that has only some of its circuits on
+chain, for example one that receives more verifier keys later through maintenance updates.
+
+When given, only these circuits must be on chain with the local verifier key, and a call through
+`callTx` to any other circuit is refused before a proof is made. The check runs once, when the
+contract is found: after a verifier key is inserted, replaced or removed, find the contract again.
+Maintenance through `circuitMaintenanceTx` stays available for every circuit.
+
+When omitted, every circuit the compiled contract declares is checked.
+
+#### Throws
+
+InvalidArgumentError when the list is empty or names a circuit the compiled contract does
+                             not declare.
+
+***
+
 ### compiledContract
 
 > `readonly` **compiledContract**: [`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>

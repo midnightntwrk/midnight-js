@@ -6,7 +6,7 @@
 
 # Class: Ledger8UnconfirmedError
 
-An error indicating that a retained-era transaction carrying a signing key was submitted, but what
+An error indicating that a ledger 8 transaction carrying a signing key was submitted, but what
 the chain did with it could not be confirmed.
 
 `operation` `'deploy'`: covers the read surface rejecting, a record whose version tag is missing or

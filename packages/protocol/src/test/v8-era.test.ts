@@ -16,8 +16,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import type * as CompactContract from '@midnightntwrk/compact-js/effect/Contract';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import type { EncodedZswapLocalState } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
@@ -39,7 +39,7 @@ const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 const NETWORK_ID = 'test-network';
 
 // Redirects the ported spike fixture's bare `@midnight-ntwrk/compact-runtime`
-// import to this package's own `compact-runtime-ledger8` (the real retained
+// import to this package's own `compact-runtime-ledger8` (the real ledger 8
 // 0.16 instance) — see v8-executable.test.ts for the full rationale.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
@@ -90,7 +90,7 @@ const serializedLedger8StateWithOperation = (): Uint8Array => {
   return contractState.serialize();
 };
 
-// The whole point of the facade's boundary: what the retained execution leg
+// The whole point of the facade's boundary: what the ledger 8 execution leg
 // produces as live WASM handles crosses into a composition request as plain
 // data — the pre-call state as an EncodedStateValue, the contract state as
 // bytes.
@@ -278,7 +278,7 @@ describe('the v8 era path', () => {
     );
   });
 
-  // Both eras carry a caller-supplied Zswap offer. The retained era executes
+  // Both eras carry a caller-supplied Zswap offer. Ledger 8 executes
   // coin-moving circuits (the transcript carries the post-call Zswap local
   // state, see `engine/execute.ts`), so refusing the offer here would take away
   // the only way to attach the coin movements those circuits recorded.
@@ -352,7 +352,7 @@ describe('the v8 era path', () => {
     );
   });
 
-  // The retained leg composes exactly one call: `executeCircuit` runs a single
+  // The ledger 8 leg composes exactly one call: `executeCircuit` runs a single
   // circuit and refuses one with coin effects, so there is no cross-contract
   // call tree to compose. Silently dropping the rest is the failure mode this
   // refusal exists to prevent.

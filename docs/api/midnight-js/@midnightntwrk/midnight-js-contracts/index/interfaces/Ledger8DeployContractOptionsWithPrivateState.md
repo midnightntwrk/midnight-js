@@ -6,7 +6,7 @@
 
 # Interface: Ledger8DeployContractOptionsWithPrivateState\<C\>
 
-Deploy configuration for a retained-era contract that carries private state,
+Deploy configuration for a ledger 8 contract that carries private state,
 naming where the state the constructor produces is stored.
 
 Both members together or neither: a state with no id has nowhere to go, and
@@ -65,7 +65,7 @@ An identifier for the private state of the contract being deployed.
 The signing key to register as the deployed contract's maintenance
 authority. If undefined, a fresh one is sampled.
 
-The same `{ tag, value }` shape the current era takes. The retained era
+The same `{ tag, value }` shape the current era takes. Ledger 8
 signs with `schnorr` only, so any other key -- or a value that is not
 exactly 64 hexadecimal characters -- is refused with
 `Ledger8SigningKeyError` (reason `'unusable'`) before anything is composed.

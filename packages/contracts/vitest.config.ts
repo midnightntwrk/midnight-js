@@ -41,7 +41,7 @@ export default defineConfig({
         branches: 25,
         statements: 31,
 
-        // PER-FILE floors for the retained-era modules. The package-wide floors
+        // PER-FILE floors for the ledger 8 modules. The package-wide floors
         // above are in the low thirties, so ~1,200 lines of new orchestration
         // could lose most of its coverage without any of them moving. These
         // pin these files at what they actually achieve, so a gap becomes a

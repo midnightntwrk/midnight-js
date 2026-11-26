@@ -104,10 +104,10 @@ The second step differs by operation kind:
   executes against the era the network now reports.
 - **A deploy** cannot be re-run. A deploy mints a fresh nonce, so a second
   attempt lands at a DIFFERENT address and would leave two copies of the
-  contract on chain; and a contract produced by the retained toolchain cannot be
+  contract on chain; and a contract produced by the ledger 8 toolchain cannot be
   deployed to a post-fork head at all. The remediation is to recompile with the
   current Compact toolchain and deploy that artifact.
-- **A maintenance update** cannot be re-run either: the retained toolchain has
+- **A maintenance update** cannot be re-run either: the ledger 8 toolchain has
   no maintenance after the fork. First check whether the contract's verifier
   key for the circuit, or its maintenance authority, already reflects the
   update. Then recompile with the current Compact toolchain and run the same
@@ -159,7 +159,7 @@ The ledger 8 scope composes each call as its own ledger 8 transaction and merges
 them with `Transaction.merge()` of the framework's ledger 8 copy, as 4.1.1 did.
 This is not a call tree: `composeCallTx` still composes exactly one call per
 ledger 8 transaction (see `packages/protocol/docs/era-boundary.md`). A scope
-merges whole transactions, which the ledger 8 ledger accepts.
+merges whole transactions, which ledger 8 accepts.
 
 The scope reads the head and acquires the ledger 8 runtime once, before its
 function runs. The first call added to the scope reads the contract state and the
@@ -193,17 +193,17 @@ load-bearing:
 
 The message points at `withContractScopedTransaction`, which follows the head.
 
-### Why a retained-era call cannot join a ledger 9 scope
+### Why a ledger 8 call cannot join a ledger 9 scope
 
 After the fork a scope is a ledger 9 one, and its calls are composed by the
 current toolchain's pipeline, which keeps a cache of decoded ledger 9 states. A
-retained-era call is composed by the retained pipeline and submitted on its own,
+ledger 8 call is composed by the ledger 8 pipeline and submitted on its own,
 so a ledger 9 scope has no way to run it against the scope's states.
 
 A typed caller reaches it with a scope function typed for ledger 8 that runs
 after the fork. It is checked on every path a call can take — `submitCallTx`,
 `createUnprovenCallTx` and `callTx.<circuit>` — because the alternative is what it
-replaces: the retained-era path accepted the scope
+replaces: the ledger 8 path accepted the scope
 context and quietly ran outside it, returning a transaction the caller believed
 had been batched with the rest. The reverse — a ledger 9 contract called with a
 ledger 8 scope — is refused with reason `'ledger9-artifact-on-ledger8-network'`,

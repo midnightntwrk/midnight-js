@@ -6,7 +6,7 @@
 
 # Interface: Ledger8FinalizedDeployTxData\<C\>
 
-The deploy data of a retained-era contract deployed by the caller: the
+The deploy data of a ledger 8 contract deployed by the caller: the
 [Ledger8FoundDeployTxData](Ledger8FoundDeployTxData.md) structure, carrying what the constructor
 produced as well.
 
@@ -31,7 +31,7 @@ private state and shielded coin material.
 
 > `readonly` **era**: `"v8"`
 
-The pipeline this handle runs on: always the retained era here. The era
+The pipeline this handle runs on: always ledger 8 here. The era
 that recorded the deploy transaction is `public.era`.
 
 #### Inherited from
@@ -103,7 +103,7 @@ inserted, removed or replaced on that contract by anyone.
 
 > `readonly` **public**: `Omit`\<[`Ledger8FoundDeployTxPublicData`](Ledger8FoundDeployTxPublicData.md), `"initialContractState"`\> & `object`
 
-The record of the deploy transaction, always a ledger 8 one: a retained-era
+The record of the deploy transaction, always a ledger 8 one: a ledger 8
 deploy runs only before the fork.
 
 #### Type Declaration

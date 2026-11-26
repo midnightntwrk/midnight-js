@@ -227,7 +227,7 @@ export class UnknownProtocolVersionError extends MidnightJsError {
 export type Ledger8Subpath = '/v8' | '/v8/engine';
 
 /**
- * Thrown when a lazily-loaded subpath export carrying the retained pre-fork
+ * Thrown when a lazily-loaded subpath export carrying the pre-fork ledger 8
  * runtime could not be acquired at all. Raised by `loadLedger8Protocol`
  * (`lib/v8/load.ts`) and `loadLedger8Engine` (`lib/v8/load-engine.ts`), and
  * surfaced through `createLedger8Engine` and `loadLedgerEra('v8')`.
@@ -569,12 +569,12 @@ export class ComposeFailedError extends MidnightJsError {
  *   records as the Unix epoch: a transaction that is already expired when it
  *   is composed.
  * - `'calls'` — the call list is not one the target era can compose. The
- *   retained pre-fork era composes exactly one call: a cross-contract call is a
+ *   ledger 8 composes exactly one call: a cross-contract call is a
  *   ledger-9-only feature that a pre-fork contract cannot emit, so that era has
  *   no call tree to express.
  * - `'verifierKeys'` — a deploy was requested with no verifier-key map, and the
  *   state it was given needs one. Raised on BOTH eras, for two different
- *   reasons: the retained era's deploy leg has to register the compiled
+ *   reasons: ledger 8's deploy leg has to register the compiled
  *   contract's keys itself and so always needs the map, while the current era
  *   accepts its omission for a state that already carries its keys and refuses
  *   it only for a state still declaring a blank-keyed entry point.
@@ -732,7 +732,7 @@ const MAINTENANCE_AUTHORITY_MISMATCH_MESSAGES: Readonly<Record<MaintenanceAuthor
  * @param version The ledger era the update was being composed on.
  * @param contractAddress The contract whose authority was checked.
  * @param reason Which check refused it.
- * @see {@link RetainedEraExecution}
+ * @see {@link Ledger8Execution}
  */
 export class MaintenanceAuthorityMismatchError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH;
@@ -914,7 +914,7 @@ export class UnknownLedgerEraError extends MidnightJsError {
  * eras.
  *
  * Stops before the bracketed version deliberately: a `[vN]` is the wire-schema
- * version of the serialized OBJECT and never a ledger era — the retained era's
+ * version of the serialized OBJECT and never a ledger era — ledger 8's
  * transactions are tagged `transaction[v9]`.
  *
  * @see packages/contracts/docs/verification-path.md for the same rule stated
@@ -1072,7 +1072,7 @@ export const findCodedCause = (failure: unknown): CodedMidnightJsError | undefin
 };
 
 /**
- * What a retained-era circuit or constructor execution fails with. A Compact `assert` refusal is the usual
+ * What a ledger 8 circuit or constructor execution fails with. A Compact `assert` refusal is the usual
  * cause, but a key or config read failure or a runtime fault can also arrive this way, so `cause` is the
  * source of truth. A failure that is, or carries on its `cause` chain, a midnight-js coded error is not
  * wrapped in this class: that coded error surfaces directly.

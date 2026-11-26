@@ -6,7 +6,7 @@
 
 # Interface: Ledger8ContractMaintenanceTxInterface
 
-Maintenance updates for a whole retained-era contract, bound to one address: the retained era's
+Maintenance updates for a whole ledger 8 contract, bound to one address: ledger 8's
 counterpart of `Ledger9ContractMaintenanceTxInterface`.
 
 ## Methods

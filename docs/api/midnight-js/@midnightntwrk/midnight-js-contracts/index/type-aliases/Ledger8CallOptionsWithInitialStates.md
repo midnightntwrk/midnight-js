@@ -8,9 +8,9 @@
 
 > **Ledger8CallOptionsWithInitialStates**\<`C`, `PCK`\> = [`Ledger8CallTxOptionsBase`](Ledger8CallTxOptionsBase.md)\<`C`, `PCK`\> & `object`
 
-Configuration for building a retained-era call on states the caller read itself, with
+Configuration for building a ledger 8 call on states the caller read itself, with
 `createLedger8UnprovenCallTxFromInitialStates`. The head era is stated, and each state carries the
-era that wrote it, because after the fork a retained-era contract's state may already be a ledger 9
+era that wrote it, because after the fork a ledger 8 contract's state may already be a ledger 9
 one.
 
 ## Type Parameters

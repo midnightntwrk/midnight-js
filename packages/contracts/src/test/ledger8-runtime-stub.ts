@@ -14,16 +14,16 @@
  */
 
 /**
- * The `@midnight-ntwrk/compact-runtime` stand-in the retained-era fixture
+ * The `@midnight-ntwrk/compact-runtime` stand-in the ledger 8 fixture
  * modules need at IMPORT time, and nothing more.
  *
- * A generated retained-era artifact opens with `checkRuntimeVersion('0.16.0')`
+ * A generated ledger 8 artifact opens with `checkRuntimeVersion('0.16.0')`
  * — which the installed current runtime rejects outright — and then builds type
  * descriptors and an empty context at module scope. Only what that module-scope
  * code touches is stubbed here.
  *
  * Nothing in the suites that install this EXECUTES a circuit or a constructor:
- * the retained execution is replayed from a committed recording, so the
+ * the ledger 8 execution is replayed from a committed recording, so the
  * contract object is only ever inspected for its era and handed on. An
  * insufficient stub cannot pass silently either — the artifact's module-scope
  * code would throw during import and the suite would fail loudly.
