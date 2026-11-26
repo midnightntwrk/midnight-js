@@ -1,0 +1,36 @@
+import CompactStandardLibrary;
+
+// Many state writes before a checkpoint make the whole circuit too costly for the guaranteed half,
+// so the partition places what follows the checkpoint, a coin minted and sent on, in the fallible half.
+export ledger counters: Map<Bytes<32>, Counter>;
+
+export circuit heavyCheckpointMintAndSend(
+  domainSep: Bytes<32>,
+  mintValue: Uint<64>,
+  mintNonce: Bytes<32>,
+  publicKey: ZswapCoinPublicKey,
+  sendValue: Uint<128>
+): ShieldedSendResult {
+  const key = persistentHash<Vector<2, Bytes<32>>>([disclose(mintNonce), disclose(domainSep)]);
+  for (const i of 0..128) {
+    counters.insertDefault(key);
+  }
+  kernel.checkpoint();
+  const coin = mintShieldedToken(
+    disclose(domainSep),
+    disclose(mintValue),
+    disclose(mintNonce),
+    right<ZswapCoinPublicKey, ContractAddress>(kernel.self())
+  );
+  const qualified = QualifiedShieldedCoinInfo {
+    nonce: coin.nonce,
+    color: coin.color,
+    value: coin.value,
+    mt_index: 0 as Uint<64>
+  };
+  return sendShielded(
+    qualified,
+    left<ZswapCoinPublicKey, ContractAddress>(disclose(publicKey)),
+    disclose(sendValue)
+  );
+}

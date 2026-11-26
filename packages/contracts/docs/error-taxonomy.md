@@ -52,7 +52,7 @@ Its constructor is `TxFailedError(operation, record, details)`:
   and `signingKey` for a deploy or a replacement, `contractAddress` and
   `circuitId` for a verifier key update, `circuitId` for a call. A ledger 9
   call never sets `contractAddress`; a ledger 9 scope's `circuitId` is a list of
-  every circuit it merged. A ledger 8 scope sets `contractAddress`, and its
+  every circuit it recorded. A ledger 8 scope sets `contractAddress`, and its
   `circuitId` names every merged circuit, joined by `', '`.
 
 ### Why the shared code sits on the class
@@ -85,7 +85,16 @@ the record:
 - `Ledger8AmbiguousEntryPointError` (`LEDGER8_AMBIGUOUS_ENTRY_POINT`,
   INTEGRITY).
 
-The four reason and stage types are exported flat, next to the classes:
+The ledger 9 scope adds two, each carrying the `Ledger9` prefix because only the
+ledger 9 path raises it
+([ADR 0018](../../../docs/adr/0018-name-single-ledger-code-after-its-ledger.md)):
+
+- `Ledger9ScopeFalliblePartError` (`LEDGER9_SCOPE_FALLIBLE_PART`, USAGE), `stage`
+  `'unproven'` or `'balanced'`.
+- `Ledger9ScopeOutsideTimeToDismissError` (`LEDGER9_SCOPE_OUTSIDE_TIME_TO_DISMISS`,
+  REJECTED).
+
+The four ledger 8 reason and stage types are exported flat, next to the classes:
 `Ledger8SigningKeyReason`, `Ledger8KeyedOperation`, `Ledger8NotStoredStage` and
 `Ledger8CallUnsupportedReason`. There is no `Ledger8` namespace
 ([ADR 0018](../../../docs/adr/0018-name-single-ledger-code-after-its-ledger.md)).
@@ -102,7 +111,7 @@ that no diagnosis of it could be made.
 
 ## Refuse before the caller pays
 
-Four refusals exist to convert a late, paid-for failure into an early, free
+Six refusals exist to convert a late, paid-for failure into an early, free
 one. Each replaced a real failure mode, and the placement is the point.
 
 ### `LedgerParametersUnservedError`
@@ -198,6 +207,19 @@ It is raised when the scope is CREATED, and from the head READING alone — befo
 that era's runtime is acquired. Both placements are load-bearing and must not
 move later. The message points at `withContractScopedTransaction`, which runs the
 scope of the era the head is on.
+
+### `Ledger9ScopeFalliblePartError` and `Ledger9ScopeOutsideTimeToDismissError`
+
+A ledger 9 scope of two or more calls lands whole or not at all. A fallible part
+would let the ledger land it in part, and a transaction over its time to dismiss
+is refused by the node; before proving, the scope refuses both, with nothing
+proven, balanced or booked. The time to dismiss is priced there only: the figure
+is an estimate made before the wallet's Dust spend, and the balanced transaction
+is left to the node, which refuses one over the limit at no fee while the wallet
+releases what it booked. The fallible-part check runs again on the balanced
+transaction, since a wallet could add a fallible part; that refusal carries the
+balanced transaction, not enumerable, for the caller's wallet to revert. A scope
+of one call takes neither check.
 
 ## After submission, the signing key rides along
 

@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../../../../../",
+  "sources": ["src/test/resources/stamps.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAKA;;;;;;;;;;;;;MASA,AAAA,IAIC;;;;;;;;;;;;;;;;;;;;;;;OAAA;MAED,AAAA,KAEC;;;;;;;;;;;;;;;;;;;;;;;OAAA;MAED,AAAA,OAEC;;;;;cAFsB,MAAe;;;;;;;;;;;;;;;;;;yCAAf,MAAe;;;;;;;0EAAf,MAAe;;;;OAErC;MAED,AAAA,OAIC;;;;;cAJsB,MAAe;;;;;;;;;;;;;;;;;;yCAAf,MAAe;;;;;;;0EAAf,MAAe;;;;OAIrC;MAED,AAAA,SAKC;;;;;cALwB,MAAe;;;;;;;;;;;;;;;;;;yCAAf,MAAe;;;;;;;;;iDAAf,MAAe;;;;OAKvC;;;;;;;;;;;;;;;;GACA;EAnCD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAIA;;;;;;;;;yEAA6B;IAC7B;;;;;;;;;;;;;yEAAgD;;;;;;;GA8B/C;EA5BD,AAAA,YAA8B;;0DAA9B,SAA8B;;;;;;;;;;;;;;GAAA;EAE9B,AAAA,aAIC;UAHO,GAAyB;4BACxB,GAAC;;oDAAI;;;;;;;;;;;yHAAI;;;;IAChB;;;;;;;2HAAO,GAAC;;yEAAJ;;GACL;EAED,AAAA,cAEC;mCADQ;;;;;;;;;;;wGAAI;GACZ;EAED,AAAA,gBAEC,4BAFsB,MAAe;IACpC;;;;;;;;;;;;;;;;;;;;;;;;6HAAuB,MAAI;;;;;;;;;;;;wEAArB;;GACP;EAED,AAAA,gBAIC,4BAJsB,MAAe;UAC9B,GAAkB,GAAL,MAAI;IACvB;;;;;;;;;;;;;;;;;;;;;;;;6HAAc,GAAC;;;;;;;;;;;;wEAAT;IACN;;;;;;;;;;;;;;;;;;;;;;;;6HAAc,GAAC;;;;;;;;;;;;wEAAT;;GACP;EAED,AAAA,kBAKC,4BALwB,MAAe;UAChC,GAAkB,GAAL,MAAI;IACvB;;;;;;;;;;;;;;;;;;;;;;;;6HAAc,GAAC;;;;;;;;;;;;wEAAT;IACN;;;;;;;;;;;;;;;;;;;;;;;;6HAAc,GAAC;;;;;;;;;;;;wEAAT;IACN;;;;;;;;;;;;;;;;;;;;;;;;6HAAc,GAAC;;;;;;;;;;;;wEAAT;;GACP;;;;;;;;;;;;;;;;IA9BD;qCAAA;;;;;;;;;;;0GAA6B;KAAA;IAC7B;;;;;uCAAA;;;;;;;;;;;;;;;;;;;;;;4GAAgD;;;;;;;;;;;;;;uCAAhD;;;;;;;;;;;;;;;;;;;;;;4GAAgD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;KAAA;;;;;;;;;;;;;;;;;;;;;;;;;;"
+}

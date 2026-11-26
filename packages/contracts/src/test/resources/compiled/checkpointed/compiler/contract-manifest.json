@@ -1,0 +1,59 @@
+{
+  "manifest-version": "1",
+  "compiler-version": "0.36.1",
+  "compiler-commit": "7fa3a117c5e7efe9d2c51da04263e5f0b3509144",
+  "language-version": "0.28.0",
+  "runtime-version": "0.21.0",
+  "compiler": {
+    "type": "directory",
+    "contract-info.json": {
+      "type": "file",
+      "size": 3958,
+      "hash": "fca43761a6d359224c9d0f2efab30486eb2d37006acbfc2064736927c03168f7"
+    }
+  },
+  "contract": {
+    "type": "directory",
+    "index.d.ts": {
+      "type": "file",
+      "size": 6006,
+      "hash": "4cf57272b9ed4ed376e47a78577e70215c1552fbbceff1e11b046c03c0c241bb"
+    },
+    "index.js": {
+      "type": "file",
+      "size": 59739,
+      "hash": "ef584515d87aafb510465651942742296f085aefd50f73ca7aded672bfbbb9ae"
+    },
+    "index.js.map": {
+      "type": "file",
+      "size": 2719,
+      "hash": "878c38904badd08421c55eaf7aa5dae5351f5eaf5fb94cd7e958bd82134d216b"
+    }
+  },
+  "zkir": {
+    "type": "directory",
+    "heavyCheckpointMintAndSend.bzkir": {
+      "type": "file",
+      "size": 22636,
+      "hash": "54d74f8fa7c4a703142f36937929cb52d0658ebb13857ad322315e31cf7fd8f7"
+    },
+    "heavyCheckpointMintAndSend.zkir": {
+      "type": "file",
+      "size": 64784,
+      "hash": "134706f1f5bc6150dea0cca1e3cd583b8bcbaad9a05f0a229722ddd75845d32c"
+    }
+  },
+  "keys": {
+    "type": "directory",
+    "heavyCheckpointMintAndSend.prover": {
+      "type": "file",
+      "size": 90204542,
+      "hash": "d6a950dfa0de3dd352467fdf9e155daef4d3ca6ae5728ec709c3e5f6b00c8958"
+    },
+    "heavyCheckpointMintAndSend.verifier": {
+      "type": "file",
+      "size": 2121,
+      "hash": "0b2192064fe189458a640cc7300d66a295350046ba6214c93274bd52a1622958"
+    }
+  }
+}

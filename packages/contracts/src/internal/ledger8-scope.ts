@@ -37,7 +37,7 @@ import {
 } from './ledger8-entry';
 import {
   assertScopeAdmitsLedger8Call,
-  foreignLedger8ScopeContext,
+  foreignScopeContext,
   logScopeFailure,
   readScopeEra,
   type ScopeEntryPoint,
@@ -267,7 +267,7 @@ export const requireLedger8Scope = (u: unknown, entryPoint: ScopeEntryPoint): Le
   if (u instanceof Ledger8TransactionContextImpl) {
     return u;
   }
-  throw foreignLedger8ScopeContext(entryPoint);
+  throw foreignScopeContext(entryPoint, 'v8');
 };
 
 /**

@@ -1,0 +1,13 @@
+import CompactStandardLibrary;
+
+export circuit mintToSelf(domainSep: Bytes<32>, amount: Uint<64>): Bytes<32> {
+  return mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(kernel.self()));
+}
+
+export circuit sendToUser(color: Bytes<32>, amount: Uint<128>, address: UserAddress): [] {
+  sendUnshielded(disclose(color), disclose(amount), right<ContractAddress, UserAddress>(disclose(address)));
+}
+
+export circuit balanceOf(color: Bytes<32>): Uint<128> {
+  return unshieldedBalance(disclose(color));
+}

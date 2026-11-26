@@ -1,0 +1,40 @@
+// `step` takes the next stamp from a witness that advances the caller's private state, so two calls
+// in one transaction succeed only if the second runs on the private state the first left.
+// `fillOne`, `fillTwo` and `fillThree` insert into a Merkle tree, which costs much time for few
+// bytes, to bring a transaction near the time it may take to be applied.
+
+pragma language_version 0.28.0;
+
+import CompactStandardLibrary;
+
+export ledger last: Uint<64>;
+export ledger stamps: MerkleTree<20, Bytes<32>>;
+
+witness nextStamp(): Uint<64>;
+
+export circuit step(): [] {
+  const n = disclose(nextStamp());
+  assert(n == last + 1, "stamp out of order");
+  last = n;
+}
+
+export circuit count(): Uint<64> {
+  return last;
+}
+
+export circuit fillOne(seed: Bytes<32>): [] {
+  stamps.insert(disclose(seed));
+}
+
+export circuit fillTwo(seed: Bytes<32>): [] {
+  const s = disclose(seed);
+  stamps.insert(s);
+  stamps.insert(s);
+}
+
+export circuit fillThree(seed: Bytes<32>): [] {
+  const s = disclose(seed);
+  stamps.insert(s);
+  stamps.insert(s);
+  stamps.insert(s);
+}
