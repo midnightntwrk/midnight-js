@@ -19,12 +19,14 @@ import {
   createVerifierKey,
   createZKIR,
   InvalidProtocolSchemeError,
+  PROVIDER_ERROR_CODES,
   ZkArtifactFetchError,
   ZKConfigProvider
 } from '@midnightntwrk/midnight-js-types';
 import {
   assertManifestHash,
   assertSafeName,
+  hasErrorCode,
   parseZkArtifactManifest,
   parseZkArtifactRuntimeVersion,
   verifyZkArtifactIntegrity,
@@ -49,6 +51,13 @@ export type FetchZkConfigProviderOptions = ZkConfigIntegrityOptions & { readonly
 
 /**
  * Retrieves ZK artifacts from a remote source and verifies them against the `compactc` integrity manifest.
+ *
+ * The serving host must answer `404` for compiler files it does not have. Some hosts answer
+ * `403` for a missing object instead — S3 without `s3:ListBucket`, or CloudFront in front of S3
+ * with origin access control — and that answer cannot be told apart from a genuine refusal, so
+ * it is treated as one: a bundle with no manifest on such a host fails integrity verification
+ * rather than being read as unmanifested. Give the bucket list permission, or front it with a
+ * host that answers 404, for manifest-less bundles.
  */
 export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K> {
   private readonly fetchFunc: typeof fetch;
@@ -108,10 +117,11 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
   }
 
   // Only a 404 says the file is not there; the HTML fallback page the callers check for is the
-  // other shape of "missing". Every other failure — a 401/403 refusal, a 410, a 5xx — is a
-  // statement about the source, not about the file, so it propagates as the fetch failure it
-  // is. Relabelling a refusal as "missing" sends the caller to serve a file that is already
-  // there, and caching one as "no manifest" would silently drop the manifest's era anchor.
+  // other shape of "missing". Every other failure — a 401/403 refusal, a 410, a 5xx — propagates
+  // as the fetch failure it is rather than being relabelled "missing": a 403 never proves the
+  // file is absent (on S3/CloudFront it can also mean a missing object — see the class
+  // documentation for the 404 hosting requirement), and caching a refusal as "no manifest"
+  // would silently drop the manifest's era anchor.
   private static throwUnlessMissing(url: string, response: Response): void {
     if (response.status !== 404) {
       throw FetchZkConfigProvider.httpFailure(url, response);
@@ -190,8 +200,10 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
    * `packages/utils/docs/artifact-runtime-version.md`.
    *
    * @returns The declared runtime version, verbatim.
-   * @throws ZkArtifactContractInfoError if the location does not serve the description, answers
-   * with an SPA fallback page, or serves something that is not a compiler description.
+   * @throws ZkArtifactContractInfoError if the location does not serve the description (a 404 or
+   * an SPA fallback page), or serves something that is not a compiler description.
+   * @throws ZkArtifactFetchError if the manifest or the description is answered with any other
+   * non-OK status; a refused manifest stops the read before the description is requested.
    * @throws ZkArtifactIntegrityError if the description is not covered by the manifest under a mode
    * that requires it.
    */
@@ -245,13 +257,45 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     return parseZkArtifactRuntimeVersion(new TextDecoder().decode(bytes));
   }
 
+  // Loads the manifest for an artifact verification. A definitive refusal (401/403 and the other
+  // non-transient statuses) is rethrown as an integrity error: downstream key-material resolvers
+  // read a bare fetch error from a flat provider as "this provider does not serve the key" and
+  // fall back to proving without key material, so a manifest that could not be loaded must
+  // surface in the shape those resolvers already propagate — the same shape the registry
+  // rethrows for a source whose probe failed on integrity grounds. A transient failure (network
+  // error, 5xx) already propagates in its own shape and is left untouched.
+  private async loadManifestForVerification(): Promise<ZkArtifactManifest | undefined> {
+    try {
+      return await this.loadManifest();
+    } catch (error) {
+      if (hasErrorCode(error, PROVIDER_ERROR_CODES.ZK_ARTIFACT_NOT_SERVED)) {
+        const url = new URL(`${ZK_MANIFEST_DIR}/${ZK_MANIFEST_FILE_NAME}`, this.base).toString();
+        throw new ZkArtifactIntegrityError(
+          `ZK artifact manifest at ${url} could not be loaded, so these artifacts cannot be ` +
+            `integrity-verified. The file may be missing, or the host may have refused access; ` +
+            `either way the failed read surfaces here rather than being read as "no manifest".`,
+          { cause: error }
+        );
+      }
+      throw error;
+    }
+  }
+
   private async verifyArtifact(dir: typeof KEY_PATH | typeof ZKIR_PATH, fileName: string, bytes: Uint8Array): Promise<void> {
-    const manifest = await this.loadManifest();
+    const mode = this.integrityOptions.verify ?? 'require';
+    // With verification off and no pinned manifest hash, the manifest certifies nothing, so it
+    // is not read at all: a host that cannot serve it (or refuses it) must not break key reads
+    // the caller explicitly opted out of verifying. A pinned hash anchors the manifest in every
+    // mode, so the read still happens when one is set.
+    const manifest =
+      mode === 'off' && this.integrityOptions.expectedManifestHash === undefined
+        ? undefined
+        : await this.loadManifestForVerification();
     verifyZkArtifactIntegrity({
       manifest,
       relativePath: `${dir}/${fileName}`,
       bytes,
-      mode: this.integrityOptions.verify ?? 'require',
+      mode,
       onWarn: this.integrityOptions.onWarn
     });
   }

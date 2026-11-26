@@ -360,8 +360,10 @@ describe('Fetch ZK config Provider', () => {
       // Act
       const error = await provider.getArtifactRuntimeVersion().catch((e: unknown) => e);
 
-      // Assert: the file is there; the source refused to serve it. Reporting that as
-      // ZkArtifactContractInfoError would send the caller to serve a file that already exists.
+      // Assert: the source refused the read. A 403 does not prove the file exists (S3 and
+      // CloudFront answer 403 for missing objects too), but it does not prove absence either,
+      // so it must not be reported as a missing file: ZkArtifactContractInfoError would send
+      // the caller to serve a file they may already have in place.
       expect(error).toBeInstanceOf(ZkArtifactFetchError);
       expect(error).not.toBeInstanceOf(ZkArtifactContractInfoError);
       expect(error).toMatchObject({
@@ -406,6 +408,57 @@ describe('Fetch ZK config Provider', () => {
       // finding none, falls back to the contract description.
       await expect(provider.getArtifactRuntimeVersion()).resolves.toBe('0.21.0');
       expect(manifestReads).toBe(2);
+    });
+
+    it.each([
+      ['the default (require)', {}],
+      ['require-if-present', { verify: 'require-if-present' }],
+      ['warn', { verify: 'warn' }]
+    ])('surfaces a refused manifest as an integrity error in %s mode, keeping the fetch failure on cause', async (_label, options) => {
+      // Arrange: the keys themselves read fine; only the manifest is refused. Reading the
+      // refusal as "no manifest" would let the keys through unverified (or, downstream, drop
+      // them silently), so the failed manifest load surfaces as an integrity error — the shape
+      // key-material resolvers propagate instead of treating as "not served here".
+      const provider = new FetchZkConfigProvider(BASE, {
+        ...options,
+        fetchFunc: async (input) =>
+          String(input).endsWith('contract-manifest.json')
+            ? new Response('x', { status: 403, statusText: 'Forbidden' })
+            : new Response('x')
+      });
+
+      // Act
+      const error = await provider.getProverKey('circuit').catch((e: unknown) => e);
+
+      // Assert
+      expect(error).toBeInstanceOf(ZkArtifactIntegrityError);
+      const cause = error instanceof ZkArtifactIntegrityError ? error.cause : undefined;
+      expect(cause).toBeInstanceOf(ZkArtifactFetchError);
+      expect(cause).toMatchObject({
+        code: 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED',
+        status: 403,
+        message: `Failed to fetch ZK artifact from ${BASE}/compiler/contract-manifest.json: 403 Forbidden`
+      });
+    });
+
+    it('does not read the manifest at all when verification is off and no hash is pinned', async () => {
+      // Arrange
+      let manifestReads = 0;
+      const provider = new FetchZkConfigProvider(BASE, {
+        verify: 'off',
+        fetchFunc: async (input) => {
+          if (String(input).endsWith('contract-manifest.json')) {
+            manifestReads += 1;
+            return new Response('x', { status: 403, statusText: 'Forbidden' });
+          }
+          return new Response('x');
+        }
+      });
+
+      // Act + Assert: the refused manifest cannot break a read the caller opted out of
+      // verifying, because the manifest is never requested.
+      await expect(provider.getProverKey('circuit')).resolves.toBeDefined();
+      expect(manifestReads).toBe(0);
     });
 
     it('wraps a failure while reading an artifact body and keeps it on cause', async () => {
