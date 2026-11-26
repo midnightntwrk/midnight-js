@@ -194,13 +194,17 @@ export const requireLedger9ContractStateRead = (
   servedBy: StateReadMethod
 ): SerializedContractState<'v9'> => {
   const state = requireContractStateRead(read, servedBy);
-  if (state.era === 'v8') {
-    throw new EraMismatchError('ledger8-contract-state-unsupported', {
-      detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
-      contractAddress
-    });
+  switch (state.era) {
+    case 'v8':
+      throw new EraMismatchError('ledger8-contract-state-unsupported', {
+        detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
+        contractAddress
+      });
+    case 'v9':
+      return SerializedContractState.fromBytes('v9', state.serialize());
+    default:
+      return assertNever(state.era, 'requireLedger9ContractStateRead');
   }
-  return SerializedContractState.fromBytes('v9', state.serialize());
 };
 
 const requireLedger9Companion = <T extends { readonly era: LedgerEra }>(
@@ -217,6 +221,7 @@ const requireLedger9Companion = <T extends { readonly era: LedgerEra }>(
   if (state === undefined) {
     throw new UnknownLedgerEraError(eraTagOf(served), 'queryZSwapAndContractState');
   }
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 9 path refuses every other era
   if (state.era !== 'v9') {
     throw new PublicStatesEraMismatchError(contractAddress, field, 'v9', state.era);
   }
@@ -342,6 +347,7 @@ export const requireStateOption = <T extends { readonly era: LedgerEra }>(
 };
 
 const requireLedger9OptionEra = <T extends { readonly era: LedgerEra }>(state: T, option: keyof Ledger9InitialStates): T => {
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 9 path refuses every other era
   if (state.era !== 'v9') {
     throw new InvalidArgumentError(
       `options.${option} was written by the ${state.era} ledger, but a ledger 9 call runs on v9 states. ` +
@@ -376,11 +382,16 @@ export const decodeLedger9InitialStates = (
     'initialContractState',
     'SerializedContractState'
   );
-  if (contractState.era === 'v8') {
-    throw new EraMismatchError('ledger8-contract-state-unsupported', {
-      detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
-      contractAddress
-    });
+  switch (contractState.era) {
+    case 'v8':
+      throw new EraMismatchError('ledger8-contract-state-unsupported', {
+        detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
+        contractAddress
+      });
+    case 'v9':
+      break;
+    default:
+      return assertNever(contractState.era, 'decodeLedger9InitialStates');
   }
   const zswapChainState = requireLedger9OptionEra(
     requireStateOption(states.initialZswapChainState, ownZswapChainState, 'initialZswapChainState', 'SerializedZswapChainState'),
@@ -761,6 +772,7 @@ export const requireLedger9Contract = async (
   functionName: string
 ): Promise<void> => {
   const era = await resolveArtifactEra(compiledContract, source);
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 9 path refuses every other era
   if (era !== 'v9') {
     throw unsupportedContractEra(functionName, era);
   }
@@ -778,6 +790,7 @@ export const requireLedger8Contract = async (
   functionName: string
 ): Promise<void> => {
   const era = await resolveArtifactEra(compiledContract, source);
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 8 path refuses every other era
   if (era !== 'v8') {
     throw unsupportedContractEra(functionName, era);
   }
@@ -798,6 +811,7 @@ export const requireLedger8Contract = async (
 const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract }>(
   _options: { readonly compiledContract: unknown } | L,
   era: LedgerEra
+// eslint-disable-next-line no-restricted-syntax -- type predicate called only inside the exhaustive era switch of resolveEraRequest
 ): _options is L => era === 'v8';
 
 /**
@@ -811,6 +825,7 @@ const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract
 const isLedger8Contract = <C extends object>(
   _compiledContract: C | Ledger8Contract,
   era: LedgerEra
+// eslint-disable-next-line no-restricted-syntax -- type predicate called only inside the exhaustive era switch of resolveContractEraRequest
 ): _compiledContract is Ledger8Contract => era === 'v8';
 
 /** A router's options, tagged with the era their contract's artifacts declare. */
@@ -1156,8 +1171,13 @@ export const resolveContractStateEra = async (
   // Ledger 8 wrote it, which is the only thing this pipeline can
   // read -- under EITHER head. Pre-fork this is a native call; post-fork it is
   // keep-state. Both are ordinary, and neither involves the head.
-  if (stateEra === 'v8') {
-    return stateEra;
+  switch (stateEra) {
+    case 'v8':
+      return stateEra;
+    case 'v9':
+      break;
+    default:
+      return assertNever(stateEra, 'resolveContractStateEra');
   }
 
   // From here the state carries a CURRENT-era envelope.
@@ -1173,7 +1193,7 @@ export const resolveContractStateEra = async (
   // contract. The key check
   // answers it, against the keys this state actually declares; see
   // `assertSnapshotVerifierKey`.
-  if (head === 'v9') {
+  if (head === stateEra) {
     return stateEra;
   }
 

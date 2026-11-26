@@ -25,10 +25,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
-import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
 import type { ZswapLocalState as CurrentZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import type * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import type * as Contract from '@midnightntwrk/compact-js/effect/Contract';
+import * as ContractConfigurationError from '@midnightntwrk/compact-js/effect/ContractConfigurationError';
 import type {
   AlignedValue as Ledger8AlignedValue,
   CallContext as Ledger8CallContext,

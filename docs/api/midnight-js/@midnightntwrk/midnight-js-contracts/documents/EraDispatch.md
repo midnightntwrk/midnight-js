@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.2**](../../../README.md)
+[**Midnight.js API Reference v5.0.3**](../../../README.md)
 
 ***
 
@@ -84,7 +84,7 @@ manifest IS present it vouches for that file too, so the fallback passes through
 the same integrity gate as every key and ZKIR — under the default `require` an
 unvouched-for description is refused rather than trusted.
 
-`@midnight-ntwrk/compact-js` also brands its `CompiledContract` with the
+`@midnightntwrk/compact-js` also brands its `CompiledContract` with the
 registered symbol `Symbol.for('compact-js/CompiledContract')`, which looks like
 the obvious discriminator for the current era and is not usable as one.
 

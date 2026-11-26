@@ -16,7 +16,7 @@
 /**
  * The canonical key-location grammar for contract calls.
  *
- * The grammar is defined once, upstream, in `@midnight-ntwrk/compact-js` (the
+ * The grammar is defined once, upstream, in `@midnightntwrk/compact-js` (the
  * `ContractKeyLocation` module) so that every transaction assembler and prover shares a single
  * definition; this module re-exports it. See the upstream module for the full specification:
  * each contract call's proof preimage carries the canonical, self-describing location

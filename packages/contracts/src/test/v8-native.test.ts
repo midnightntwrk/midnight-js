@@ -40,7 +40,12 @@ import {
   loadLedger8Protocol,
   loadLedgerEra
 } from '@midnightntwrk/midnight-js-protocol';
-import { COMMON_ERROR_CODES, InvalidArgumentError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import {
+  COMMON_ERROR_CODES,
+  InvalidArgumentError,
+  InvariantViolationError,
+  UnknownLedgerEraError
+} from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   LedgerParameters,
   type ProvingProvider,
@@ -98,6 +103,7 @@ import { resolveArtifactEra } from '../internal/era';
 import { buildLedger8DeployTx, findLedger8Contract, submitLedger8CallTx, submitLedger8Tx } from '../internal/ledger8-entry';
 import {
   assertSnapshotVerifierKey,
+  decodeLedger8Snapshot,
   type Ledger8Snapshot,
   readLedger8Snapshot,
   runLedger8CallPipeline
@@ -933,6 +939,13 @@ describe('the ledger 8 native pipeline (previous-toolchain contract, pre-fork he
 
       expect(snapshot.state.ledgerParameters?.era).toBe('v8');
       expect(snapshot.state.ledgerParameters?.serialize()).toEqual(ledger8LedgerParameters);
+    });
+
+    it('refuses a state of an era that neither the ledger 8 nor the head facade reads, rather than decoding it as the head era', () => {
+      const decode = (): Ledger8Snapshot => decodeLedger8Snapshot(ledger8Era, ledger8Era, 'v9', { raw: v6Envelope });
+
+      expect(decode).toThrow(InvariantViolationError);
+      expect(decode).toThrow(/'v9'/);
     });
 
     it('passes against the real committed envelope, which declares the name once', async () => {

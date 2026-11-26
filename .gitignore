@@ -44,6 +44,7 @@ midnight-concurrent-test-db
 test-concurrency-db
 .claude/*
 !.claude/skills/
+!.claude/rules/
 .claude/skills/gitnexus/
 .worktrees
 .gitnexus

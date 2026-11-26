@@ -114,6 +114,7 @@ const queryFoundDeployTxPublicData = async (
       };
     case 'v9': {
       const stateEra: unknown = deployState?.contractState?.era;
+      // eslint-disable-next-line no-restricted-syntax -- names v8 only to throw EraInvariantViolationError for it; requireLedger9ContractStateRead below refuses every other era
       if (stateEra === 'v8') {
         throw new EraInvariantViolationError('queryDeployContractState', undefined, 'v9', 'v8', contractAddress);
       }
@@ -298,9 +299,15 @@ interface VerifiableContractState {
 }
 
 const decodeForVerification = async (contractState: SerializedContractState): Promise<VerifiableContractState> => {
-  if (contractState.era === 'v8') {
-    const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
-    return contractState.deserialize({ v8: { deserialize: (bytes): VerifiableContractState => Ledger8ContractState.deserialize(bytes) } });
+  switch (contractState.era) {
+    case 'v8': {
+      const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
+      return contractState.deserialize({ v8: { deserialize: (bytes): VerifiableContractState => Ledger8ContractState.deserialize(bytes) } });
+    }
+    case 'v9':
+      break;
+    default:
+      return assertNever(contractState.era, 'decodeForVerification');
   }
   return contractState.deserialize({
     v9: {
@@ -397,6 +404,21 @@ export interface Ledger9FindDeployedContractOptionsBase<C extends Contract.Any> 
    * useful when you want to give a signing key to someone else to add you as a maintenance authority.
    */
   readonly signingKey?: SigningKey;
+  /**
+   * The circuits to check and to call. Use it for a contract that has only some of its circuits on
+   * chain, for example one that receives more verifier keys later through maintenance updates.
+   *
+   * When given, only these circuits must be on chain with the local verifier key, and a call through
+   * `callTx` to any other circuit is refused before a proof is made. The check runs once, when the
+   * contract is found: after a verifier key is inserted, replaced or removed, find the contract again.
+   * Maintenance through `circuitMaintenanceTx` stays available for every circuit.
+   *
+   * When omitted, every circuit the compiled contract declares is checked.
+   *
+   * @throws InvalidArgumentError when the list is empty or names a circuit the compiled contract does
+   *                              not declare.
+   */
+  readonly circuitIds?: readonly Contract.ProvableCircuitId<C>[];
 }
 
 /**
@@ -466,7 +488,8 @@ export interface Ledger9FoundContract<C extends Contract.Any> {
    */
   readonly deployTxData: Ledger9FoundDeployTxData<C>;
   /**
-   * Interface for creating call transactions for a contract.
+   * Interface for creating call transactions for a contract. When the contract was found with
+   * `circuitIds`, a call to any other circuit rejects with {@link InvalidArgumentError}.
    */
   readonly callTx: Ledger9CircuitCallTxInterface<C>;
   /**
@@ -490,7 +513,7 @@ const ledger8FindFlow = async <C extends Contract.Any>(
     contractAddress: options.contractAddress,
     // EVERY circuit the artifact declares, off the ARTIFACT rather than off
     // the state -- see the attach section of `docs/keep-state-pipeline.md` for
-    // what this costs and why both eras pay it.
+    // what this costs and why both eras pay it by default.
     circuitIds: Object.keys(options.compiledContract.provableCircuits)
   });
   // Seeded HERE rather than inside `findLedger8Contract`, which takes a three-member `Pick` of the
@@ -544,12 +567,60 @@ const ledger8FindFlow = async <C extends Contract.Any>(
   };
 };
 
+const selectCircuitIds = <C extends Contract.Any>(
+  requested: readonly Contract.ProvableCircuitId<C>[],
+  declared: readonly Contract.ProvableCircuitId<C>[],
+  contractAddress: ContractAddress
+): Contract.ProvableCircuitId<C>[] => {
+  const selected = [...new Set(requested)];
+  if (selected.length === 0) {
+    throw new InvalidArgumentError(
+      `Contract at '${contractAddress}' cannot be found with an empty circuitIds: name at least one ` +
+        'circuit to check, or omit circuitIds to check every circuit.'
+    );
+  }
+  const undeclared = selected.filter((circuitId) => !declared.includes(circuitId));
+  if (undeclared.length > 0) {
+    throw new InvalidArgumentError(
+      `Contract at '${contractAddress}' cannot be found with circuitIds the compiled contract does not ` +
+        `declare: ${undeclared.join(', ')}.`
+    );
+  }
+  return selected;
+};
+
+const refuseUncheckedCircuits = <C extends Contract.Any>(
+  callTx: Ledger9CircuitCallTxInterface<C>,
+  checked: readonly Contract.ProvableCircuitId<C>[]
+): Ledger9CircuitCallTxInterface<C> => {
+  const checkedSet = new Set<string>(checked);
+  return Object.fromEntries(
+    Object.entries(callTx).map(([circuitId, call]) => [
+      circuitId,
+      checkedSet.has(circuitId)
+        ? call
+        : () =>
+            Promise.reject(
+              new InvalidArgumentError(
+                `Circuit '${circuitId}' was not checked when this contract was found. ` +
+                  `Find it again with '${circuitId}' in circuitIds.`
+              )
+            )
+    ])
+  ) as Ledger9CircuitCallTxInterface<C>;
+};
+
 const ledger9FindFlow = async <C extends Contract.Any>(
   providers: Ledger9ContractProviders<C>,
   options: Ledger9FindDeployedContractOptions<C>
 ): Promise<Ledger9FoundContract<C>> => {
-  const { compiledContract, contractAddress } = options;
+  const { compiledContract, contractAddress, circuitIds: requestedCircuitIds } = options;
   assertIsContractAddress(contractAddress);
+  const declaredCircuitIds = ContractExecutable.make(compiledContract).getProvableCircuitIds();
+  const checkedCircuitIds =
+    requestedCircuitIds === undefined
+      ? declaredCircuitIds
+      : selectCircuitIds(requestedCircuitIds, declaredCircuitIds, contractAddress);
 
   const deployRecord = requireTaggedRecord(
     await providers.publicDataProvider.watchForDeployTxData(contractAddress),
@@ -568,15 +639,20 @@ const ledger9FindFlow = async <C extends Contract.Any>(
     'queryContractState'
   );
 
-  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
-    ContractExecutable.make(compiledContract).getProvableCircuitIds()
-  );
+  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(checkedCircuitIds);
   await verifyContractState(verifierKeys, currentContractState, contractAddress);
 
   const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
   const initialPrivateState = await setOrGetInitialPrivateState(
     providers.privateStateProvider.forContract(contractAddress),
     options
+  );
+
+  const callTx = createCircuitCallTxInterface(
+    providers,
+    compiledContract,
+    contractAddress,
+    'privateStateId' in options ? options.privateStateId : undefined
   );
 
   return {
@@ -591,12 +667,7 @@ const ledger9FindFlow = async <C extends Contract.Any>(
       },
       public: deployPublicData
     },
-    callTx: createCircuitCallTxInterface(
-      providers,
-      compiledContract,
-      contractAddress,
-      'privateStateId' in options ? options.privateStateId : undefined
-    ),
+    callTx: requestedCircuitIds === undefined ? callTx : refuseUncheckedCircuits(callTx, checkedCircuitIds),
     circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, compiledContract, contractAddress),
     contractMaintenanceTx: createContractMaintenanceTxInterface(providers, compiledContract, contractAddress)
   };
@@ -684,7 +755,10 @@ export async function findDeployedContract<C extends Contract.Any>(
  * @throws UnknownLedgerEraError The deploy state is not a `SerializedContractState`: the shape of a pre-5.0.0
  *                                 provider.
  * @throws InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
- * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract
+ * @throws InvalidArgumentError `circuitIds` is empty or names a circuit `contract` does not declare.
+ *                              Raised before anything is read from the chain.
+ * @throws ContractTypeError One or more circuits defined on `contract` (only those named in
+ *                           `circuitIds`, when it is given) are undefined on the contract
  *                           state found at `contractAddress`, carry no deployed verifier key, or
  *                           have mis-matched verifier keys.
  * @throws IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given but no

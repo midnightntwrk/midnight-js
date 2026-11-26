@@ -145,6 +145,15 @@ const existing = await findDeployedContract(providers, {
   privateStateId: 'my-state'
 });
 
+// Find a contract that has only some circuits on chain: only the named circuits
+// are checked, and a call to any other circuit is refused
+const partial = await findDeployedContract(providers, {
+  compiledContract,
+  contractAddress,
+  privateStateId: 'my-state',
+  circuitIds: ['increment']
+});
+
 // Call circuit
 const result = await deployed.callTx.increment();
 
@@ -689,7 +698,7 @@ midnight-js/
 ## External Dependencies
 
 ### Midnight Packages
-- `@midnight-ntwrk/compact-js` - Compact language runtime
+- `@midnightntwrk/compact-js` - Compact language runtime
 - `@midnightntwrk/ledger-v9` - Ledger types
 - `@midnightntwrk/onchain-runtime-v4` - On-chain VM
 - `@midnight-ntwrk/compact-runtime` - Circuit execution

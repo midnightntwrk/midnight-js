@@ -46,10 +46,10 @@ An era-named subpath always means the same ledger. At the next fork, a new
 | `./v8` | `@midnightntwrk/ledger-v8` | Ledger 8 — do not import at runtime; use `loadLedger8Protocol()` |
 | `./v8/engine` | (own) | Ledger 8 execution engine — do not import at runtime; use `loadLedger8Engine()` |
 | `./v9/compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities for ledger 9 |
-| `./v9/compact-js` | `@midnight-ntwrk/compact-js` | Compact JS bindings for ledger 9 |
-| `./v9/compact-js/effect` | `@midnight-ntwrk/compact-js/effect` | Effect-based Compact bindings for ledger 9 |
-| `./v9/compact-js/effect/Contract` | `@midnight-ntwrk/compact-js/effect/Contract` | Effect-based Contract module for ledger 9 |
-| `./compact-js/v8/effect` | `@midnight-ntwrk/compact-js/v8/effect` | Effect-based Compact bindings for ledger 8 |
+| `./v9/compact-js` | `@midnightntwrk/compact-js` | Compact JS bindings for ledger 9 |
+| `./v9/compact-js/effect` | `@midnightntwrk/compact-js/effect` | Effect-based Compact bindings for ledger 9 |
+| `./v9/compact-js/effect/Contract` | `@midnightntwrk/compact-js/effect/Contract` | Effect-based Contract module for ledger 9 |
+| `./compact-js/v8/effect` | `@midnightntwrk/compact-js/v8/effect` | Effect-based Compact bindings for ledger 8 |
 | `./v9/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4` | On-chain runtime (Impact VM) for ledger 9 |
 | `./platform-js` | `@midnight-ntwrk/platform-js` | Platform services |
 | `./platform-js/effect/Configuration` | `@midnight-ntwrk/platform-js/effect/Configuration` | Effect-based configuration |
@@ -69,7 +69,7 @@ Nothing under `src/lib/` is a build entry, so this layout is internal and no con
 The directory names say what a module is **about**, not what it links. Three consequences a reader should not have to derive:
 
 - **`lib/v8/compose.ts`, `deploy.ts` and `adapt.ts` link no v8 at all.** They take the acquired module as a `Ledger8Protocol` parameter, which is a type. That injection is what keeps the v8 WASM out of the eager graph, and the guarantee is enforced by `dist-laziness.test.ts` and `v8-surface.test.ts` — not by this layout. Read the tests, not the directory, for the bundle boundary.
-- **`lib/shared/` is not free of vendors.** `assemble-call.ts` links `@midnight-ntwrk/compact-js`, a post-fork package, for `hashVerifierKey` and `encodeContractKeyLocation`; `contract-state.ts` links it for `hashVerifierKey`. Both are called by both eras, so their subject is shared even though their linkage is not. This is safe in one direction only: v9 is the eagerly-linked baseline, so a shared module reaching for it never wakes v8, while the reverse would.
+- **`lib/shared/` is not free of vendors.** `assemble-call.ts` links `@midnightntwrk/compact-js`, a post-fork package, for `hashVerifierKey` and `encodeContractKeyLocation`; `contract-state.ts` links it for `hashVerifierKey`. Both are called by both eras, so their subject is shared even though their linkage is not. This is safe in one direction only: v9 is the eagerly-linked baseline, so a shared module reaching for it never wakes v8, while the reverse would.
 - **`lib/v9/wrap.ts` type-imports `lib/v8/executable.ts`.** `TranscriptPojo` is the v8 engine's output and `wrapKeepStateCall` binds it onto v9. The cross-era edge is the operation's whole purpose, and it is type-only.
 
 `compose-types.ts` and `era.ts` name their shared types through `@midnightntwrk/ledger-v9` because some vendor has to name them. `EncodedStateValue`, `Op`, `AlignedValue`, `Transcript`, `CallContext` and `Effects` are pinned identical across `onchain-runtime-v3`, `ledger-v8` and `ledger-v9` by the compile-time assertions at the bottom of `v8-executable.test.ts`; the import names one era, the type belongs to neither. Those assertions are evaluated by `yarn typecheck:tests` — run by the pre-push hook AND by CI's `typecheck:tests:core` job. The test run itself does not evaluate them, because vitest transpiles test files without type-checking.

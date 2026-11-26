@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.2**](../../../../README.md)
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
 
 ***
 
@@ -61,7 +61,13 @@ InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a
 
 ## Throws
 
-ContractTypeError One or more circuits defined on `contract` are undefined on the contract
+InvalidArgumentError `circuitIds` is empty or names a circuit `contract` does not declare.
+                             Raised before anything is read from the chain.
+
+## Throws
+
+ContractTypeError One or more circuits defined on `contract` (only those named in
+                          `circuitIds`, when it is given) are undefined on the contract
                           state found at `contractAddress`, carry no deployed verifier key, or
                           have mis-matched verifier keys.
 

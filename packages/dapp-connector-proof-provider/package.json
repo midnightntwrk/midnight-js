@@ -1,6 +1,6 @@
 {
   "name": "@midnightntwrk/midnight-js-dapp-connector-proof-provider",
-  "version": "5.0.2",
+  "version": "5.0.3",
   "type": "module",
   "description": "Implementation of proof provider leveraging the DApp Connector's proving API",
   "types": "dist/index.d.ts",

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
+import { hashVerifierKey } from '@midnightntwrk/compact-js';
 import type { EncodedStateValue, TokenType } from '@midnightntwrk/ledger-v9';
 
 import { StateDecodeFailedError, StateInconsistentError } from '../../errors';
