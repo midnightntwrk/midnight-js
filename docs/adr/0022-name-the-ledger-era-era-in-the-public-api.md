@@ -28,6 +28,8 @@ match the transaction handle's `era` and the package names `ledger-v8` / `ledger
 - The era value type is `LedgerEra`, with `CurrentLedgerEra`, `LEDGER_ERAS` and
   `CURRENT_LEDGER_ERA` (from `@midnightntwrk/midnight-js-protocol/version`),
   and `UnknownLedgerEraError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA`) for a value that is not an era.
+  `RetainedLedgerEra` and `RETAINED_LEDGER_ERAS` are deprecated and leave in the next major release
+  ([ADR 0026](./0026-drop-the-retained-era-term.md)).
 - The object `loadLedgerEra` returns is `LedgerEraFacade`. It hides one era's ledger package
   behind methods that trade only plain data (ADR 0010). There is one facade per era, with the same
   interface for both.

@@ -163,7 +163,7 @@ These repositories may track the latest stable release of Midnight.js rather tha
 | ZKConfigProvider | @midnightntwrk/midnight-js-fetch-zk-config-provider |
 | DappConnector | @midnightntwrk/dapp-connector-api |
 | Wallet | @midnightntwrk/wallet-sdk |
-| Ledger | @midnightntwrk/ledger-v9 (current era), @midnightntwrk/ledger-v8 |
+| Ledger | @midnightntwrk/ledger-v9 (ledger 9, current era), @midnightntwrk/ledger-v8 (ledger 8) |
 | Compact Runtime | @midnight-ntwrk/compact-runtime |
 | Impact VM | @midnightntwrk/onchain-runtime-v4 (ledger 9), @midnight-ntwrk/onchain-runtime-v3 (ledger 8) |
 

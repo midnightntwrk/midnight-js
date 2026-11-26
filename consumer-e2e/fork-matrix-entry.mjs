@@ -986,7 +986,7 @@ const ledger8ZkConfigPath = (key) => {
  * nothing to read for ANY pre-fork artifact.
  *
  * THE STORE NAME CARRIES NO ERA, and that is the point rather than a tidy-up.
- * It used to be `fork-ledger8-${key}-${era}`, which gave the run two private
+ * It used to be `fork-retained-${key}-${era}`, which gave the run two private
  * state stores per twin and silently made three things unmeasurable:
  *
  * - private state written before the boundary, read after it -- the whole

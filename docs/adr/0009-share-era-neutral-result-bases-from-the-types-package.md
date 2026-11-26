@@ -71,7 +71,7 @@ Two members are deliberately not generic:
 - `nextZswapLocalState` is the current era's `ZswapLocalState`. The two runtimes' declarations
   are mutually assignable, asserted in both directions in
   `packages/protocol/src/test/v8-executable.test.ts` (`packages/types` cannot reach the
-  retained runtime).
+  ledger 8 runtime).
 - `newCoins` is `ShieldedCoinInfo[]`, on the same grounds.
 
 We do not add a top-level `FinalizedCallTxDataBase`. The two eras' `public` and `private` have

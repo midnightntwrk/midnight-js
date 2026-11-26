@@ -280,8 +280,8 @@ table before relying on that for the system as a whole:
 | current-era | `v8` | refused | refused | refused |
 
 A ledger 8 DEPLOY or MAINTENANCE update on a post-fork head is the one cell
-where the kinds differ: calls against contracts already on chain are what
-ledger 8 exists to keep working, and a new deployment has no such history to
+where the kinds differ: keeping calls against contracts already on chain
+working is why the framework still supports ledger 8, and a new deployment has no such history to
 preserve. A maintenance update has a working path after the fork already: the
 same function with the artifact recompiled by the current toolchain maintains the
 migrated contract with the signing key stored for its address. So the ledger 8

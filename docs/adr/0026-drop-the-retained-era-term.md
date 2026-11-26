@@ -12,37 +12,47 @@ Today that is only ledger 8. ADR 0018 already names code bound to one ledger aft
 (`Ledger8*`), and ADR 0022 published the term as `RetainedLedgerEra` and `RETAINED_LEDGER_ERAS` from
 `@midnightntwrk/midnight-js-protocol/version`.
 
-Nothing in the framework uses those two exports. Every place that uses "retained" as an era name in
-code, tests, comments and documentation means ledger 8, because ledger 8 is the only older era. So
-the term is a second name for "ledger 8", and the reader has to translate it. Like "current", it is
-relative to the last fork: after the next fork the same word would describe a different set of
-ledgers.
+The framework's own code does not use those two exports; one test did. Every other place that uses
+"retained" as an era name in code, tests, comments and documentation means ledger 8, because
+ledger 8 is the only older era. So the term is a second name for "ledger 8", and the reader has to
+translate it. Like "current", it is relative to the last fork: after the next fork the same word
+would describe a different set of ledgers.
+
+The two exports have shipped since 5.0.0, so removing them is a breaking change.
 
 ## Decision
 
-We remove the term "retained era".
+We drop the term "retained era".
 
-- `RetainedLedgerEra` and `RETAINED_LEDGER_ERAS` are removed from
-  `@midnightntwrk/midnight-js-protocol/version`. A consumer that needs the set of older eras derives
-  it: `Exclude<LedgerEra, CurrentLedgerEra>`, or
-  `LEDGER_ERAS.filter((era) => era !== CURRENT_LEDGER_ERA)`.
-- Code, tests, comments and documentation that mean ledger 8 say "ledger 8". Internal names use the
-  `ledger8` / `Ledger8` / `LEDGER8` spelling.
+- `RetainedLedgerEra` and `RETAINED_LEDGER_ERAS` stay in
+  `@midnightntwrk/midnight-js-protocol/version` for 5.x, marked `@deprecated`. They are removed in
+  the next major release. A consumer that needs the set of older eras derives it:
+  `Exclude<LedgerEra, CurrentLedgerEra>`, or
+  `LEDGER_ERAS.filter((era): era is Exclude<LedgerEra, CurrentLedgerEra> => era !== CURRENT_LEDGER_ERA)`.
+  The framework's own code and tests derive it the same way.
+- Code, tests, comments and documentation that mean ledger 8 say "ledger 8", ADRs included. Internal
+  names use the `ledger8` / `Ledger8` / `LEDGER8` spelling.
 - `CurrentLedgerEra` and `CURRENT_LEDGER_ERA` stay: the framework uses them.
-- Earlier ADRs keep the term, because an accepted ADR is a record. Only ADRs whose decision names
-  the removed exports are amended: ADR 0018 and ADR 0022.
+- These keep the word:
+  - ADR file names, because code and docs link to them.
+  - Text that discusses the word itself, such as ADR 0018's context.
+  - The `consumer-e2e/.retained/` directory and comments in CI workflows. The hard fork workflow
+    caches that path, so it changes in a CI change, not here.
+  - Files pinned byte for byte by a test: the released v5.0.0 migration guide recipe and the
+    `private-counter-twin` contract source.
 
 ## Consequences
 
 - **Positive:** one name for ledger 8. A reader no longer has to map "retained" to a ledger.
-- **Negative:** a consumer importing either removed export breaks at compile time and has to derive
-  the set as shown above.
+- **Positive:** no breaking change in 5.x. A consumer importing either export gets a deprecation
+  warning that shows the replacement.
+- **Negative:** the next major release breaks a consumer that still imports either export.
 - **Negative:** when a later fork leaves more than one older era, code that serves all of them names
   each ledger or uses the derived set; there is no shared word for the group.
 
 ## Alternatives considered
 
-- **Keep the two exports as `@deprecated` until the next major release.** Rejected: version 5.0.0 was
-  released days before this decision, and no known consumer uses them.
-- **Keep the term for era-generic code only, as ADR 0018 allowed.** Rejected: the only era-generic
-  users were the two unused exports; everywhere else the word meant ledger 8.
+- **Remove the two exports now, in a 6.0.0 release.** Rejected: a major release of every package for
+  two constants nothing in the framework uses costs consumers more than the deprecation does.
+- **Keep the term for era-generic code only, as ADR 0018 allowed.** Rejected: outside the two
+  exports, the only era-generic user was one test; everywhere else the word meant ledger 8.
