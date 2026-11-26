@@ -192,8 +192,10 @@ const midnightProvider = createLedger9MidnightProvider((tx) => myWallet.submitTx
 ```
 
 `myWallet` is your wallet integration. It implements `balanceTx`,
-`getCoinPublicKey` and `getEncryptionPublicKey`, and submits finalized
-transactions. For one built on `@midnightntwrk/wallet-sdk`, see
+`getCoinPublicKey` and `getEncryptionPublicKey`, and has `submitTx(tx)` for
+finalized transactions. A wallet that runs its own copy of the ledger takes
+`tx.serialize()` and may answer with bytes. For one built on
+`@midnightntwrk/wallet-sdk` that serves both eras, see
 [`MidnightWalletProvider`](../../testkit-js/testkit-js/src/wallet/midnight-wallet-provider.ts)
 in testkit-js.
 

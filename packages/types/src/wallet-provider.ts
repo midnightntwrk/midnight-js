@@ -142,8 +142,7 @@ export interface Ledger9WalletProvider {
  *
  * @example
  * ```typescript
- * // `myWallet` implements Ledger9WalletProvider: it balances v9 transactions
- * // and reports the wallet's coin and encryption public keys.
+ * // A wallet with its own ledger copy takes `tx.serialize()` and may answer with bytes.
  * const walletProvider = createLedger9WalletProvider(myWallet);
  * ```
  */

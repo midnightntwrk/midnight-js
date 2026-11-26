@@ -639,9 +639,9 @@ yourself, wrap a v9-only implementation with `createLedger9WalletProvider` /
 `createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers`. The
 factories hand your function the handle of its era, and the wallet factories
 seal the transaction you return, in the request's era. A wallet that runs its
-own copy of the ledger (a wallet SDK, a DApp Connector wallet) gets
-`tx.serialize()`, and your function can return the bytes it answers with:
-`(tx, ttl) => wallet.balanceTransaction(tx.serialize(), ttl)`.
+own copy of the ledger (a wallet-sdk wallet, a DApp Connector wallet) gets
+`tx.serialize()`, and your function can return the bytes it answers with. See
+`MidnightWalletProvider` in testkit-js for a wallet-sdk integration.
 
 ## Testing
 
