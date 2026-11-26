@@ -441,7 +441,7 @@ describe('httpClientProvingProvider', () => {
 
       // Assert
       expect(error).toBe(refusedManifest);
-      expect(mockFetchRetry).not.toHaveBeenCalled();
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it('still proves without keys when the flat provider does not serve the circuit', async () => {
