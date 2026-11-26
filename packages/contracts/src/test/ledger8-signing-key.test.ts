@@ -14,10 +14,10 @@
  */
 
 /**
- * The CROSS-PACKAGE CONTRACT that persisting a retained-era signing key rests
+ * The CROSS-PACKAGE CONTRACT that persisting a ledger 8 signing key rests
  * on, asserted in the one place all three sides of it are in scope.
  *
- * Three packages have to agree for a retained key to survive a store:
+ * Three packages have to agree for a ledger 8 key to survive a store:
  *
  * - `packages/protocol` produces the key, and the era it belongs to decides its
  *   shape;
@@ -36,7 +36,7 @@
  * - a TIGHTENING of `isValidSigningKey` -- the real risk, since that rule lives
  *   in another package and a wrapped key it stopped admitting is one a restore
  *   drops without a word;
- * - a change in the LENGTH a retained sampler answers, which is what the
+ * - a change in the LENGTH a ledger 8 sampler answers, which is what the
  *   assertion against `LEDGER8_SIGNING_KEY_HEX_LENGTH` measures.
  *
  * `isValidSigningKey` admits exactly 64 hex characters, so the 70-character
@@ -54,8 +54,8 @@
  * does NOT show up in this file.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { isValidSigningKey } from '@midnightntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { Ledger8SigningKeyError } from '../errors';
@@ -69,57 +69,57 @@ import { createMockContractAddress } from './test-mocks';
 
 const CONTRACT_ADDRESS: string = createMockContractAddress();
 
-describe('a retained-era signing key crossing the private-state provider', () => {
-  let retainedKey: string;
+describe('a ledger 8 signing key crossing the private-state provider', () => {
+  let ledger8Key: string;
 
   beforeAll(async () => {
     // `loadLedger8Protocol()` and not a direct vendor import: everything outside
-    // `packages/protocol/src` reaches the retained era through the facade, and
+    // `packages/protocol/src` reaches the ledger 8 era through the facade, and
     // eslint enforces it.
-    retainedKey = (await loadLedger8Protocol()).sampleSigningKey();
+    ledger8Key = (await loadLedger8Protocol()).sampleSigningKey();
   });
 
   it('wraps into something the store validates an import as a signing key', () => {
-    expect(isValidSigningKey(toStoredLedger8SigningKey(retainedKey))).toBe(true);
+    expect(isValidSigningKey(toStoredLedger8SigningKey(ledger8Key))).toBe(true);
   });
 
   it('owes that entirely to the wrapper, which the bare key does not satisfy on its own', () => {
     // The other direction, and the reason the first assertion is not vacuous: if the predicate
-    // admitted a bare retained key too, it would be saying nothing about the wrapper.
-    expect(isValidSigningKey(retainedKey)).toBe(false);
+    // admitted a bare ledger 8 key too, it would be saying nothing about the wrapper.
+    expect(isValidSigningKey(ledger8Key)).toBe(false);
   });
 
-  it('is named as the retained era signature kind, which is what the read admits', () => {
-    expect(toStoredLedger8SigningKey(retainedKey).tag).toBe('schnorr');
+  it('is named as the ledger 8 era signature kind, which is what the read admits', () => {
+    expect(toStoredLedger8SigningKey(ledger8Key).tag).toBe('schnorr');
   });
 
   it('comes back out of the wrapper unchanged, with no breadcrumb sink configured', () => {
     // `undefined` for the sink is the ordinary case: the logger provider is optional on every
     // provider set, so the read has to work without one.
-    expect(fromStoredLedger8SigningKey(toStoredLedger8SigningKey(retainedKey), CONTRACT_ADDRESS, undefined)).toBe(
-      retainedKey
+    expect(fromStoredLedger8SigningKey(toStoredLedger8SigningKey(ledger8Key), CONTRACT_ADDRESS, undefined)).toBe(
+      ledger8Key
     );
   });
 
-  it('sizes the read length rule off a key a retained runtime actually sampled', () => {
+  it('sizes the read length rule off a key a ledger 8 runtime actually sampled', () => {
     // The rule in the source is a number, and a number written down only restates what that source
     // was told. This is where it is measured. A sampler that changed length fails here, rather than
-    // the read admitting an entry the retained runtime cannot build an authority from.
-    expect(retainedKey).toHaveLength(LEDGER8_SIGNING_KEY_HEX_LENGTH);
+    // the read admitting an entry the ledger 8 runtime cannot build an authority from.
+    expect(ledger8Key).toHaveLength(LEDGER8_SIGNING_KEY_HEX_LENGTH);
   });
 
   it.each([
     ['two characters short', (key: string): string => key.slice(0, -2)],
     ['two characters long', (key: string): string => `${key}00`]
   ])('reads an entry %s as absent, and the import rule refuses it too', (_case, reshape) => {
-    const entry = toStoredLedger8SigningKey(reshape(retainedKey));
+    const entry = toStoredLedger8SigningKey(reshape(ledger8Key));
 
     expect(isValidSigningKey(entry)).toBe(false);
     expect(fromStoredLedger8SigningKey(entry, CONTRACT_ADDRESS, undefined)).toBeUndefined();
   });
 
-  it('unwraps a published key into the bare string the retained runtime takes', () => {
-    expect(requireLedger8SigningKey(toStoredLedger8SigningKey(retainedKey), CONTRACT_ADDRESS)).toBe(retainedKey);
+  it('unwraps a published key into the bare string the ledger 8 runtime takes', () => {
+    expect(requireLedger8SigningKey(toStoredLedger8SigningKey(ledger8Key), CONTRACT_ADDRESS)).toBe(ledger8Key);
   });
 
   it.each([
@@ -128,7 +128,7 @@ describe('a retained-era signing key crossing the private-state provider', () =>
   ])('refuses a published key %s, naming the address and never the key', (_case, reshape) => {
     const caught: unknown = (() => {
       try {
-        return requireLedger8SigningKey(reshape(retainedKey), CONTRACT_ADDRESS);
+        return requireLedger8SigningKey(reshape(ledger8Key), CONTRACT_ADDRESS);
       } catch (error) {
         return error;
       }
@@ -137,11 +137,11 @@ describe('a retained-era signing key crossing the private-state provider', () =>
     expect(caught).toBeInstanceOf(Ledger8SigningKeyError);
     expect((caught as Ledger8SigningKeyError).reason).toBe('unusable');
     expect((caught as Ledger8SigningKeyError).contractAddress).toBe(CONTRACT_ADDRESS);
-    expect((caught as Error).message).not.toContain(retainedKey.slice(0, -2));
+    expect((caught as Error).message).not.toContain(ledger8Key.slice(0, -2));
   });
 
   it('refuses a published key with no address to name when none exists yet', () => {
-    expect(() => requireLedger8SigningKey({ tag: 'ecdsa', value: retainedKey }, undefined)).toThrow(
+    expect(() => requireLedger8SigningKey({ tag: 'ecdsa', value: ledger8Key }, undefined)).toThrow(
       Ledger8SigningKeyError
     );
   });

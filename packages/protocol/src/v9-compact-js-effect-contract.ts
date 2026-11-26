@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-export * from '@midnight-ntwrk/compact-js/effect/Contract';
+export * from '@midnightntwrk/compact-js/effect/Contract';

@@ -17,7 +17,7 @@
 // The two dApp personas the split-topology milestone is about, and the
 // declarations that make them different from each other.
 //
-// A retained-era dApp pins `@midnight-ntwrk/compact-runtime@0.16.0`, because the
+// A ledger 8 dApp pins `@midnight-ntwrk/compact-runtime@0.16.0`, because the
 // contract module its pre-fork toolchain emitted calls
 // `checkRuntimeVersion('0.16.0')` and throws otherwise. The framework it installs
 // pins the current line for itself. Both therefore have to be resolvable in one
@@ -34,7 +34,7 @@ export const REPOSITORY_ROOT = path.resolve(CONSUMER_E2E_DIR, '..');
 export const TARBALL_DIR = path.join(CONSUMER_E2E_DIR, '.tarballs');
 
 /** Where each persona's contract module comes from, relative to the repository root. */
-const RETAINED_CONTRACT = 'testkit-js/testkit-js/src/fixtures/hf/counter-016/compiled';
+const LEDGER8_CONTRACT = 'testkit-js/testkit-js/src/fixtures/hf/counter-016/compiled';
 const CURRENT_CONTRACT = 'testkit-js/testkit-js-e2e/src/contract/compiled/counter';
 
 /** Where the e2e suite's compiled contracts live, relative to the repository root. */
@@ -43,10 +43,10 @@ const E2E_COMPILED = 'testkit-js/testkit-js-e2e/src/contract/compiled';
 /**
  * The current-era contracts the fork matrix drives after the boundary.
  *
- * The retained toolchain (`compactc` 0.31.1) left exactly one COMMITTED fixture
- * in this repository, `counter-016`; retained-era twins of these are built on
- * demand instead -- see {@link RETAINED_TWINS}. Each list has one key the other
- * lacks: `events` has no retained twin that can exist, and `private-counter` has
+ * The ledger 8 toolchain (`compactc` 0.31.1) left exactly one COMMITTED fixture
+ * in this repository, `counter-016`; ledger 8 twins of these are built on
+ * demand instead -- see {@link LEDGER8_TWINS}. Each list has one key the other
+ * lacks: `events` has no ledger 8 twin that can exist, and `private-counter` has
  * no current-era leg worth running.
  *
  * What this current-era set covers is the other half of the same question:
@@ -65,19 +65,19 @@ export const MATRIX_CONTRACTS = [
 
 /**
  * The last compiler of the previous era, and the one `counter-016` was built
- * with. A constant in the same sense {@link RETAINED_RUNTIME} is: 0.31.1 is what
+ * with. A constant in the same sense {@link LEDGER8_RUNTIME} is: 0.31.1 is what
  * the pre-fork toolchain was, and it does not move.
  */
-export const RETAINED_COMPILER = '0.31.1';
+export const LEDGER8_COMPILER = '0.31.1';
 
-/** Where `build-retained-twins.mjs` puts what it compiles. Gitignored -- the set is about 262 MB. */
-export const RETAINED_TWIN_DIR = path.join(CONSUMER_E2E_DIR, '.retained');
+/** Where `build-ledger8-twins.mjs` puts what it compiles. Gitignored -- the set is about 262 MB. */
+export const LEDGER8_TWIN_DIR = path.join(CONSUMER_E2E_DIR, '.retained');
 
 /** One twin's artifact directory, which is also the ZK artifact root a provider is pointed at. */
-export const retainedTwinPath = (key) => path.join(RETAINED_TWIN_DIR, key);
+export const ledger8TwinPath = (key) => path.join(LEDGER8_TWIN_DIR, key);
 
 /**
- * The e2e contracts a RETAINED-era twin can be built for, so that the fork crossing's actual
+ * The e2e contracts a LEDGER 8 twin can be built for, so that the fork crossing's actual
  * question -- deployed below the boundary, called above it -- can be asked of
  * something other than a counter.
  *
@@ -86,15 +86,15 @@ export const retainedTwinPath = (key) => path.join(RETAINED_TWIN_DIR, key);
  * against this toolchain with `unbound identifier emit`. Everything else builds
  * from the same unmodified source the current-era suite compiles.
  *
- * `private-counter` is RETAINED-ONLY, and it is the exact mirror of `events`: it
+ * `private-counter` is LEDGER 8 ONLY, and it is the exact mirror of `events`: it
  * is the only contract in either matrix that declares a WITNESS, and its subject
  * is private state written below the boundary and read above it. A current-era
  * deploy happens after the fork and so has no pre-fork private state to carry --
  * it would be a witness contract working, which is not what this matrix is for.
- * {@link resolveContractSelection} narrows its shard to the retained half alone,
+ * {@link resolveContractSelection} narrows its shard to the ledger 8 half alone,
  * the same way it narrows `events` to the current half.
  */
-export const RETAINED_TWINS = [
+export const LEDGER8_TWINS = [
   'simple',
   'unshielded',
   'shielded',
@@ -106,10 +106,10 @@ export const RETAINED_TWINS = [
 
 /**
  * The Compact runtime each persona declares. These two numbers are the experiment:
- * the retained one is what the pre-fork toolchain's codegen asserts, the current
+ * the ledger 8 one is what the pre-fork toolchain's codegen asserts, the current
  * one is what this repo's own toolchain asserts.
  */
-export const RETAINED_RUNTIME = '0.16.0';
+export const LEDGER8_RUNTIME = '0.16.0';
 
 /**
  * Read from the repository's own pin rather than restated here.
@@ -117,7 +117,7 @@ export const RETAINED_RUNTIME = '0.16.0';
  * The current contract module is recompiled whenever the toolchain moves, and it
  * asserts its runtime version at import time -- so a hardcoded copy of this
  * number silently goes stale on every `compactc` bump and the persona then fails
- * for a reason that has nothing to do with what it is testing. The retained one
+ * for a reason that has nothing to do with what it is testing. The ledger 8 one
  * above is a genuine constant: 0.16.0 is fixed by the pre-fork toolchain.
  */
 export const CURRENT_RUNTIME = (() => {
@@ -139,13 +139,13 @@ export const CURRENT_RUNTIME = (() => {
  *
  * It declares no Compact runtime of its own. Each contract instead arrives as its
  * own little package that declares the runtime its codegen demands, which is what
- * a real consumer's tree looks like once a retained contract is packaged rather
+ * a real consumer's tree looks like once a ledger 8 contract is packaged rather
  * than pasted in. Under an isolated linker the two runtimes coexist; that is the
  * only arrangement in which one process can execute a pre-fork contract and a
  * current one, and therefore the only arrangement in which the fork crossing can be written.
  */
 export const CONTRACT_PACKAGES = {
-  retained: { name: '@midnight-ntwrk/fork-retained-baseline', runtime: RETAINED_RUNTIME, source: RETAINED_CONTRACT },
+  ledger8: { name: '@midnight-ntwrk/fork-ledger8-baseline', runtime: LEDGER8_RUNTIME, source: LEDGER8_CONTRACT },
   current: { name: '@midnight-ntwrk/fork-current-baseline', runtime: CURRENT_RUNTIME, source: CURRENT_CONTRACT },
   // Wrapped the same way as the two above rather than reached for through the
   // e2e workspace: the point of this tier is what an installed consumer can
@@ -157,17 +157,17 @@ export const CONTRACT_PACKAGES = {
       { name: `@midnight-ntwrk/fork-current-${key}`, runtime: CURRENT_RUNTIME, source: `${E2E_COMPILED}/${key}` }
     ])
   ),
-  // The retained twins, keyed apart from their current-era namesakes because a
-  // persona holds BOTH: `unshielded` and `retained-unshielded` are the same
+  // The ledger 8 twins, keyed apart from their current-era namesakes because a
+  // persona holds BOTH: `unshielded` and `ledger8-unshielded` are the same
   // source through two toolchains, and the whole point is that they resolve
   // different Compact runtimes in one install.
   ...Object.fromEntries(
-    RETAINED_TWINS.map((key) => [
-      `retained-${key}`,
+    LEDGER8_TWINS.map((key) => [
+      `ledger8-${key}`,
       {
-        name: `@midnight-ntwrk/fork-retained-${key}`,
-        runtime: RETAINED_RUNTIME,
-        source: path.relative(REPOSITORY_ROOT, retainedTwinPath(key))
+        name: `@midnight-ntwrk/fork-ledger8-${key}`,
+        runtime: LEDGER8_RUNTIME,
+        source: path.relative(REPOSITORY_ROOT, ledger8TwinPath(key))
       }
     ])
   )
@@ -182,25 +182,25 @@ export const CONTRACT_PACKAGES = {
  * selection is refused too.
  *
  * EACH HALF IS AN INTERSECTION, not the whole request, and the two asymmetries
- * are real rather than defensive: `events` is a legitimate key with no retained
+ * are real rather than defensive: `events` is a legitimate key with no ledger 8
  * twin that can exist, and `private-counter` is a legitimate key with no
  * current-era leg worth running. Asking for either must narrow the other half to
  * nothing without failing, so that a one-contract shard runs exactly the legs
  * that contract has.
  *
  * A key is known if EITHER matrix claims it. Validating against the current-era
- * list alone -- which is what this did while every retained twin was also a
+ * list alone -- which is what this did while every ledger 8 twin was also a
  * current-era one -- would refuse `private-counter` as a typo.
  *
  * @param requested Contract keys, or `undefined` for the whole matrix.
- * @returns The current-era and retained-era keys this run covers.
+ * @returns The current-era and ledger 8 keys this run covers.
  */
 export const resolveContractSelection = (requested) => {
   if (requested === undefined) {
-    return { current: [...MATRIX_CONTRACTS], retained: [...RETAINED_TWINS] };
+    return { current: [...MATRIX_CONTRACTS], ledger8: [...LEDGER8_TWINS] };
   }
   const keys = requested.filter((key) => key !== '');
-  const known = [...new Set([...MATRIX_CONTRACTS, ...RETAINED_TWINS])];
+  const known = [...new Set([...MATRIX_CONTRACTS, ...LEDGER8_TWINS])];
   const unknown = keys.filter((key) => !known.includes(key));
   if (unknown.length > 0) {
     throw new Error(`Not a fork-matrix contract: ${unknown.join(', ')}. Known: ${known.join(', ')}`);
@@ -210,12 +210,12 @@ export const resolveContractSelection = (requested) => {
   }
   return {
     current: keys.filter((key) => MATRIX_CONTRACTS.includes(key)),
-    retained: keys.filter((key) => RETAINED_TWINS.includes(key))
+    ledger8: keys.filter((key) => LEDGER8_TWINS.includes(key))
   };
 };
 
-/** The retained twins as persona contract keys. */
-export const RETAINED_MATRIX_CONTRACTS = RETAINED_TWINS.map((key) => `retained-${key}`);
+/** The ledger 8 twins as persona contract keys. */
+export const LEDGER8_MATRIX_CONTRACTS = LEDGER8_TWINS.map((key) => `ledger8-${key}`);
 
 /** The `package.json` of one wrapped contract. */
 export const contractPackageManifest = (contract) => ({
@@ -233,7 +233,7 @@ export const contractPackageManifest = (contract) => ({
   // with `instanceof`, and a handle from any other copy is refused. Resolving
   // the runtime from outside cannot answer which copy the wrapper got, so the
   // wrapper hands it over instead -- the same reason `protocol` takes its
-  // retained-era values from one module rather than assembling them.
+  // ledger 8 values from one module rather than assembling them.
   exports: {
     '.': './contract/index.js',
     './contract/*': './contract/*',
@@ -248,7 +248,7 @@ export const contractPackageManifest = (contract) => ({
  * is installed, carried into every persona. Read rather than restated, so a bump
  * moves both together.
  */
-export const PINNED_RETAINED_RUNTIME = (() => {
+export const PINNED_LEDGER8_RUNTIME = (() => {
   const root = JSON.parse(readFileSync(path.join(REPOSITORY_ROOT, 'package.json'), 'utf8'));
   const pinned = root.resolutions?.['@midnight-ntwrk/onchain-runtime-v3'];
   if (typeof pinned !== 'string') {
@@ -288,35 +288,35 @@ export const PINNED_RETAINED_RUNTIME = (() => {
 })();
 
 export const PERSONAS = {
-  retained: {
-    runtime: RETAINED_RUNTIME,
-    contractSource: RETAINED_CONTRACT,
-    // Only what a retained-era dApp actually reaches for. Keeping this narrow is
+  ledger8: {
+    runtime: LEDGER8_RUNTIME,
+    contractSource: LEDGER8_CONTRACT,
+    // Only what a ledger 8 dApp actually reaches for. Keeping this narrow is
     // deliberate: a persona that installed every package would not show which
     // ones a real consumer's resolution has to satisfy.
-    framework: ['@midnight-ntwrk/midnight-js', '@midnight-ntwrk/midnight-js-protocol']
+    framework: ['@midnightntwrk/midnight-js', '@midnightntwrk/midnight-js-protocol']
   },
   current: {
     runtime: CURRENT_RUNTIME,
     contractSource: CURRENT_CONTRACT,
-    framework: ['@midnight-ntwrk/midnight-js', '@midnight-ntwrk/midnight-js-protocol']
+    framework: ['@midnightntwrk/midnight-js', '@midnightntwrk/midnight-js-protocol']
   },
   'fork-crossing': {
     // No runtime of its own: each wrapped contract brings the one its era needs.
     runtime: undefined,
     entry: 'fork-crossing-entry',
-    contracts: ['retained', 'current'],
+    contracts: ['ledger8', 'current'],
     framework: [
-      '@midnight-ntwrk/midnight-js',
-      '@midnight-ntwrk/midnight-js-protocol',
-      '@midnight-ntwrk/midnight-js-contracts',
-      '@midnight-ntwrk/midnight-js-indexer-public-data-provider',
-      '@midnight-ntwrk/midnight-js-http-client-proof-provider',
-      '@midnight-ntwrk/midnight-js-node-zk-config-provider',
-      '@midnight-ntwrk/midnight-js-level-private-state-provider',
+      '@midnightntwrk/midnight-js',
+      '@midnightntwrk/midnight-js-protocol',
+      '@midnightntwrk/midnight-js-contracts',
+      '@midnightntwrk/midnight-js-indexer-public-data-provider',
+      '@midnightntwrk/midnight-js-http-client-proof-provider',
+      '@midnightntwrk/midnight-js-node-zk-config-provider',
+      '@midnightntwrk/midnight-js-level-private-state-provider',
       // The dApp persona uses the testkit's wallet and provider wiring rather than
       // reimplementing them; a real dApp would bring its own wallet integration.
-      '@midnight-ntwrk/testkit-js'
+      '@midnightntwrk/testkit-js'
     ]
   }
 };
@@ -362,13 +362,13 @@ export const personaManifest = (name, persona, manifest, packageManager, tarball
     everyFrameworkPackage.map((packageName) => [packageName, tarballSpecifier(packageName)])
   );
 
-  // The retained runtime has to be pinned, not just installed. `compact-runtime@0.16`
+  // The ledger 8 runtime has to be pinned, not just installed. `compact-runtime@0.16`
   // asks for `onchain-runtime-v3@^3.0.0` while `protocol` pins one exact version, so
   // without this a resolver satisfies both with two different copies -- and objects
   // minted by one are rejected by the other's classes (`expected instance of`).
   // This repository pins it in `resolutions` for exactly that reason; a consumer
-  // installing the framework alongside a retained contract has to do the same.
-  for (const [name, version] of Object.entries(PINNED_RETAINED_RUNTIME)) {
+  // installing the framework alongside a ledger 8 contract has to do the same.
+  for (const [name, version] of Object.entries(PINNED_LEDGER8_RUNTIME)) {
     overrides[name] = version;
   }
 

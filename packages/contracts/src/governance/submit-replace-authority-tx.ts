@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractAddress, SigningKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { CompiledContract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { SucceedEntirely } from '@midnightntwrk/midnight-js-types';
+import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from '../contract-providers';
 import { TxFailedError } from '../errors';
@@ -116,15 +116,15 @@ const ledger9ReplaceAuthorityFlow = async <C extends Contract.Any>(
  * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging. Raised by both eras;
  *         `record.era` tells which. The error carries the new key as `signingKey`.
- * @throws {EraMismatchError} with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
- * @throws {Ledger8SigningKeyError} with reason `'unusable'` When the retained-era overload is given a new key that era
+ * @throws {EraMismatchError} with reason `'ledger8-maintenance-on-ledger9-network'` When a ledger 8 artifact is used after the fork.
+ * @throws {Ledger8SigningKeyError} with reason `'unusable'` When the ledger 8 overload is given a new key that era
  *         cannot sign with. Raised before anything is composed.
- * @throws {Ledger8SigningKeyError} with reason `'unavailable'` When the retained-era overload finds no usable current key.
- * @throws {MaintenanceAuthorityMismatchError} When the retained-era overload holds a key that is not
+ * @throws {Ledger8SigningKeyError} with reason `'unavailable'` When the ledger 8 overload finds no usable current key.
+ * @throws {MaintenanceAuthorityMismatchError} When the ledger 8 overload holds a key that is not
  *         the contract's maintenance authority. Raised before anything is proven.
- * @throws {Ledger8NotStoredError} with operation `'replace-authority'` When a retained-era replacement was confirmed and the
+ * @throws {Ledger8NotStoredError} with operation `'replace-authority'` When a ledger 8 replacement was confirmed and the
  *         store then refused the new key. It carries the key.
- * @throws {Ledger8UnconfirmedError} with operation `'replace-authority'` When a retained-era replacement was submitted but
+ * @throws {Ledger8UnconfirmedError} with operation `'replace-authority'` When a ledger 8 replacement was submitted but
  *         whether it landed could not be confirmed. It carries the new key, which was not stored.
  *
  * TODO: There are at least three options we should support in the future:

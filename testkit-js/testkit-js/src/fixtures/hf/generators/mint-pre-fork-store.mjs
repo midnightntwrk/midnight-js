@@ -33,7 +33,7 @@ import { rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+import { levelPrivateStateProvider } from '@midnightntwrk/midnight-js-level-private-state-provider';
 
 import { digestDirectory } from './lib.mjs';
 

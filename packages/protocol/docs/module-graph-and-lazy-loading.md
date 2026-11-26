@@ -4,8 +4,8 @@ title: ModuleGraphAndLazyLoading
 
 # The module graph and lazy loading
 
-`@midnight-ntwrk/midnight-js-protocol` co-installs two ledger runtimes and a
-retained pre-fork toolchain, each carrying its own WASM artifact. Which of
+`@midnightntwrk/midnight-js-protocol` co-installs two ledger runtimes and a
+ledger 8 toolchain, each carrying its own WASM artifact. Which of
 them a consumer actually pays for is decided by the shape of the module graph:
 which modules are build entries, which direction the imports run, and which
 dependencies are reachable only through a dynamic import. This document
@@ -36,7 +36,7 @@ The same split applies to the engine. The implementation lives in
 `lib/v8/engine.ts`, so it is not an entry of its own; `src/engine.ts`
 re-exports it and is what rollup emits as `dist/engine.js`, the chunk
 `loadLedger8Engine` reaches by dynamic import. Keeping it a separate entry is
-what holds the retained `compact-runtime@0.16` glue and the
+what holds the ledger 8 `compact-runtime@0.16` glue and the
 `@midnight-ntwrk/onchain-runtime-v3` WASM out of the package root.
 
 ## Where `LEDGER_ERAS` lives, and the cycle it avoids
@@ -60,14 +60,14 @@ ownership straight.
 
 Two heavy dependency sets are reachable only through a dynamic import, and
 each has its own entry chunk, because each pulls a different set of
-retained-era dependencies:
+ledger 8 dependencies:
 
 - `./v8` — the multi-megabyte v8 ledger WASM (`@midnightntwrk/ledger-v8`,
   re-exported by `src/v8.ts`). The relative specifier in `lib/v8/load.ts`
   names this build entry, which rollup emits as its own chunk and links only
   through that dynamic import, so the v8 WASM loads on the first call to
   `loadLedger8Protocol` and not before.
-- `./v8/engine` — the retained `compact-runtime@0.16` glue (installed under the
+- `./v8/engine` — the ledger 8 `compact-runtime@0.16` glue (installed under the
   `compact-runtime-ledger8` alias) and the
   `@midnight-ntwrk/onchain-runtime-v3` WASM. The relative specifier in
   `lib/v8/load-engine.ts` names the `./v8/engine` build entry the same way, so
@@ -85,7 +85,7 @@ recorded in [EraBoundary](./era-boundary.md).
 
 `loadLedger8Protocol()` is the only sanctioned runtime path to the v8 ledger era, and
 `loadLedger8Engine()` is the only sanctioned runtime path to the engine's
-public surface. Every other module in the package reaches the retained era
+public surface. Every other module in the package reaches ledger 8
 through one of those two accessors, which is what keeps the number of physical
 WASM copies at one and keeps the laziness a property of a single call site
 rather than of a convention spread across files.
@@ -146,7 +146,7 @@ import.
 
 `lib/v8/executable.ts` is the counter-example that proves the rule's limit: it
 needs `StateValue`, `ChargedState` and `ContractState` as VALUES, not as types,
-so it takes a plain namespace import of the retained glue. That import is what
+so it takes a plain namespace import of the ledger 8 glue. That import is what
 makes the module non-lazy, which is why it sits behind the subpath gate rather
 than on the package's own graph.
 

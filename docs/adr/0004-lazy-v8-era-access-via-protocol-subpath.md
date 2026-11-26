@@ -6,7 +6,7 @@
 ## Context
 
 After the hard fork the node runs the v9 ledger era, but transactions and state from the v8 era
-must stay readable. So `@midnight-ntwrk/midnight-js-protocol` installs both ledger packages,
+must stay readable. So `@midnightntwrk/midnight-js-protocol` installs both ledger packages,
 `@midnightntwrk/ledger-v8` and `@midnightntwrk/ledger-v9`.
 
 Each ledger package carries a WASM module of several megabytes that is compiled and instantiated
@@ -37,7 +37,7 @@ package root re-exports it.
   *not* memoised: the rejection is wrapped in `Ledger8RuntimeMissingError` (code
   `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`, original error on `cause`) and the next call tries
   again. Callers fail fast, and one transient WASM failure does not poison the process.
-- **The retained execution engine follows the same pattern.** Its `./v8/engine` subpath is
+- **The ledger 8 execution engine follows the same pattern.** Its `./v8/engine` subpath is
   reached at run time only through `loadLedger8Engine()` in `src/lib/v8/load-engine.ts`.
 - **One sanctioned path, enforced three ways.**
   1. ESLint (`eslint.config.mjs`) blocks runtime imports of the `/v8` and `/v8/engine` subpaths
@@ -79,7 +79,7 @@ package root re-exports it.
 
 - **Re-export both eras statically from the root.** Rejected: every consumer pays both WASM loads
   up front, which is exactly the cost to avoid.
-- **Package self-reference (`import('@midnight-ntwrk/midnight-js-protocol/v8')`).** Rejected: it
+- **Package self-reference (`import('@midnightntwrk/midnight-js-protocol/v8')`).** Rejected: it
   only resolves under the published name, so it must be rewritten whenever the package is
   published under another scope, and with two installed copies of the package it can resolve to
   the *other* copy and load a second v8 WASM.

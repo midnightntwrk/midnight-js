@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 
 import { assertIsHex, parseHex } from './hex-utils';
 

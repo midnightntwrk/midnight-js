@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { type EncodedStateValue, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
+import { type EncodedStateValue, loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   FailEntirely,
   type FinalizedTx,
@@ -27,8 +27,8 @@ import {
   type UnboundTx,
   type UnprovenTx,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -70,7 +70,7 @@ import {
 
 const eraLoadSlot = vi.hoisted((): { readonly acquired: string[] } => ({ acquired: [] }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,
@@ -95,11 +95,11 @@ const noopCircuit = (context: Ledger8CircuitContext): Ledger8CircuitResult => {
   throw new Error(`the composer is mocked, so no circuit runs (${String(context.currentPrivateState)})`);
 };
 
-interface RetainedContract extends Ledger8Contract {
+interface Ledger8TestContract extends Ledger8Contract {
   readonly provableCircuits: { readonly first: typeof noopCircuit; readonly second: typeof noopCircuit };
 }
 
-const retainedContract: RetainedContract = {
+const ledger8TestContract: Ledger8TestContract = {
   witnesses: {},
   circuits: { first: noopCircuit, second: noopCircuit },
   impureCircuits: { first: noopCircuit, second: noopCircuit },
@@ -109,7 +109,7 @@ const retainedContract: RetainedContract = {
   }
 };
 
-type RetainedCircuit = keyof RetainedContract['provableCircuits'];
+type Ledger8TestCircuit = keyof Ledger8TestContract['provableCircuits'];
 
 const stateMarker = (length: number): EncodedStateValue => ({
   tag: 'array',
@@ -123,10 +123,10 @@ interface Seen {
   proveTx?: UnprovenTx;
 }
 
-const retainedProviders = async (
+const ledger8Providers = async (
   protocolVersion = PRE_FORK_PROTOCOL_VERSION,
   status: TxStatus = 'SucceedEntirely'
-): Promise<{ providers: Ledger8ContractProviders<RetainedContract, RetainedCircuit>; seen: Seen }> => {
+): Promise<{ providers: Ledger8ContractProviders<Ledger8TestContract, Ledger8TestCircuit>; seen: Seen }> => {
   const base = createMockProviders();
   const seen: Seen = {};
   base.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(protocolVersion);
@@ -141,7 +141,7 @@ const retainedProviders = async (
   base.walletProvider.balanceTx = vi.fn().mockImplementation((tx: UnboundTx): Promise<FinalizedTx> => finalizedLike(tx));
   base.midnightProvider.submitTx = vi.fn().mockResolvedValue('scope-tx-id');
   contractStatesOf(base.privateStateProvider).get.mockResolvedValue('stored-private-state');
-  const zkConfigProvider: ZKConfigProvider<RetainedCircuit> = {
+  const zkConfigProvider: ZKConfigProvider<Ledger8TestCircuit> = {
     getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.16.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),
@@ -150,7 +150,7 @@ const retainedProviders = async (
     get: vi.fn(),
     asKeyMaterialProvider: vi.fn()
   };
-  const providers: Ledger8ContractProviders<RetainedContract, RetainedCircuit> = { ...base, zkConfigProvider };
+  const providers: Ledger8ContractProviders<Ledger8TestContract, Ledger8TestCircuit> = { ...base, zkConfigProvider };
   return { providers, seen };
 };
 
@@ -195,8 +195,8 @@ const composedFor = async (circuitId: string, privateState: unknown): Promise<Le
   fallibleZswapOfferBytes: undefined
 });
 
-const callOptions = (circuitId: RetainedCircuit, contractAddress: string) => ({
-  compiledContract: retainedContract,
+const callOptions = (circuitId: Ledger8TestCircuit, contractAddress: string) => ({
+  compiledContract: ledger8TestContract,
   contractAddress,
   circuitId,
   privateStateId: PRIVATE_STATE_ID
@@ -215,7 +215,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('merges every call into ONE ledger 8 transaction and submits it once', async () => {
     // Arrange
-    const { providers, seen } = await retainedProviders();
+    const { providers, seen } = await ledger8Providers();
 
     // Act
     const finalized = await withLedger8ContractScopedTransaction(providers, async (txCtx) => {
@@ -236,7 +236,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('reads the head, the contract state and the stored private state ONCE for the whole scope', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
 
     // Act
     await withLedger8ContractScopedTransaction(providers, async (txCtx) => {
@@ -252,7 +252,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('loads the ledger 8 era no more often for two calls than for one', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     await withLedger8ContractScopedTransaction(providers, async (txCtx) => {
       await submitCallTx(providers, callOptions('first', contractAddress), txCtx);
     });
@@ -271,7 +271,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('runs each later call against the states the earlier call ended on', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
 
     // Act
     await withLedger8ContractScopedTransaction(providers, async (txCtx) => {
@@ -290,7 +290,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('stores the private state the LAST call ended on, once, after the chain recorded the scope', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     const privateStates = contractStatesOf(providers.privateStateProvider);
 
     // Act
@@ -305,7 +305,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('proves, submits and stores nothing when the scope body throws', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     const failure = new Error('caller gave up');
 
     // Act
@@ -323,7 +323,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('refuses a recorded failure as TxFailedError and stores no private state', async () => {
     // Arrange
-    const { providers } = await retainedProviders(PRE_FORK_PROTOCOL_VERSION, FailEntirely);
+    const { providers } = await ledger8Providers(PRE_FORK_PROTOCOL_VERSION, FailEntirely);
 
     // Act
     const error = await withLedger8ContractScopedTransaction(providers, async (txCtx) => {
@@ -337,7 +337,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('refuses a second contract in the same scope', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     const otherAddress = createMockContractAddress();
 
     // Act
@@ -353,7 +353,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('builds a call with createUnprovenCallTx against the scope states without merging it', async () => {
     // Arrange
-    const { providers, seen } = await retainedProviders();
+    const { providers, seen } = await ledger8Providers();
 
     // Act
     await withLedger8ContractScopedTransaction(providers, async (txCtx) => {
@@ -372,7 +372,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('does not tie the scope to the contract of a call it only built', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     const previewedAddress = createMockContractAddress();
 
     // Act
@@ -388,7 +388,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('builds a call with createLedger8UnprovenCallTx against the scope states', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
 
     // Act
     await withLedger8ContractScopedTransaction(providers, async (txCtx) => {
@@ -404,7 +404,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('refuses a second private state of the same contract in one scope', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
 
     // Act
     const error = await withLedger8ContractScopedTransaction(providers, async (txCtx) => {
@@ -419,11 +419,11 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('refuses a call that stores private state when the scope cannot store it, before anything is proved', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     const withoutPrivateStates = { ...providers, privateStateProvider: undefined };
 
     // Act
-    const error = await withLedger8ContractScopedTransaction<RetainedContract, RetainedCircuit>(
+    const error = await withLedger8ContractScopedTransaction<Ledger8TestContract, Ledger8TestCircuit>(
       // @ts-expect-error a JavaScript caller can pass a provider set without a private-state provider
       withoutPrivateStates,
       async (txCtx) => {
@@ -438,7 +438,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('refuses a scope whose providers do not serve ledger 8, before its body runs', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     const body = vi.fn(async () => undefined);
 
     // Act
@@ -454,11 +454,11 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('joins the scope through a circuit call interface given the context as its first argument', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     const recipient = createMockCoinPublicKey();
     const recipientEncryptionKey = createMockEncryptionPublicKey();
     const mappings = new Map([[recipient, recipientEncryptionKey]]);
-    const callTx = createCircuitCallTxInterface(providers, retainedContract, contractAddress, PRIVATE_STATE_ID);
+    const callTx = createCircuitCallTxInterface(providers, ledger8TestContract, contractAddress, PRIVATE_STATE_ID);
 
     // Act
     const finalized = await withLedger8ContractScopedTransaction(
@@ -480,7 +480,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('refuses a scope body that made no call', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
 
     // Act
     const error = await withLedger8ContractScopedTransaction(providers, async (outer) => {
@@ -499,7 +499,7 @@ describe('a contract-scoped transaction on a pre-fork (ledger 8) network', () =>
 
   it('nests into a context passed as its third argument, without a head read or a submission', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
 
     // Act
     await withLedger8ContractScopedTransaction(providers, async (outer) => {
@@ -533,11 +533,11 @@ describe('which scope a head era gets', () => {
 
   it('withContractScopedTransaction runs a ledger 8 scope on a pre-fork head', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     let seen: unknown;
 
     // Act
-    await withContractScopedTransaction(providers, async (txCtx: Ledger8TransactionContext<RetainedContract, RetainedCircuit>) => {
+    await withContractScopedTransaction(providers, async (txCtx: Ledger8TransactionContext<Ledger8TestContract, Ledger8TestCircuit>) => {
       seen = txCtx;
       await submitCallTx(providers, callOptions('first', contractAddress), txCtx);
     });
@@ -566,7 +566,7 @@ describe('which scope a head era gets', () => {
 
   it('withLedger8ContractScopedTransaction refuses a post-fork head before its body runs, acquiring no era', async () => {
     // Arrange
-    const { providers } = await retainedProviders(POST_FORK_PROTOCOL_VERSION);
+    const { providers } = await ledger8Providers(POST_FORK_PROTOCOL_VERSION);
     const body = vi.fn(async () => undefined);
 
     // Act
@@ -583,7 +583,7 @@ describe('which scope a head era gets', () => {
 
   it('refuses a ledger 9 contract called inside a ledger 8 scope, naming the real fault', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     const v9Providers = createMockProviders();
     v9Providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(PRE_FORK_PROTOCOL_VERSION);
 
@@ -616,7 +616,7 @@ describe('how a call recognises a scope of either era', () => {
   });
 
   const inLedger8Scope = async (body: (txCtx: AnyLedger8TransactionContext) => Promise<void>): Promise<unknown> => {
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     return withLedger8ContractScopedTransaction(providers, body).catch((e: unknown) => e);
   };
 
@@ -629,13 +629,13 @@ describe('how a call recognises a scope of either era', () => {
 
   it('nests a ledger 8 scope through withContractScopedTransaction, without a submission of its own', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     let nested: unknown;
 
     // Act
     await withLedger8ContractScopedTransaction(providers, async (outer) => {
       // @ts-expect-error the parameter is declared as options; a JavaScript caller can still pass a context
-      nested = await withContractScopedTransaction(providers, async (inner: Ledger8TransactionContext<RetainedContract, RetainedCircuit>) => {
+      nested = await withContractScopedTransaction(providers, async (inner: Ledger8TransactionContext<Ledger8TestContract, Ledger8TestCircuit>) => {
         await submitCallTx(providers, callOptions('first', contractAddress), inner);
       }, outer);
     });
@@ -683,8 +683,8 @@ describe('how a call recognises a scope of either era', () => {
 
   it('refuses a ledger 9 scope handed to a ledger 8 circuit interface', async () => {
     // Arrange
-    const { providers } = await retainedProviders(POST_FORK_PROTOCOL_VERSION);
-    const callTx = createCircuitCallTxInterface(providers, retainedContract, contractAddress, PRIVATE_STATE_ID);
+    const { providers } = await ledger8Providers(POST_FORK_PROTOCOL_VERSION);
+    const callTx = createCircuitCallTxInterface(providers, ledger8TestContract, contractAddress, PRIVATE_STATE_ID);
 
     // Act
     const error = await withLedger9ContractScopedTransaction(createMockProviders(), async (txCtx) => {
@@ -714,7 +714,7 @@ describe('how a call recognises a scope of either era', () => {
 
   it('names the contract era, not the scope, when createLedger9UnprovenCallTx is given a ledger 8 contract', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
 
     // Act
     const error = await inLedger8Scope(async (txCtx) => {
@@ -741,7 +741,7 @@ describe('how a call recognises a scope of either era', () => {
 
   it('refuses a scope whose body made no call', async () => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
 
     // Act
     const error = await withLedger8ContractScopedTransaction(providers, async () => undefined).catch((e: unknown) => e);
@@ -760,7 +760,7 @@ describe('how a call recognises a scope of either era', () => {
     ['withLedger9ContractScopedTransaction', 'an unknown era', 'v7', InvalidArgumentError]
   ] as const)('%s refuses an outer scope that names %s, before its body runs', async (name, _label, era, refusal) => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     const outer = { [TypeId]: TypeId, [Symbol.for('@midnight-ntwrk/midnight-js#Transaction/ScopeEra')]: era };
     const body = vi.fn(async () => undefined);
     const scope = { withContractScopedTransaction, withLedger8ContractScopedTransaction, withLedger9ContractScopedTransaction }[name];
@@ -779,7 +779,7 @@ describe('how a call recognises a scope of either era', () => {
     ['the ledger 8 era but comes from another copy of midnight-js', 'v8']
   ])('refuses a scope context that names %s', async (_label, era) => {
     // Arrange
-    const { providers } = await retainedProviders();
+    const { providers } = await ledger8Providers();
     const context = { [TypeId]: TypeId, [Symbol.for('@midnight-ntwrk/midnight-js#Transaction/ScopeEra')]: era };
 
     // Act

@@ -1,0 +1,371 @@
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js-indexer-public-data-provider](../../README.md) / [index](../README.md) / IndexerDataError
+
+# Class: IndexerDataError
+
+An error raised when indexer-returned data is structurally inconsistent
+with the provider's expectations: unknown enum values, broken referential
+integrity between related rows, or missing relations the schema implies
+should be present.
+
+Distinct from:
+- [IndexerSubscriptionDataError](IndexerSubscriptionDataError.md) — missing top-level field on a
+  subscription payload (server returned `null`/`undefined` for a field).
+- [IndexerFormattedError](IndexerFormattedError.md) — errors the server explicitly returned
+  as `GraphQLFormattedError` entries.
+- [IndexerQueryError](IndexerQueryError.md) — transport / Apollo failure before data is
+  parsed.
+
+Construct via the static factory methods to ensure the message and
+[context](#context) stay in sync.
+
+## Extends
+
+- [`IndexerError`](IndexerError.md)
+
+## Constructors
+
+### Constructor
+
+> **new IndexerDataError**(`context`, `options?`): `IndexerDataError`
+
+#### Parameters
+
+##### context
+
+[`IndexerDataErrorContext`](../type-aliases/IndexerDataErrorContext.md)
+
+##### options?
+
+`ErrorOptions`
+
+#### Returns
+
+`IndexerDataError`
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`constructor`](IndexerError.md#constructor)
+
+## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/index/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`category`](IndexerError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_PR_INDEXER_DATA_INVALID"` = `PROVIDER_ERROR_CODES.INDEXER_DATA_INVALID`
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`code`](IndexerError.md#code)
+
+***
+
+### context
+
+> `readonly` **context**: [`IndexerDataErrorContext`](../type-aliases/IndexerDataErrorContext.md)
+
+## Methods
+
+### eraDisagreement()
+
+> `static` **eraDisagreement**(`protocolVersion`, `reportedVersion`, `stateVersion`): `IndexerDataError`
+
+#### Parameters
+
+##### protocolVersion
+
+`number`
+
+##### reportedVersion
+
+`"v8"` \| `"v9"`
+
+##### stateVersion
+
+`"v8"` \| `"v9"`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedParametersEncoding()
+
+> `static` **malformedParametersEncoding**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedProtocolVersion()
+
+> `static` **malformedProtocolVersion**(`protocolVersion`, `cause`, `read?`): `IndexerDataError`
+
+#### Parameters
+
+##### protocolVersion
+
+`number`
+
+##### cause
+
+`unknown`
+
+##### read?
+
+###### contractAddress
+
+`string`
+
+###### method
+
+[`StateReadMethod`](../../../midnight-js/types/type-aliases/StateReadMethod.md)
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedStateEncoding()
+
+> `static` **malformedStateEncoding**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedTransactionEncoding()
+
+> `static` **malformedTransactionEncoding**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedZswapEncoding()
+
+> `static` **malformedZswapEncoding**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedZswapState()
+
+> `static` **malformedZswapState**(`era`, `cause`): `IndexerDataError`
+
+#### Parameters
+
+##### era
+
+`"v8"` \| `"v9"`
+
+##### cause
+
+`unknown`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### missingContractAction()
+
+> `static` **missingContractAction**(`contractAddress`): `IndexerDataError`
+
+#### Parameters
+
+##### contractAddress
+
+`string`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### missingEventField()
+
+> `static` **missingEventField**(`typename`, `field`): `IndexerDataError`
+
+#### Parameters
+
+##### typename
+
+`string`
+
+##### field
+
+`string`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### missingIdentifier()
+
+> `static` **missingIdentifier**(`contractAddress`, `actionIndex`, `identifiersLength`): `IndexerDataError`
+
+#### Parameters
+
+##### contractAddress
+
+`string`
+
+##### actionIndex
+
+`number`
+
+##### identifiersLength
+
+`number`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### missingLatestBlock()
+
+> `static` **missingLatestBlock**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### mixedEraPublicStates()
+
+> `static` **mixedEraPublicStates**(`stateVersion`, `parametersVersion`): `IndexerDataError`
+
+#### Parameters
+
+##### stateVersion
+
+`"v8"` \| `"v9"`
+
+##### parametersVersion
+
+`"v8"` \| `"v9"`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### parametersEraDisagreement()
+
+> `static` **parametersEraDisagreement**(`protocolVersion`, `reportedVersion`, `parametersVersion`): `IndexerDataError`
+
+#### Parameters
+
+##### protocolVersion
+
+`number`
+
+##### reportedVersion
+
+`"v8"` \| `"v9"`
+
+##### parametersVersion
+
+`"v8"` \| `"v9"`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### undatedState()
+
+> `static` **undatedState**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### unknownAddressKind()
+
+> `static` **unknownAddressKind**(`typename`, `field`, `value`): `IndexerDataError`
+
+#### Parameters
+
+##### typename
+
+`string`
+
+##### field
+
+`string`
+
+##### value
+
+`string`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### unknownEventType()
+
+> `static` **unknownEventType**(`typename`): `IndexerDataError`
+
+#### Parameters
+
+##### typename
+
+`string`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### unknownStatus()
+
+> `static` **unknownStatus**(`value`): `IndexerDataError`
+
+#### Parameters
+
+##### value
+
+`string`
+
+#### Returns
+
+`IndexerDataError`

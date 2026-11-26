@@ -52,8 +52,8 @@ import {
   submitCallTxAsync,
   submitReplaceAuthorityTx,
   submitTx
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { latestNetworkLedgerVersion, ledger9Protocol, types } from '@midnight-ntwrk/midnight-js';
+} from '@midnightntwrk/midnight-js-contracts';
+import { latestNetworkLedgerVersion, ledger9Protocol, types } from '@midnightntwrk/midnight-js';
 
 const { CompiledContract } = ledger9Protocol;
 
@@ -124,7 +124,7 @@ for (const event of ['uncaughtException', 'unhandledRejection']) {
  * rejected and puts the provider's own failure -- class name intact, message
  * redacted -- on `cause`, so a report that prints `error.message` alone says a
  * transaction was refused and never says by what. That is what happened on the
- * first run of the retained matrix.
+ * first run of the ledger 8 matrix.
  */
 const describeError = (error, depth = 0) => {
   if (!(error instanceof Error)) {
@@ -539,9 +539,9 @@ const buildProviders = async (era, testkit, logger) => {
   return {
     wallet,
     providers: providersFor(testkit, era, wallet, {
-      zkConfigPath: config.retainedZkConfigPath,
+      zkConfigPath: config.ledger8ZkConfigPath,
       privateStateStoreName: `fork-${era}`,
-      // The retained toolchain emits no `compiler/contract-manifest.json` --
+      // The ledger 8 toolchain emits no `compiler/contract-manifest.json` --
       // `compactc` 0.31.1 predates it -- and integrity verification reads exactly
       // that file. `require` is therefore unsatisfiable for ANY pre-fork artifact,
       // however intact it is, so this drops to `warn` rather than pretending the
@@ -560,7 +560,7 @@ const TOKEN_TYPE = new Uint8Array(32).fill(3);
 const tenMinutesAgo = () => BigInt(Math.floor(Date.now() / 1000)) - 600n;
 
 /**
- * The retained-era twins, and what is asked of each on either side of the fork.
+ * The ledger 8 twins, and what is asked of each on either side of the fork.
  *
  * This is the fork crossing's actual question, finally asked of something other than a
  * counter: the contract is deployed on a ledger-8 chain, called there, and then
@@ -571,7 +571,7 @@ const tenMinutesAgo = () => BigInt(Math.floor(Date.now() / 1000)) - 600n;
  * difference in the framework and not in the contract.
  *
  * `events` has no twin: `emit` is not a language-0.23 form. See
- * `consumer-e2e/build-retained-twins.mjs`.
+ * `consumer-e2e/build-ledger8-twins.mjs`.
  *
  * The post-fork call varies its domain separator or nonce where the circuit
  * mints, so a keep-state call cannot pass by re-minting the identical coin the
@@ -585,7 +585,7 @@ const tenMinutesAgo = () => BigInt(Math.floor(Date.now() / 1000)) - 600n;
  * partitioned checkpointed mint-and-send.
  *
  * `unshielded` and `shielded` drive ONE of their circuits here against the
- * several their current-era namesakes drive in `MATRIX`: a retained twin exists
+ * several their current-era namesakes drive in `MATRIX`: a ledger 8 twin exists
  * to answer the crossing question, and the per-circuit surface is covered on the
  * current era. An era difference confined to the circuits left out would not show.
  */
@@ -612,7 +612,7 @@ const tenMinutesAgo = () => BigInt(Math.floor(Date.now() / 1000)) - 600n;
  */
 const PRIVATE_COUNTER_STEP = BigInt(7 + (Date.now() % 97));
 
-const RETAINED_MATRIX = [
+const LEDGER8_MATRIX = [
   {
     key: 'simple',
     preFork: [{ circuitId: 'noop' }],
@@ -631,13 +631,13 @@ const RETAINED_MATRIX = [
     // WHY THIS TWIN ASSERTS THROUGH A CIRCUIT AND NOT THROUGH `state`.
     //
     // What survives for `unshielded` is the contract's BALANCE: it declares no
-    // ledger block, so `readRetainedLedger` cannot reach it. The circuit that
+    // ledger block, so `readLedger8Ledger` cannot reach it. The circuit that
     // reads it back is `getUnshieldedBalanceTest`, and this twin drives it
     // across the boundary.
     //
     // That read used to be REFUSED here, and the refusal was the framework's:
-    // the retained-era path handed the runtime a `ChargedState`, which carries no
-    // balance, so every retained circuit executed against an empty one. A read
+    // the ledger 8 path handed the runtime a `ChargedState`, which carries no
+    // balance, so every ledger 8 circuit executed against an empty one. A read
     // of a HELD colour therefore built a transcript claiming zero, and the node
     // refused it for disagreeing with the balance it really held (#1345). An
     // UNHELD colour agreed by accident, which is why a probe that swapped the
@@ -650,7 +650,7 @@ const RETAINED_MATRIX = [
         circuitId: 'mintUnshieldedToSelfTest',
         args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT],
         // The minted colour, which is what the post-fork send has to name. Kept
-        // across the boundary by `retainedCaptures`, since a context rebuilt per
+        // across the boundary by `ledger8Captures`, since a context rebuilt per
         // leg cannot carry one.
         capture: 'preForkColor'
       }
@@ -854,7 +854,7 @@ const RETAINED_MATRIX = [
     preFork: [{ circuitId: 'increment' }],
     postFork: { circuitId: 'increment' },
     secondCall: { circuitId: 'increment' },
-    // Driven through the re-attached handle rather than through `callRetained`,
+    // Driven through the re-attached handle rather than through `callLedger8`,
     // which is the whole point of declaring it: see leg (c3).
     afterFind: { circuitId: 'increment' },
     state: {
@@ -884,29 +884,29 @@ const RETAINED_MATRIX = [
  */
 const ASSERTED_PHASES = ['preFork', 'postFork', 'secondCall'];
 
-for (const entry of RETAINED_MATRIX) {
+for (const entry of LEDGER8_MATRIX) {
   for (const block of ['state', 'privateState']) {
     if (entry[block] === undefined) {
       continue;
     }
     for (const phase of ASSERTED_PHASES) {
       if (entry[block][phase] === undefined) {
-        throw new Error(`retained twin '${entry.key}' declares '${block}' but names no '${phase}' expectation`);
+        throw new Error(`ledger 8 twin '${entry.key}' declares '${block}' but names no '${phase}' expectation`);
       }
     }
     // Declared but never driven: an `afterFind` expectation with no `afterFind`
     // call would be checked against whatever the previous leg left, and pass.
     if (entry[block].afterFind !== undefined && entry.afterFind === undefined) {
-      throw new Error(`retained twin '${entry.key}' expects '${block}.afterFind' but drives no afterFind call`);
+      throw new Error(`ledger 8 twin '${entry.key}' expects '${block}.afterFind' but drives no afterFind call`);
     }
   }
 }
 
 /** One twin's declaration, by key. Throws because every caller needs the entry and none can proceed without it. */
-const retainedEntry = (key) => {
-  const entry = RETAINED_MATRIX.find((candidate) => candidate.key === key);
+const ledger8Entry = (key) => {
+  const entry = LEDGER8_MATRIX.find((candidate) => candidate.key === key);
   if (entry === undefined) {
-    throw new Error(`'${key}' is not a retained twin`);
+    throw new Error(`'${key}' is not a ledger 8 twin`);
   }
   return entry;
 };
@@ -918,16 +918,16 @@ const retainedEntry = (key) => {
  * `private-counter` does -- their codegen has an empty `Witnesses` type, so an
  * empty object is the complete implementation rather than a stub.
  */
-const retainedWitnesses = (key) => retainedEntry(key).witnesses?.() ?? {};
+const ledger8Witnesses = (key) => ledger8Entry(key).witnesses?.() ?? {};
 
-/** What each retained twin's deploy and calls produced, carried from the pre-fork legs to the post-fork ones. */
-const retainedDeployments = new Map();
+/** What each ledger 8 twin's deploy and calls produced, carried from the pre-fork legs to the post-fork ones. */
+const ledger8Deployments = new Map();
 
 /**
- * What each retained twin's circuits RETURNED, by twin key, for the legs that
+ * What each ledger 8 twin's circuits RETURNED, by twin key, for the legs that
  * come after.
  *
- * Separate from the per-leg context and from `retainedDeployments` because it
+ * Separate from the per-leg context and from `ledger8Deployments` because it
  * is the one thing that has to cross the fork: a context is rebuilt on every
  * leg -- it has to be, since the wallet is replaced at the `post-fork head era`
  * gate -- so a value produced before the boundary has nowhere else to live.
@@ -935,12 +935,12 @@ const retainedDeployments = new Map();
  * pre-fork is what the post-fork send must name, and a colour cannot be
  * recomputed from anything this file holds.
  */
-const retainedCaptures = new Map();
+const ledger8Captures = new Map();
 
 /**
- * The retained twins whose post-fork call list ran to the END.
+ * The ledger 8 twins whose post-fork call list ran to the END.
  *
- * `callRetained` THROWS on a failed `expect`, which stops the remaining calls in
+ * `callLedger8` THROWS on a failed `expect`, which stops the remaining calls in
  * the list -- deliberately, so the next one does not run against state the
  * assertion just denied. For `unshielded` that list ends with a mint, so a wrong
  * balance figure also leaves the second-call leg below running against state the
@@ -950,7 +950,7 @@ const retainedCaptures = new Map();
  *
  * So the second-call leg asks this before it interprets anything.
  */
-const retainedPostForkCompleted = new Set();
+const ledger8PostForkCompleted = new Set();
 
 /**
  * The wallet's current keys, plus whatever this twin captured on an earlier leg.
@@ -958,28 +958,28 @@ const retainedPostForkCompleted = new Set();
  * A function rather than three call sites building the object, and that is the
  * whole point: when the post-fork leg built its context from `walletContext`
  * alone, `sendUnshieldedToUserTest` was handed `undefined` for the colour and
- * died inside the twin's own codegen on `reading 'buffer'`. Every retained leg
+ * died inside the twin's own codegen on `reading 'buffer'`. Every ledger 8 leg
  * now reaches its context the same way, so a twin that adds a `capture` cannot
  * be read correctly on one leg and not on the next.
  *
  * Captures FIRST: the wallet's keys are re-read on every call and must win over
  * anything a circuit happened to return under the same name.
  */
-const retainedContext = async (key) => ({
-  ...retainedCaptures.get(key),
+const ledger8Context = async (key) => ({
+  ...ledger8Captures.get(key),
   ...(await walletContext(session.wallet))
 });
 
-const retainedZkConfigPath = (key) => {
-  const zkConfigPath = config.retainedMatrixZkConfigPaths?.[key];
+const ledger8ZkConfigPath = (key) => {
+  const zkConfigPath = config.ledger8MatrixZkConfigPaths?.[key];
   if (zkConfigPath === undefined) {
-    throw new Error(`the driver passed no retained ZK artifact path for '${key}'`);
+    throw new Error(`the driver passed no ledger 8 ZK artifact path for '${key}'`);
   }
   return zkConfigPath;
 };
 
 /**
- * Providers for one retained twin on one side of the boundary.
+ * Providers for one ledger 8 twin on one side of the boundary.
  *
  * `verify: 'warn'` for the same reason the counter's are: `compactc` 0.31.1
  * emits no `compiler/contract-manifest.json`, so integrity verification has
@@ -991,7 +991,7 @@ const retainedZkConfigPath = (key) => {
  *
  * - private state written before the boundary, read after it -- the whole
  *   subject of the `private-counter` twin, which lands under this name itself;
- * - the signing key the retained deploy persists, which a post-fork
+ * - the signing key the ledger 8 deploy persists, which a post-fork
  *   `findDeployedContract` reports back, and which lands under
  *   `${privateStateStoreName}-signing-keys`;
  * - anything else a consumer would keep across the fork.
@@ -1002,31 +1002,31 @@ const retainedZkConfigPath = (key) => {
  * era-suffixed name modelled something no consumer does. The legs that needed
  * it would have failed for a harness reason and read as framework defects.
  */
-const retainedProvidersFor = (era, wallet, key) =>
+const ledger8ProvidersFor = (era, wallet, key) =>
   providersFor(testkit, era, wallet, {
-    zkConfigPath: retainedZkConfigPath(key),
-    privateStateStoreName: `fork-retained-${key}`,
+    zkConfigPath: ledger8ZkConfigPath(key),
+    privateStateStoreName: `fork-ledger8-${key}`,
     zkConfigIntegrity: { verify: 'warn' }
   });
 
 /**
- * Deploys one retained twin on the pre-fork chain, through the public entry point.
+ * Deploys one ledger 8 twin on the pre-fork chain, through the public entry point.
  *
- * `deployContract`'s retained-era path, which is the surface a consumer has. This
+ * `deployContract`'s ledger 8 path, which is the surface a consumer has. This
  * used to hand-roll the deploy against protocol's era facade, because the path
  * refused unconditionally: that route measured `protocol` and left a regression
  * in the public path invisible to every twin in the matrix.
  *
- * Options read exactly like `callRetained`'s: `compiledContract` takes the RAW
- * instance -- the retained era has no `CompiledContract` container -- and every
+ * Options read exactly like `callLedger8`'s: `compiledContract` takes the RAW
+ * instance -- ledger 8 has no `CompiledContract` container -- and every
  * twin's constructor is nullary, so `args` is the empty tuple. Written out
- * rather than omitted, for the reason `callRetained` records: an absent `args`
+ * rather than omitted, for the reason `callLedger8` records: an absent `args`
  * and `args: []` are the same thing to both entry points, and only the second
  * form typechecks from a helper this generic.
  *
  * The private-state pair is named only by a twin that declares one. For the
  * others it stays absent, and that is not an omission: their constructors read
- * no witness, and the retained runtime passes an absent private state straight
+ * no witness, and the ledger 8 runtime passes an absent private state straight
  * through to `currentPrivateState` rather than refusing it -- measured against
  * the real 0.16 runtime, where `undefined` is what comes back and `{}` is only
  * what a replay double answers.
@@ -1045,10 +1045,10 @@ const retainedProvidersFor = (era, wallet, key) =>
  * every twin circuit is an `export circuit`, so each one lands in
  * `impureCircuits` AND ships a key on disk.
  */
-const deployRetained = async (key, providers) => {
-  const { Contract } = await import(`@midnight-ntwrk/fork-retained-${key}`);
-  const compiledContract = new Contract(retainedWitnesses(key));
-  const privateState = retainedEntry(key).privateState;
+const deployLedger8 = async (key, providers) => {
+  const { Contract } = await import(`@midnight-ntwrk/fork-ledger8-${key}`);
+  const compiledContract = new Contract(ledger8Witnesses(key));
+  const privateState = ledger8Entry(key).privateState;
   const deployed =
     privateState === undefined
       ? await deployContract(providers, { compiledContract, args: [] })
@@ -1095,9 +1095,9 @@ const reportableDeployment = (deployed) => ({
 });
 
 /**
- * Calls one circuit on a retained twin.
+ * Calls one circuit on a ledger 8 twin.
  *
- * `compiledContract` takes the raw instance -- the retained era has no
+ * `compiledContract` takes the raw instance -- ledger 8 has no
  * `CompiledContract` container.
  *
  * `args` is always PRESENT, and `[]` for a nullary circuit rather than absent.
@@ -1112,14 +1112,14 @@ const reportableDeployment = (deployed) => ({
  * instead. `args: undefined` would NOT: `'args' in options` is then true and
  * the normalisation hands `undefined` straight through.
  */
-const callRetained = async (key, providers, contractAddress, call, context) => {
-  const { Contract } = await import(`@midnight-ntwrk/fork-retained-${key}`);
-  const compiledContract = new Contract(retainedWitnesses(key));
+const callLedger8 = async (key, providers, contractAddress, call, context) => {
+  const { Contract } = await import(`@midnight-ntwrk/fork-ledger8-${key}`);
+  const compiledContract = new Contract(ledger8Witnesses(key));
   const args = call.args === undefined ? [] : call.args(context);
-  const privateState = retainedEntry(key).privateState;
-  // Two literals, for SYMMETRY with `deployRetained` rather than for its reason.
+  const privateState = ledger8Entry(key).privateState;
+  // Two literals, for SYMMETRY with `deployLedger8` rather than for its reason.
   // `Ledger8CallTxOptions`' base variant merely omits `privateStateId` -- no
-  // `?: never` -- and the retained entry reads the value, so an explicit
+  // `?: never` -- and the ledger 8 entry reads the value, so an explicit
   // `undefined` here would typecheck and would mean "no id named". The branch is
   // kept anyway: a call site that looks like the deploy above is one a reader can
   // check once instead of twice.
@@ -1136,7 +1136,7 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
 
   // Read through the SAME shape the current-era path answers with -- `public` for
   // the finalized record, `private` for the circuit's own return value. The
-  // retained-era path used to answer a thin `{ circuitId, nextPrivateState, txData }`
+  // ledger 8 path used to answer a thin `{ circuitId, nextPrivateState, txData }`
   // and `result` was unreachable from here.
   //
   // `status` is recorded, not asserted. Both paths of `submitCallTx` throw before
@@ -1148,11 +1148,11 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
   // later leg passes this back into a circuit as an argument, and the twin's
   // codegen wants the value, not a rendering of it.
   if (call.capture !== undefined) {
-    retainedCaptures.set(key, { ...retainedCaptures.get(key), [call.capture]: submitted.private.result });
+    ledger8Captures.set(key, { ...ledger8Captures.get(key), [call.capture]: submitted.private.result });
   }
 
   // THROWS rather than pushing onto `failures`, unlike the current-era path's
-  // check. A retained call's return value is asserted at most once per leg and
+  // check. A ledger 8 call's return value is asserted at most once per leg and
   // the legs that follow build on it, so a wrong figure has to stop the leg
   // rather than let the next call run against state the assertion just said was
   // not there. `leg` turns it into the row and the failure.
@@ -1161,7 +1161,7 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
   // cannot be asserted this way. No twin needs that today.
   if (call.expect !== undefined && submitted.private.result !== call.expect) {
     throw new Error(
-      `retained ${key}/${call.circuitId} returned ${String(submitted.private.result)}, expected ${String(call.expect)}`
+      `ledger 8 ${key}/${call.circuitId} returned ${String(submitted.private.result)}, expected ${String(call.expect)}`
     );
   }
 
@@ -1175,7 +1175,7 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
 };
 
 /**
- * Reads one field out of a retained twin's ledger, with the twin's OWN codegen.
+ * Reads one field out of a ledger 8 twin's ledger, with the twin's OWN codegen.
  *
  * These are the only measurements in the run that read state written before the
  * boundary. Every other post-fork leg establishes that the address is still
@@ -1209,10 +1209,10 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
  * read above. Closing the other two needs a circuit that does not exist in the
  * source yet, so it is a fixture change rather than a harness one.
  */
-const readRetainedLedger = async (key, providers, contractAddress, read) => {
+const readLedger8Ledger = async (key, providers, contractAddress, read) => {
   const [{ ledger }, runtime, currentRuntime] = await Promise.all([
-    import(`@midnight-ntwrk/fork-retained-${key}`),
-    import(`@midnight-ntwrk/fork-retained-${key}/runtime`),
+    import(`@midnight-ntwrk/fork-ledger8-${key}`),
+    import(`@midnight-ntwrk/fork-ledger8-${key}/runtime`),
     import('@midnight-ntwrk/fork-current-baseline/runtime')
   ]);
 
@@ -1250,7 +1250,7 @@ const checkLedgerState = async (label, entry, phase, providers, contractAddress)
   if (expected === undefined) {
     return undefined;
   }
-  const actual = await readRetainedLedger(entry.key, providers, contractAddress, entry.state.read);
+  const actual = await readLedger8Ledger(entry.key, providers, contractAddress, entry.state.read);
   if (actual !== expected) {
     failures.push(`${label}: ledger ${entry.state.label} is ${actual}, expected ${expected}`);
   }
@@ -1332,7 +1332,7 @@ const IN_FLIGHT_DEADLINE = 6 * 60_000;
  * The ceiling on ONE attempt, and the thing that keeps this probe from ending the run.
  *
  * `IN_FLIGHT_DEADLINE` is tested at the top of the loop, so it cannot interrupt a
- * call already in flight -- and a retained `submitCallTx` waits on
+ * call already in flight -- and a ledger 8 `submitCallTx` waits on
  * `watchForTxData`, which polls for finalization with NO timeout of its own. A
  * transaction the chain drops rather than explicitly rejects therefore never
  * returns. That is not a hypothetical: it is the boundary case this probe exists
@@ -1356,7 +1356,7 @@ const IN_FLIGHT_CALL_TIMEOUT = 90_000;
 const IN_FLIGHT_PROBE_TIMEOUT = IN_FLIGHT_DEADLINE + IN_FLIGHT_CALL_TIMEOUT + 60_000;
 
 /**
- * Drives retained-era calls into the fork window, and reports what each one met.
+ * Drives ledger 8 calls into the fork window, and reports what each one met.
  *
  * A PROBE, NOT A LEG, and the distinction is the whole design. The framework
  * documents what happens to a transaction built against the pre-fork ledger that
@@ -1403,7 +1403,7 @@ const driveCallsAcrossTheBoundary = async (forkOutcome) => {
       stoppedBecause: 'the pre-fork baseline deploy did not complete, so there was nothing to call'
     };
   }
-  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+  const { Contract } = await import('@midnight-ntwrk/fork-ledger8-baseline');
   const deadline = Date.now() + IN_FLIGHT_DEADLINE;
   const attempts = [];
 
@@ -1471,7 +1471,7 @@ const driveCallsAcrossTheBoundary = async (forkOutcome) => {
   // the exact noise the gate exists to prevent.
   if (attempts.length > 0 && answered === 0 && forkOutcome() !== 'failed') {
     failures.push(
-      `a retained call in flight as the fork applies: the chain answered none of ${attempts.length} calls, ` +
+      `a ledger 8 call in flight as the fork applies: the chain answered none of ${attempts.length} calls, ` +
         `so this run observed nothing about the boundary -- first refusal: ${attempts[0].error ?? attempts[0].outcome}`
     );
   }
@@ -1499,7 +1499,7 @@ const driveCallsAcrossTheBoundary = async (forkOutcome) => {
   };
 };
 
-const testkit = await import('@midnight-ntwrk/testkit-js');
+const testkit = await import('@midnightntwrk/testkit-js');
 const logger = testkit.createLogger(config.logPath);
 
 let session = await buildProviders('v8', testkit, logger);
@@ -1510,7 +1510,7 @@ let deployment;
 await leg('pre-fork head era', () => latestNetworkLedgerVersion(session.providers.publicDataProvider));
 
 // The contract every leg below the boundary is measured against, deployed
-// through `deployContract`'s retained-era path -- the entry point a consumer has, and
+// through `deployContract`'s ledger 8 path -- the entry point a consumer has, and
 // the one the rest of the file then calls, finds and reads. It stands in for the
 // pre-fork dApp that would already have deployed on the previous framework
 // major, and it is now also the run's only coverage of that path: the path is
@@ -1520,9 +1520,9 @@ await leg('pre-fork head era', () => latestNetworkLedgerVersion(session.provider
 // This leg used to compose the deploy by hand against protocol's era facade,
 // because the path refused before reading any head. That made the deploy a
 // measurement of `protocol` rather than of `contracts`.
-await leg('pre-fork retained deploy', async () => {
-  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
-  // Raw instance, empty `args`, no private-state pair -- `deployRetained` carries
+await leg('pre-fork ledger 8 deploy', async () => {
+  const { Contract } = await import('@midnight-ntwrk/fork-ledger8-baseline');
+  // Raw instance, empty `args`, no private-state pair -- `deployLedger8` carries
   // why each of the three is written the way it is.
   const deployed = await deployContract(session.providers, { compiledContract: new Contract({}), args: [] });
 
@@ -1541,10 +1541,10 @@ await leg('pre-fork retained deploy', async () => {
 });
 
 // (a) continued: a CALL through the unified entry, which is the reachable half.
-await leg('pre-fork retained call', async () => {
-  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+await leg('pre-fork ledger 8 call', async () => {
+  const { Contract } = await import('@midnight-ntwrk/fork-ledger8-baseline');
   const submitted = await submitCallTx(session.providers, {
-    // `compiledContract`, not `contract`: the retained era has no CompiledContract
+    // `compiledContract`, not `contract`: ledger 8 has no CompiledContract
     // container, so the instance is passed raw. `increment` is nullary, so `args`
     // is the EMPTY tuple -- not absent, and not arguments the circuit does not
     // take. This call site once had the name wrong and the arguments wrong, and
@@ -1557,7 +1557,7 @@ await leg('pre-fork retained call', async () => {
     circuitId: CIRCUIT_ID,
     args: []
   });
-  // The RETAINED-era path resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
+  // The LEDGER 8 path resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
   // public, private }` -- which now carries the finalized record on `public`
   // exactly as the current era does, so the id is read the same way in both eras.
   // `submitted.txId` is NOT it: neither path puts the id at the top level.
@@ -1584,7 +1584,7 @@ const assertSubmitted = (built, record, era) => {
 
 if (MEASURES_LOW_LEVEL) {
   await leg('pre-fork low-level ledger 8 deploy, then submitTx', async () => {
-    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+    const { Contract } = await import('@midnight-ntwrk/fork-ledger8-baseline');
     const built = await createLedger8UnprovenDeployTx(session.providers, { compiledContract: new Contract({}), args: [] });
     const record = await submitTx(session.providers, { unprovenTx: built.private.unprovenTx });
     const submitted = assertSubmitted(built, record, 'v8');
@@ -1597,7 +1597,7 @@ if (MEASURES_LOW_LEVEL) {
     if (lowLevelDeployment === undefined) {
       throw new Error('the low-level deploy above did not complete');
     }
-    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+    const { Contract } = await import('@midnight-ntwrk/fork-ledger8-baseline');
     const built = await createLedger8UnprovenCallTx(session.providers, {
       compiledContract: new Contract({}),
       contractAddress: lowLevelDeployment.contractAddress,
@@ -1611,7 +1611,7 @@ if (MEASURES_LOW_LEVEL) {
 
 // (a) continued: THE READ SURFACE ACROSS THE BOUNDARY. These probes record what
 // each read member hands back for a contract that really is deployed and really
-// does carry a retained envelope: bytes, with the era of the ledger that wrote
+// does carry a ledger 8 envelope: bytes, with the era of the ledger that wrote
 // them, in both eras.
 //
 // ONE SHARD. The baseline contract they read is deployed by every shard, so
@@ -1646,14 +1646,14 @@ let streamHeldAcrossTheBoundary;
 let streamMarkBeforeTheFork;
 
 if (MEASURES_READ_SURFACE) {
-  await probe('pre-fork read of the retained contract', () =>
+  await probe('pre-fork read of the ledger 8 contract', () =>
     decodeAnswer(async () => {
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
       return state === null ? { note: 'the indexer served no state' } : describeStateRead(state);
     })
   );
 
-  await probe('pre-fork contract-state stream on the retained contract', async () => {
+  await probe('pre-fork contract-state stream on the ledger 8 contract', async () => {
     streamHeldAcrossTheBoundary = watchContractStates(
       session.providers.publicDataProvider,
       deployment.contractAddress,
@@ -1664,23 +1664,23 @@ if (MEASURES_READ_SURFACE) {
   });
 }
 
-// (a) continued: the rest of the retained-era contracts, deployed and called on
+// (a) continued: the rest of the ledger 8 contracts, deployed and called on
 // the pre-fork chain. Same source as the current-era matrix below, built with
 // `compactc` 0.31.1, so the pair differ only in the toolchain that emitted them.
-for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
-  await leg(`pre-fork retained ${entry.key}`, async () => {
-    const providers = retainedProvidersFor('v8', session.wallet, entry.key);
-    const deployed = await deployRetained(entry.key, providers);
-    retainedDeployments.set(entry.key, deployed);
+for (const entry of LEDGER8_MATRIX.filter((candidate) => covers(SELECTED.ledger8, candidate.key))) {
+  await leg(`pre-fork ledger 8 ${entry.key}`, async () => {
+    const providers = ledger8ProvidersFor('v8', session.wallet, entry.key);
+    const deployed = await deployLedger8(entry.key, providers);
+    ledger8Deployments.set(entry.key, deployed);
 
-    const context = await retainedContext(entry.key);
+    const context = await ledger8Context(entry.key);
     const calls = [];
     for (const call of entry.preFork) {
       calls.push(
-        await callRetained(entry.key, providers, deployed.contractAddress, call, context)
+        await callLedger8(entry.key, providers, deployed.contractAddress, call, context)
       );
     }
-    const label = `pre-fork retained ${entry.key}`;
+    const label = `pre-fork ledger 8 ${entry.key}`;
     const ledgerState = await checkLedgerState(label, entry, 'preFork', providers, deployed.contractAddress);
     const privateState = await checkPrivateState(label, entry, 'preFork', providers, deployed.contractAddress);
     return { ...reportableDeployment(deployed), calls, ...(ledgerState ?? {}), ...(privateState ?? {}) };
@@ -1700,16 +1700,16 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 //
 // So: ask the same provider, at the same address, for an id nothing ever wrote.
 // The answer has to be nothing.
-for (const entry of RETAINED_MATRIX.filter(
-  (candidate) => covers(SELECTED.retained, candidate.key) && candidate.privateState !== undefined
+for (const entry of LEDGER8_MATRIX.filter(
+  (candidate) => covers(SELECTED.ledger8, candidate.key) && candidate.privateState !== undefined
 )) {
   const name = `pre-fork private state is scoped by id, ${entry.key}`;
   await leg(name, async () => {
-    const deployed = retainedDeployments.get(entry.key);
+    const deployed = ledger8Deployments.get(entry.key);
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
-    const providers = retainedProvidersFor('v8', session.wallet, entry.key);
+    const providers = ledger8ProvidersFor('v8', session.wallet, entry.key);
     const unwritten = `${entry.privateState.id}-never-written`;
     const answer = await providers.privateStateProvider.forContract(deployed.contractAddress).get(unwritten);
     if (answer !== null && answer !== undefined) {
@@ -1725,7 +1725,7 @@ for (const entry of RETAINED_MATRIX.filter(
   });
 }
 
-// (a) continued: the retained `simple` twin's maintenance authority, replaced
+// (a) continued: the ledger 8 `simple` twin's maintenance authority, replaced
 // before the fork through the v8 overload of the governance entry point. The
 // post-fork legs in (c5) maintain the SAME contract from the SAME store, so the
 // pair is what shows the authority and the stored key cross the fork.
@@ -1733,7 +1733,7 @@ for (const entry of RETAINED_MATRIX.filter(
 // Gated on the shard that installs BOTH `simple` artifacts: (c5) needs the
 // recompiled one, and replace-authority -- rather than removing or inserting a
 // verifier key -- leaves every circuit the other legs call untouched.
-const MAINTAINS_ACROSS_THE_FORK = covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple');
+const MAINTAINS_ACROSS_THE_FORK = covers(SELECTED.ledger8, 'simple') && covers(SELECTED.current, 'simple');
 
 /**
  * A fresh maintenance key from the current runtime the `simple` wrapper installs.
@@ -1749,17 +1749,17 @@ const sameSigningKey = (left, right) =>
   left !== undefined && left !== null && right !== undefined && left.tag === right.tag && left.value === right.value;
 
 if (MAINTAINS_ACROSS_THE_FORK) {
-  await leg('pre-fork retained simple, maintenance authority replaced', async () => {
-    const deployed = retainedDeployments.get('simple');
+  await leg('pre-fork ledger 8 simple, maintenance authority replaced', async () => {
+    const deployed = ledger8Deployments.get('simple');
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
-    const providers = retainedProvidersFor('v8', session.wallet, 'simple');
-    const { Contract } = await import('@midnight-ntwrk/fork-retained-simple');
+    const providers = ledger8ProvidersFor('v8', session.wallet, 'simple');
+    const { Contract } = await import('@midnight-ntwrk/fork-ledger8-simple');
     const newKey = await sampleMaintenanceKey();
     const replaced = await submitReplaceAuthorityTx(
       providers,
-      new Contract(retainedWitnesses('simple')),
+      new Contract(ledger8Witnesses('simple')),
       deployed.contractAddress
     )(newKey);
     if (replaced.era !== 'v8' || replaced.public.era !== 'v8') {
@@ -1773,7 +1773,7 @@ if (MAINTAINS_ACROSS_THE_FORK) {
     return { era: replaced.era, version: replaced.public.era, status: replaced.public.status, txId: replaced.public.txId };
   });
 } else {
-  await leg('pre-fork retained simple, maintenance authority replaced', () =>
+  await leg('pre-fork ledger 8 simple, maintenance authority replaced', () =>
     "skipped: this shard does not install both 'simple' artifacts"
   );
 }
@@ -1825,7 +1825,7 @@ await probe('pre-fork deploy of a current-era contract', async () => {
 // `handleSubmitRejection`, in `packages/contracts/src/internal/stale-head.ts`.
 
 /** The shard that drives the stale-head legs; the README section says why one is enough. */
-const DRIVES_STALE_HEAD = covers(SELECTED.retained, 'simple');
+const DRIVES_STALE_HEAD = covers(SELECTED.ledger8, 'simple');
 
 /**
  * A provider set whose submission is HELD at `submitTx` until it is let go.
@@ -1928,7 +1928,7 @@ const describeParkFailure = (settled) => {
  * @throws Error if the call finished or failed instead of parking.
  */
 const parkBaselineCall = async (name, providers) => {
-  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+  const { Contract } = await import('@midnight-ntwrk/fork-ledger8-baseline');
   const parked = parkSubmission(providers);
   // Mapped to a value on BOTH outcomes here, where it is created, and not awaited
   // until the release leg: an unobserved rejection in between would be an
@@ -1972,7 +1972,7 @@ const parkBaselineCall = async (name, providers) => {
  * @throws LegTimeoutError if it never settles -- fatal, because by then the
  * submission is on the wire and the wallet is not free.
  * @throws Error if the submission was ADMITTED: a post-fork network taking
- * retained-era bytes is a finding, not a passing leg.
+ * ledger 8 bytes is a finding, not a passing leg.
  */
 const releaseAndSettle = async (name, parked) => {
   parked.release();
@@ -2024,7 +2024,7 @@ const withHeadReadAnswer = (real, answer) =>
   });
 
 /**
- * Drives a post-fork retained call whose SUBMISSION is refused by injection, and
+ * Drives a post-fork ledger 8 call whose SUBMISSION is refused by injection, and
  * hands back what the framework made of that refusal.
  *
  * ONE leg in this file carries the full-fidelity claim: the parked call above,
@@ -2034,7 +2034,7 @@ const withHeadReadAnswer = (real, answer) =>
  * network path for each of them would cost another balanced transaction on the
  * one shared wallet and another slice of the fork window to assert nothing new.
  * So they inject the refusal and keep everything else real: a real post-fork
- * head resolved at the operation's start, a real retained contract, a real
+ * head resolved at the operation's start, a real ledger 8 contract, a real
  * composition through the keep-state pipeline, a real proof and a real
  * balancing.
  *
@@ -2051,7 +2051,7 @@ const withHeadReadAnswer = (real, answer) =>
  * never ran.
  */
 const callWithRefusedSubmission = async (headAnswer) => {
-  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+  const { Contract } = await import('@midnight-ntwrk/fork-ledger8-baseline');
   const real = session.providers.publicDataProvider;
   let refused = false;
   let injectedHeadReads = 0;
@@ -2127,7 +2127,7 @@ let parkedStaleHead;
 let preForkProtocolVersion;
 
 if (DRIVES_STALE_HEAD) {
-  await leg('park a retained call at submitTx', async () => {
+  await leg('park a ledger 8 call at submitTx', async () => {
     if (deployment === undefined) {
       throw new Error('the pre-fork baseline deploy did not complete, so there is nothing to call');
     }
@@ -2146,14 +2146,14 @@ if (DRIVES_STALE_HEAD) {
     // literal would make that leg a statement about this environment's version
     // numbering rather than about the diagnosis.
     preForkProtocolVersion = await session.providers.publicDataProvider.queryLatestProtocolVersion();
-    parkedStaleHead = await parkBaselineCall('park a retained call at submitTx', session.providers);
+    parkedStaleHead = await parkBaselineCall('park a ledger 8 call at submitTx', session.providers);
     // The payload variant it was submitted as is the only direct evidence that
     // this call was composed against a pre-fork head. Judged HERE, where the
     // answer is precise, rather than left to surface a leg later as a refusal
     // that reads like a framework regression.
     if (parkedStaleHead.payloadVersion !== 'v8') {
       throw new Error(
-        `the parked call was submitted on '${parkedStaleHead.payloadVersion}', not as the retained-era payload variant`
+        `the parked call was submitted on '${parkedStaleHead.payloadVersion}', not as the ledger 8 payload variant`
       );
     }
     return { payload: parkedStaleHead.payloadVersion, preForkProtocolVersion };
@@ -2166,7 +2166,7 @@ if (DRIVES_STALE_HEAD) {
 }
 
 await probe(
-  'a retained call in flight as the fork applies',
+  'a ledger 8 call in flight as the fork applies',
   () => driveCallsAcrossTheBoundary(() => forkOutcome),
   IN_FLIGHT_PROBE_TIMEOUT
 );
@@ -2174,7 +2174,7 @@ await probe(
 // These two gate everything below them, so they are the one place `leg`'s
 // record-and-continue is wrong. Without the gate a chain that never forked, or a
 // session still pointed at the v8 proof server, produces ~15 individually
-// plausible contract failures for one root cause -- and the retained keep-state
+// plausible contract failures for one root cause -- and the ledger 8 keep-state
 // rows read FAILED for calls that were never attempted after the boundary.
 //
 // Usually already settled by the time this runs, because the probe above returns
@@ -2206,7 +2206,7 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
     return waitForHead(session.providers.publicDataProvider, 'v9', 5 * 60_000);
   });
 
-  await leg('a retained call parked across the fork is refused as STALE', async () => {
+  await leg('a ledger 8 call parked across the fork is refused as STALE', async () => {
     if (!headMoved) {
       // DISCARDED, not released. The wallet has to come back to the legs below,
       // and putting a transaction on a live chain that nothing will then read
@@ -2215,7 +2215,7 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
       return 'skipped: the head never reported v9, and the row above says why';
     }
     const refusal = await releaseAndSettle(
-      'a retained call parked across the fork is refused as STALE',
+      'a ledger 8 call parked across the fork is refused as STALE',
       parkedStaleHead
     );
     // The whole chain, and the refusal on `cause`: a `ProviderFailedError`
@@ -2346,7 +2346,7 @@ if (MEASURES_READ_SURFACE) {
 //
 // Right after the fork nearly every contract is dormant: no action in the fork
 // block and none since. A dApp that restarts here re-attaches before anyone calls
-// its contract. The retained twins are exactly that until the keep-state legs
+// its contract. The ledger 8 twins are exactly that until the keep-state legs
 // below call them -- the boundary probe above calls only the baseline.
 //
 // The node translates every contract at the fork block, and the indexer serves
@@ -2364,21 +2364,21 @@ const expectLedger8DeployState = async (name, publicDataProvider, contractAddres
   return version;
 };
 
-for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
+for (const entry of LEDGER8_MATRIX.filter((candidate) => covers(SELECTED.ledger8, candidate.key))) {
   const name = `a dormant ${entry.key}, found after the fork with its pre-fork artifacts`;
   await leg(name, async () => {
-    const deployed = retainedDeployments.get(entry.key);
+    const deployed = ledger8Deployments.get(entry.key);
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
-    const providers = retainedProvidersFor('v9', session.wallet, entry.key);
+    const providers = ledger8ProvidersFor('v9', session.wallet, entry.key);
     const envelope = await contractPresent(providers.publicDataProvider, deployed.contractAddress);
     if (envelope !== 'midnight:contract-state[v8]:') {
       failures.push(`${name}: expected the fork-translated envelope 'midnight:contract-state[v8]:', got ${envelope}`);
     }
     const deployStateVersion = await expectLedger8DeployState(name, providers.publicDataProvider, deployed.contractAddress);
-    const { Contract } = await import(`@midnight-ntwrk/fork-retained-${entry.key}`);
-    const compiledContract = new Contract(retainedWitnesses(entry.key));
+    const { Contract } = await import(`@midnight-ntwrk/fork-ledger8-${entry.key}`);
+    const compiledContract = new Contract(ledger8Witnesses(entry.key));
     const privateState = entry.privateState;
     const found =
       privateState === undefined
@@ -2417,10 +2417,10 @@ const expectRecompiledVerifierKeysRefused = async (providers, compiledContract, 
   return { refusedWith: error.name, mismatchedCircuitIds: error.mismatchedCircuitIds };
 };
 
-if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
+if (covers(SELECTED.ledger8, 'simple') && covers(SELECTED.current, 'simple')) {
   const name = 'a dormant pre-fork simple, found after the fork with recompiled artifacts';
   await leg(name, async () => {
-    const deployed = retainedDeployments.get('simple');
+    const deployed = ledger8Deployments.get('simple');
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
@@ -2451,7 +2451,7 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
 // ── (c) post-fork: the SAME call site, now on keep-state ──────────────────────
 
 await leg('post-fork keep-state call through the same call site', async () => {
-  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+  const { Contract } = await import('@midnight-ntwrk/fork-ledger8-baseline');
   const submitted = await submitCallTx(session.providers, {
     // Written exactly as the pre-fork call above, which is the point of the leg:
     // the SAME call site, unchanged, on the other side of the boundary.
@@ -2460,7 +2460,7 @@ await leg('post-fork keep-state call through the same call site', async () => {
     circuitId: CIRCUIT_ID,
     args: []
   });
-  // The RETAINED-era path resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
+  // The LEDGER 8 path resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
   // public, private }` -- which now carries the finalized record on `public`
   // exactly as the current era does, so the id is read the same way in both eras.
   // `submitted.txId` is NOT it: neither path puts the id at the top level.
@@ -2472,7 +2472,7 @@ if (MEASURES_LOW_LEVEL) {
     if (lowLevelDeployment === undefined) {
       throw new Error('the pre-fork low-level deploy did not complete');
     }
-    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+    const { Contract } = await import('@midnight-ntwrk/fork-ledger8-baseline');
     const built = await createLedger8UnprovenCallTx(session.providers, {
       compiledContract: new Contract({}),
       contractAddress: lowLevelDeployment.contractAddress,
@@ -2542,35 +2542,35 @@ if (MEASURES_READ_SURFACE) {
   });
 }
 
-// (c) continued: the same keep-state call for every other retained twin. These
+// (c) continued: the same keep-state call for every other ledger 8 twin. These
 // are the legs the fork crossing could not previously pose — a pre-fork contract that is not a
 // counter, called after the boundary through the call site that deployed it.
-for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
+for (const entry of LEDGER8_MATRIX.filter((candidate) => covers(SELECTED.ledger8, candidate.key))) {
   await leg(`post-fork keep-state ${entry.key}`, async () => {
-    const deployed = retainedDeployments.get(entry.key);
+    const deployed = ledger8Deployments.get(entry.key);
     if (deployed === undefined) {
       // Named rather than left to a TypeError: this leg is UNTESTED, not failed,
       // and the two read very differently in a report.
       throw new Error(`its pre-fork deploy did not complete, so there is nothing here to call`);
     }
-    const providers = retainedProvidersFor('v9', session.wallet, entry.key);
+    const providers = ledger8ProvidersFor('v9', session.wallet, entry.key);
     // Re-read rather than reused: the wallet was rebuilt at the `post-fork head
     // era` gate, and a key read off the stopped one would be stale. Through
-    // `retainedContext`, so the colour minted before the boundary is in scope
+    // `ledger8Context`, so the colour minted before the boundary is in scope
     // here -- naming it is the whole of the surviving-balance assertion.
-    const context = await retainedContext(entry.key);
+    const context = await ledger8Context(entry.key);
     // A LIST, so a contract can mint on one call and assert on the next. Written
     // as one-or-many rather than always-many to leave the five single-call
     // entries untouched.
     const outcome = [];
     for (const call of [entry.postFork].flat()) {
       outcome.push(
-        await callRetained(entry.key, providers, deployed.contractAddress, call, context)
+        await callLedger8(entry.key, providers, deployed.contractAddress, call, context)
       );
     }
     // Only once every call in the list has run. What the second-call leg needs
     // from this one is the LAST call, not the first.
-    retainedPostForkCompleted.add(entry.key);
+    ledger8PostForkCompleted.add(entry.key);
     // The state written BEFORE the boundary, read back after it. Without this
     // the leg proves only that the address still answers.
     const label = `post-fork keep-state ${entry.key}`;
@@ -2587,7 +2587,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
       ...(ledgerState ?? {}),
       ...(privateState ?? {}),
       // The envelope after the call, so a keep-state write that re-versions the
-      // state is distinguishable from one that leaves it in the retained shape.
+      // state is distinguishable from one that leaves it in the ledger 8 shape.
       envelopeAfterCall: state === null ? 'absent' : envelopeTag(state.contractState.serialize())
     };
   });
@@ -2606,13 +2606,13 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 // that survived, this shows it does not pass on an amount that did not. If this
 // leg reports the send ADMITTED, the row above is worthless and says so.
 const NEGATIVE_CONTROL = 'unshielded refuses a send larger than the balance that survived';
-if (covers(SELECTED.retained, 'unshielded')) {
+if (covers(SELECTED.ledger8, 'unshielded')) {
   await leg(NEGATIVE_CONTROL, async () => {
-    const deployed = retainedDeployments.get('unshielded');
+    const deployed = ledger8Deployments.get('unshielded');
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
-    const captured = retainedCaptures.get('unshielded');
+    const captured = ledger8Captures.get('unshielded');
     // NOT skipped, and deliberately: a missing capture means the pre-fork mint
     // returned nothing this leg could name, which is the same thing as the
     // assertion above having run against `undefined`. Reporting that as a skip
@@ -2623,21 +2623,21 @@ if (covers(SELECTED.retained, 'unshielded')) {
           'and asserted nothing'
       );
     }
-    const providers = retainedProvidersFor('v9', session.wallet, 'unshielded');
-    const context = await retainedContext('unshielded');
+    const providers = ledger8ProvidersFor('v9', session.wallet, 'unshielded');
+    const context = await ledger8Context('unshielded');
 
     try {
       // `'unshielded'` is the TWIN KEY, and it is the first argument because
-      // `callRetained` resolves `@midnight-ntwrk/fork-retained-${key}` from it.
+      // `callLedger8` resolves `@midnight-ntwrk/fork-ledger8-${key}` from it.
       // This call site used to pass `NEGATIVE_CONTROL` ahead of it, which made
       // the import specifier a whole English sentence -- unreachable, but never
       // reached, because the leg died on the undeclared capture map four lines
       // above and the arity was never exercised.
-      // NEVER give this call an `expect`. `callRetained` throws on a failed one,
+      // NEVER give this call an `expect`. `callLedger8` throws on a failed one,
       // and an assertion failure is not the refusal this leg is looking for --
       // the catch below would report it under a name that says the ledger did
       // its job.
-      await callRetained('unshielded', providers, deployed.contractAddress, {
+      await callLedger8('unshielded', providers, deployed.contractAddress, {
         circuitId: 'sendUnshieldedToUserTest',
         // FOUR TIMES what the contract can be holding: one `MINT_AMOUNT` was
         // minted to this colour pre-fork and half of it has just been sent away,
@@ -2697,7 +2697,7 @@ if (covers(SELECTED.retained, 'unshielded')) {
       // post-fork send, so this is serviceable, and it leaves the contract
       // holding something either way.
       try {
-        await callRetained('unshielded', providers, deployed.contractAddress, {
+        await callLedger8('unshielded', providers, deployed.contractAddress, {
           circuitId: 'sendUnshieldedToUserTest',
           args: (ctx) => [ctx.preForkColor, MINT_AMOUNT / 4n, { bytes: ctx.unshieldedAddress }]
         }, context);
@@ -2728,38 +2728,38 @@ if (covers(SELECTED.retained, 'unshielded')) {
 //
 // A LEG, not a probe, and it was a probe until the framework committed to an
 // answer. The keep-state leg above establishes that the FIRST post-fork call
-// succeeds on the state the fork translated from the retained schema to the
+// succeeds on the state the fork translated from the ledger 8 schema to the
 // current one; this establishes that the contract is still callable after that,
 // which is what makes keep-state a supported path rather than a single shot.
 //
 // WHY THE SECOND CALL WORKS AT ALL, since the two facts look contradictory.
-// The fork's translation rewrites the ENVELOPE but keeps the RETAINED verifier keys:
+// The fork's translation rewrites the ENVELOPE but keeps the LEDGER 8 verifier keys:
 // `reexpressOperationsForLedger9` copies `entryPoint.verifierKey` unchanged
 // into a ledger-v9 `ContractState`. Measured on the committed goldens rather
 // than assumed -- a real migrated 8-to-9 state carries byte-identical
 // `midnight:verifier-key[v6]:` keys, and the current-era decoder reads them. So
-// the contract holds current-era state over retained keys, and the retained
+// the contract holds current-era state over ledger 8 keys, and the ledger 8
 // artifacts a consumer already has are still the right ones for it.
 //
 // `readLedger8Snapshot` therefore picks its decoder off the envelope instead of
-// pinning the retained era, and the KEY check decides whether the caller's
+// pinning ledger 8, and the KEY check decides whether the caller's
 // artifacts fit. Pinning the decoder is what made a pre-fork contract callable
 // exactly once, and this leg is what would catch that regressing.
-for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
+for (const entry of LEDGER8_MATRIX.filter((candidate) => covers(SELECTED.ledger8, candidate.key))) {
   const name = `a migrated ${entry.key}, called a second time`;
   await leg(name, async () => {
-    const deployed = retainedDeployments.get(entry.key);
+    const deployed = ledger8Deployments.get(entry.key);
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
     // SKIPPED rather than run, because this leg reads the state the post-fork
     // leg was supposed to write. Run after an aborted call list, it reports a
     // finding of its own -- a second, unrelated-looking signal produced by the
-    // first failure. @see retainedPostForkCompleted
-    if (!retainedPostForkCompleted.has(entry.key)) {
+    // first failure. @see ledger8PostForkCompleted
+    if (!ledger8PostForkCompleted.has(entry.key)) {
       return 'skipped: its post-fork call list did not run to the end, so the state it reads was never written';
     }
-    const providers = retainedProvidersFor('v9', session.wallet, entry.key);
+    const providers = ledger8ProvidersFor('v9', session.wallet, entry.key);
 
     // Recorded before the attempt, so the outcome can be read against what the
     // chain actually held rather than against an assumption about it. The fork
@@ -2778,15 +2778,15 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const [call] = [entry.secondCall ?? entry.postFork].flat();
     // Re-read rather than reused: the wallet was rebuilt at the `post-fork head
     // era` gate, and a key read off the stopped one would be stale. Through
-    // `retainedContext` like every other retained leg -- no twin's `secondCall`
+    // `ledger8Context` like every other ledger 8 leg -- no twin's `secondCall`
     // names a capture today, and this is what keeps the next one that does from
     // being the third leg to find out the hard way.
-    const context = await retainedContext(entry.key);
+    const context = await ledger8Context(entry.key);
 
     // NOT caught. A refusal here is a defect now, not a finding, so it must
     // colour the run's exit code -- which is the whole difference between this
     // and the probe it replaced.
-    const outcome = await callRetained(entry.key, providers, deployed.contractAddress, call, context);
+    const outcome = await callLedger8(entry.key, providers, deployed.contractAddress, call, context);
 
     const after = await providers.publicDataProvider.queryContractState(deployed.contractAddress);
     return {
@@ -2811,7 +2811,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 // process minted before the fork, which is the one thing a restarted dApp
 // cannot do.
 //
-// WHAT IT ASSERTS BEYOND "the address answers". The retained-era path resolves a
+// WHAT IT ASSERTS BEYOND "the address answers". The ledger 8 path resolves a
 // verifier key for every one of the artifact's IMPURE circuits -- the set
 // `callTx` is built from -- and refuses the attach if one does not match the
 // chain, so a successful find is the chain and the pre-fork artifact still
@@ -2822,16 +2822,16 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 // before the fork survived it. That key is not on chain and not derivable from
 // anything that is, so losing it silently would leave a contract nobody can ever
 // insert, remove or replace a verifier key on.
-for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
+for (const entry of LEDGER8_MATRIX.filter((candidate) => covers(SELECTED.ledger8, candidate.key))) {
   const name = `a migrated ${entry.key}, found again after the fork`;
   await leg(name, async () => {
-    const deployed = retainedDeployments.get(entry.key);
+    const deployed = ledger8Deployments.get(entry.key);
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
-    const providers = retainedProvidersFor('v9', session.wallet, entry.key);
-    const { Contract } = await import(`@midnight-ntwrk/fork-retained-${entry.key}`);
-    const compiledContract = new Contract(retainedWitnesses(entry.key));
+    const providers = ledger8ProvidersFor('v9', session.wallet, entry.key);
+    const { Contract } = await import(`@midnight-ntwrk/fork-ledger8-${entry.key}`);
+    const compiledContract = new Contract(ledger8Witnesses(entry.key));
     const privateState = entry.privateState;
     // Two literals again. Here `Ledger8FindDeployedContractOptions` is a single
     // interface with an OPTIONAL `privateStateId` rather than a union, so the
@@ -2851,7 +2851,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
             privateStateId: privateState.id
           });
 
-    // NOT `found.contractAddress === deployed.contractAddress`. The retained-era path
+    // NOT `found.contractAddress === deployed.contractAddress`. The ledger 8 path
     // returns `contractAddress: options.contractAddress` verbatim
     // (`find-deployed-contract.ts`), so comparing them compares the argument with
     // itself and can never fail. What a restarted dApp actually needs is a handle
@@ -2917,10 +2917,10 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 //
 // The compiled contract is built inline, as the pre-fork probe does, because
 // `MATRIX` and `compiledContractFor` are declared further down this module.
-if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
+if (covers(SELECTED.ledger8, 'simple') && covers(SELECTED.current, 'simple')) {
   const name = 'a pre-fork simple, found after the fork with recompiled artifacts';
   await leg(name, async () => {
-    const deployed = retainedDeployments.get('simple');
+    const deployed = ledger8Deployments.get('simple');
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
@@ -2956,11 +2956,11 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
 if (MAINTAINS_ACROSS_THE_FORK) {
   const refusedName = 'a migrated simple, v8 maintenance refused after the fork';
   await leg(refusedName, async () => {
-    const deployed = retainedDeployments.get('simple');
+    const deployed = ledger8Deployments.get('simple');
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
-    const base = retainedProvidersFor('v9', session.wallet, 'simple');
+    const base = ledger8ProvidersFor('v9', session.wallet, 'simple');
     const reached = [];
     const providers = {
       ...base,
@@ -2980,10 +2980,10 @@ if (MAINTAINS_ACROSS_THE_FORK) {
       }
     };
     const keyBefore = await base.privateStateProvider.getSigningKey(deployed.contractAddress);
-    const { Contract } = await import('@midnight-ntwrk/fork-retained-simple');
+    const { Contract } = await import('@midnight-ntwrk/fork-ledger8-simple');
     const error = await submitReplaceAuthorityTx(
       providers,
-      new Contract(retainedWitnesses('simple')),
+      new Contract(ledger8Witnesses('simple')),
       deployed.contractAddress
     )(await sampleMaintenanceKey()).then(
       () => undefined,
@@ -3006,7 +3006,7 @@ if (MAINTAINS_ACROSS_THE_FORK) {
 
   const recompiledName = 'a migrated simple, authority replaced after the fork with recompiled artifacts';
   await leg(recompiledName, async () => {
-    const deployed = retainedDeployments.get('simple');
+    const deployed = ledger8Deployments.get('simple');
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
@@ -3019,11 +3019,11 @@ if (MAINTAINS_ACROSS_THE_FORK) {
       CompiledContract.withVacantWitnesses(CompiledContract.make('Simple', Contract)),
       zkConfigPath
     );
-    // The retained twin's store, under the recompiled artifacts: a recompiled dApp
+    // The ledger 8 twin's store, under the recompiled artifacts: a recompiled dApp
     // keeps its store, and that store holds the key (a) replaced the authority with.
     const providers = providersFor(testkit, 'v9', session.wallet, {
       zkConfigPath,
-      privateStateStoreName: 'fork-retained-simple'
+      privateStateStoreName: 'fork-ledger8-simple'
     });
     const newKey = await sampleMaintenanceKey();
     const replaced = await submitReplaceAuthorityTx(providers, compiledContract, deployed.contractAddress)(newKey);
@@ -3051,10 +3051,10 @@ await leg('reads its own pre-fork history', async () => {
 
 // ── (e) the rest of the contract surface, on a chain that carries v8 history ──
 //
-// Not the fork crossing's retained story, and deliberately not dressed up as one: these are
+// Not the fork crossing's ledger 8 story, and deliberately not dressed up as one: these are
 // the CURRENT-era builds, deployed fresh after the boundary. Six of the seven
-// were also deployed below it as retained twins in (a); `events` is the one that
-// has no retained form at all. What this section answers is the separate
+// were also deployed below it as ledger 8 twins in (a); `events` is the one that
+// has no ledger 8 form at all. What this section answers is the separate
 // question the fork crossing leaves open -- whether a dApp doing ordinary work (tokens,
 // minting, events, block time) is affected by the chain having a pre-fork past.
 // Every leg runs in the same process and against the same wallet that just
@@ -3241,7 +3241,7 @@ const runMatrixContract = async (entry) => {
         compiledContract,
         contractAddress,
         circuitId: call.circuitId,
-        // Always present, `[]` for a nullary circuit -- `callRetained` carries
+        // Always present, `[]` for a nullary circuit -- `callLedger8` carries
         // why, and it holds identically on this path: `unproven-call-tx.ts`
         // normalises an absent `args` to the empty tuple, and a conditionally
         // SPREAD member reaches the checker as optional, which the options type

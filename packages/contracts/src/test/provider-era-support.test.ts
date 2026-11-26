@@ -13,30 +13,30 @@
  * limitations under the License.
  */
 
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
-  ProviderEraUnsupportedError} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+  ProviderEraUnsupportedError} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { acquireLedger8Runtime, type Ledger8RuntimeProviders } from '../internal/ledger8-entry';
 import { submitTx, type SubmitTxOptions } from '../submit-tx';
 import { createMockProviders, createMockUnprovenTx } from './test-mocks';
 
-// Only the retained ENGINE acquisition is replaced, exactly as `breadcrumbs.test.ts`
+// Only the ledger 8 ENGINE acquisition is replaced, exactly as `breadcrumbs.test.ts`
 // does it: nothing here executes a circuit, and the real `loadLedgerEra` keeps
 // every era name on the genuine timeline.
 const ENGINE_STAND_IN = vi.hoisted((): Record<string, never> => ({}));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return { ...actual, loadLedger8Engine: (): Promise<unknown> => Promise.resolve(ENGINE_STAND_IN) };
 });
 
-// The era timeline's own scheme. A pre-fork head puts the retained pipeline on
-// the retained payload variant; a post-fork head is keep-state, which composes on the
+// The era timeline's own scheme. A pre-fork head puts the ledger 8 pipeline on
+// the ledger 8 payload variant; a post-fork head is keep-state, which composes on the
 // CURRENT era and therefore passes the current variant to the providers.
 const LEDGER8_HEAD = 1_000_000;
 const LEDGER9_HEAD = 2_000_000;
@@ -57,7 +57,7 @@ const declaring = (eras: readonly LedgerEra[]) => ({ supportedEras: Object.freez
  * name `proveTx` — which is the point being made, so it is not worked around by
  * widening the parameter.
  */
-const retainedSetup = (
+const ledger8Setup = (
   overrides: Partial<Ledger8RuntimeProviders> = {},
   head: number = LEDGER8_HEAD
 ): { readonly providers: Ledger8RuntimeProviders; readonly proveTx: Mock } => {
@@ -73,13 +73,13 @@ const retainedSetup = (
   return { providers, proveTx };
 };
 
-describe('a retained-era operation checks the transaction providers before it pays for a proof', () => {
+describe('a ledger 8 operation checks the transaction providers before it pays for a proof', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('refuses when the wallet serves only the current era, and never asks for a proof', async () => {
-    const { providers, proveTx } = retainedSetup({ walletProvider: declaring(['v9']) });
+    const { providers, proveTx } = ledger8Setup({ walletProvider: declaring(['v9']) });
 
     const refusal = await acquireLedger8Runtime(providers, 'call').then(
       () => undefined,
@@ -89,7 +89,7 @@ describe('a retained-era operation checks the transaction providers before it pa
     expect(refusal).toBeInstanceOf(ProviderEraUnsupportedError);
     expect((refusal as ProviderEraUnsupportedError).method).toBe('balanceTx');
     // The HEAD era, which is what picks the payload variant: on a pre-fork head the
-    // payloads cross as retained-era bytes.
+    // payloads cross as ledger 8 bytes.
     expect((refusal as ProviderEraUnsupportedError).era).toBe('v8');
     // The whole point of moving the check to the front of the operation: a
     // proof is the expensive step, and a wallet that cannot balance the result
@@ -98,7 +98,7 @@ describe('a retained-era operation checks the transaction providers before it pa
   });
 
   it('refuses when the submitter serves only the current era', async () => {
-    const { providers } = retainedSetup({ midnightProvider: declaring(['v9']) });
+    const { providers } = ledger8Setup({ midnightProvider: declaring(['v9']) });
 
     const refusal = await acquireLedger8Runtime(providers, 'call').then(
       () => undefined,
@@ -112,20 +112,20 @@ describe('a retained-era operation checks the transaction providers before it pa
   // The check must be invisible to a provider set that can do the work — a gate
   // that refuses correct configurations is worse than no gate.
   it('lets a set that serves both eras through', async () => {
-    const runtime = await acquireLedger8Runtime(retainedSetup().providers, 'call');
+    const runtime = await acquireLedger8Runtime(ledger8Setup().providers, 'call');
 
     expect(runtime.resolved.head).toBe('v8');
   });
 
   // The case that makes the era checked a variable rather than the constant
-  // 'v8'. Keep-state runs a RETAINED-era artifact against a POST-FORK head, and
+  // 'v8'. Keep-state runs a LEDGER 8 artifact against a POST-FORK head, and
   // composes on the current era -- so its payloads reach the providers as
   // `{ version: 'v9', tx }`. A wallet that serves only the current era is the
   // ordinary post-fork wallet, and refusing it here would refuse exactly the
   // operations keep-state exists to allow.
   it('admits keep-state on a post-fork head with providers that serve only the current era', async () => {
     const currentOnly = declaring(['v9']);
-    const { providers } = retainedSetup(
+    const { providers } = ledger8Setup(
       { walletProvider: currentOnly, midnightProvider: currentOnly },
       LEDGER9_HEAD
     );
@@ -136,7 +136,7 @@ describe('a retained-era operation checks the transaction providers before it pa
   });
 
   it('refuses keep-state when a provider serves neither the head era nor anything else', async () => {
-    const { providers } = retainedSetup({ walletProvider: declaring(['v8']) }, LEDGER9_HEAD);
+    const { providers } = ledger8Setup({ walletProvider: declaring(['v8']) }, LEDGER9_HEAD);
 
     const refusal = await acquireLedger8Runtime(providers, 'call').then(
       () => undefined,

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { TransactionId } from '@midnightntwrk/midnight-js-protocol/v9';
+import { LEDGER_ERAS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 
 import { dispatch, type Route } from './internal/dispatch';
 import { readEraEntries } from './internal/read-era-entries';

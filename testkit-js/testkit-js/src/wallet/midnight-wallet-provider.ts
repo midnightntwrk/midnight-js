@@ -18,8 +18,8 @@ import {
   DustSecretKey,
   type EncPublicKey,
   ZswapSecretKeys
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
   createWalletProviderFromHandlers,
@@ -28,8 +28,8 @@ import {
   type MidnightProvider,
   type UnboundTx,
   type WalletProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { ttlOneHour } from '@midnightntwrk/midnight-js-utils';
 import { type UnshieldedKeystore, type WalletFacade, type WalletSeeds } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 
@@ -143,9 +143,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
       : await builder.withRandomSeed().buildWithoutStarting();
 
     const initialState = await getInitialShieldedState(wallet.shielded);
-    logger.info(
-      `Your wallet seed is: ${seeds.masterSeed} and your address is: ${initialState.address.coinPublicKeyString()}`
-    );
+    logger.info(`Your wallet address is: ${initialState.address.coinPublicKeyString()}`);
 
     return new MidnightWalletProvider(logger, env, wallet, seeds, keystore);
   }

@@ -49,7 +49,7 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // one, and carrying a registered code of its own so a retry handler branching on `hasErrorCode`
 // behaves the same whichever failure came first. The scoped-transaction era rules are reasons of
 // `EraMismatchError` -- a scope function bound to one era refuses a head of the other, and a
-// retained-toolchain call cannot join a ledger 9 scope.
+// ledger 8 toolchain call cannot join a ledger 9 scope.
 //
 // The three `Incomplete*PrivateStateConfig` refusals are one family stating one client-side rule
 // per entry point -- call, deploy, find -- and they stay together on the flat surface; the deploy
@@ -114,7 +114,7 @@ export {
 // The receiving half of the era surface: a caller who RECEIVES a result of either era declares
 // it with a flat name and narrows it with this guard.
 export { isLedger8Result } from './era-results';
-// The RETAINED era's refusals and the types on their public fields, flat.
+// The ledger 8 refusals and the types on their public fields, flat.
 export {
   Ledger8AmbiguousEntryPointError,
   Ledger8CallUnsupportedError,
@@ -126,7 +126,7 @@ export {
   type Ledger8SigningKeyReason,
   Ledger8UnconfirmedError
 } from './errors';
-// The retained era's types, flat. The entry-point overloads return them by these names, and a
+// The ledger 8 types, flat. The entry-point overloads return them by these names, and a
 // dApp's declaration emit can name only what the package exports flat (TS4023).
 export type {
   Ledger8CallOptionsWithInitialStates,
@@ -284,5 +284,5 @@ export {
 // the events (`Ledger9LogEvent`) and decode them (`Ledger9ContractLog.decodeAll`) without depending on
 // compact-js/compact-runtime directly. `ContractEvent` (the decoded shape) is reachable as
 // `Ledger9ContractLog.ContractEvent`.
-export { ContractLog as Ledger9ContractLog } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-export type { LogEvent as Ledger9LogEvent } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+export { ContractLog as Ledger9ContractLog } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+export type { LogEvent as Ledger9LogEvent } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';

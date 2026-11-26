@@ -5,13 +5,13 @@ Barrel package that provides a single entry point to the core components of Midn
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js
+yarn add @midnightntwrk/midnight-js
 ```
 
 ## Quick Start
 
 ```typescript
-import { contracts, types, utils } from '@midnight-ntwrk/midnight-js';
+import { contracts, types, utils } from '@midnightntwrk/midnight-js';
 
 // providers.config carries the network id: { networkId: 'preview', ttlSeconds: 3600 }
 const deployed = await contracts.deployContract(providers, {
@@ -25,9 +25,9 @@ const deployed = await contracts.deployContract(providers, {
 
 | Module       | Package                                  | Description                                    |
 | ------------ | ---------------------------------------- | ---------------------------------------------- |
-| `contracts`  | `@midnight-ntwrk/midnight-js-contracts`  | Contract deployment and interaction utilities   |
-| `types`      | `@midnight-ntwrk/midnight-js-types`      | Shared types, interfaces, and provider contracts|
-| `utils`      | `@midnight-ntwrk/midnight-js-utils`      | Hex encoding, address validation, and utilities |
+| `contracts`  | `@midnightntwrk/midnight-js-contracts`  | Contract deployment and interaction utilities   |
+| `types`      | `@midnightntwrk/midnight-js-types`      | Shared types, interfaces, and provider contracts|
+| `utils`      | `@midnightntwrk/midnight-js-utils`      | Hex encoding, address validation, and utilities |
 
 ## Ledger Era Vocabulary
 
@@ -42,7 +42,7 @@ import {
   type LedgerEra, // 'v8' | 'v9'
   versionOfRecord,    // a record carrying protocolVersion -> LedgerEra
   latestNetworkLedgerVersion  // asks a source for the network's current ledger era -> LedgerEra
-} from '@midnight-ntwrk/midnight-js';
+} from '@midnightntwrk/midnight-js';
 ```
 
 Use `versionOfRecord` for a `protocolVersion` read off an existing record, and
@@ -62,7 +62,7 @@ import {
   UnknownProtocolVersionError,
   versionOfRecord,
   type VersionResolutionPath
-} from '@midnight-ntwrk/midnight-js';
+} from '@midnightntwrk/midnight-js';
 
 // Any record carrying a raw protocolVersion -- e.g. a transaction or block
 // already read from the indexer. Node major 9 is one this build has no era
@@ -99,22 +99,22 @@ error here also carries a `code`. `PROTOCOL_ERROR_CODES` names them and
 `utils.hasErrorCode` is the guard:
 
 ```typescript
-import { PROTOCOL_ERROR_CODES, utils } from '@midnight-ntwrk/midnight-js';
+import { PROTOCOL_ERROR_CODES, utils } from '@midnightntwrk/midnight-js';
 
 if (utils.hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)) {
   // the era of an existing record could not be resolved
 }
 ```
 
-### Errors from the retained era
+### Errors from ledger 8
 
-Deploying to or calling a `v8` contract runs through the retained pre-fork
+Deploying to or calling a `v8` contract runs through the pre-fork ledger 8
 pipeline, which raises errors of its own. The barrel publishes those classes
 too, so you can catch them and read their payload without a cast:
 
 | Class | Payload | Means |
 | ----- | ------- | ----- |
-| `Ledger8RuntimeMissingError` | `subpath` | the retained runtime chunk could not be loaded at all |
+| `Ledger8RuntimeMissingError` | `subpath` | the ledger 8 runtime chunk could not be loaded at all |
 | `ComposeFailedError` | `version`, `stage`, `circuitId` | a circuit operation is missing or under-registered |
 | `ComposeOptionError` | `version`, `option` | one composition option cannot be used |
 | `StateDecodeFailedError` | `version` | contract-state bytes could not be read as that era |
@@ -124,7 +124,7 @@ too, so you can catch them and read their payload without a cast:
 
 ### What importing the barrel loads
 
-The retained pre-fork (`v8`) ledger runtime is **not** re-exported here, and it
+The pre-fork ledger 8 runtime is **not** re-exported here, and it
 is absent from the barrel's static import graph. It is loaded on demand, only
 once you actually touch a `v8` contract.
 
@@ -137,24 +137,24 @@ you take one module without the rest.
 Each module is also available as a sub-path import for tree-shaking:
 
 ```typescript
-import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js/contracts';
-import { type ProofProvider, type WalletProvider } from '@midnight-ntwrk/midnight-js/types';
-import { toHex, fromHex } from '@midnight-ntwrk/midnight-js/utils';
+import { deployContract, findDeployedContract } from '@midnightntwrk/midnight-js/contracts';
+import { type ProofProvider, type WalletProvider } from '@midnightntwrk/midnight-js/types';
+import { toHex, fromHex } from '@midnightntwrk/midnight-js/utils';
 ```
 
 ## Exports
 
 ```typescript
 // Namespace imports (all modules)
-import { contracts, types, utils } from '@midnight-ntwrk/midnight-js';
+import { contracts, types, utils } from '@midnightntwrk/midnight-js';
 
 // Ledger era vocabulary (named, not namespaced)
-import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js';
+import { LEDGER_ERAS, type LedgerEra } from '@midnightntwrk/midnight-js';
 
 // Sub-path imports (individual modules)
-import { ... } from '@midnight-ntwrk/midnight-js/contracts';
-import { ... } from '@midnight-ntwrk/midnight-js/types';
-import { ... } from '@midnight-ntwrk/midnight-js/utils';
+import { ... } from '@midnightntwrk/midnight-js/contracts';
+import { ... } from '@midnightntwrk/midnight-js/types';
+import { ... } from '@midnightntwrk/midnight-js/utils';
 ```
 
 ## Resources

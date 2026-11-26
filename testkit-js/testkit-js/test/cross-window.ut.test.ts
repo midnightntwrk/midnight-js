@@ -19,10 +19,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import type * as currentRuntimeModule from '@midnight-ntwrk/compact-runtime';
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { type EncodedStateValue, loadLedger8Engine } from '@midnight-ntwrk/midnight-js-protocol';
-import type * as CompactContract from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { levelPrivateStateProvider } from '@midnightntwrk/midnight-js-level-private-state-provider';
+import { type EncodedStateValue, loadLedger8Engine } from '@midnightntwrk/midnight-js-protocol';
+import type * as CompactContract from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 
 import { hfFixturePath } from '../src/fixtures-hf';
 
@@ -34,9 +34,9 @@ import { hfFixturePath } from '../src/fixtures-hf';
 // `midnight-js-protocol`, and exempts testkit-js in as many words — "fixtures
 // and cross-version test doubles legitimately need a specific version in hand".
 // That is exactly what this is.
-const RETAINED_COMPILED = hfFixturePath('private-counter-016/compiled/contract/index.js');
+const LEDGER8_COMPILED = hfFixturePath('private-counter-016/compiled/contract/index.js');
 const TWIN_COMPILED = hfFixturePath('private-counter-twin/compiled/contract/index.js');
-const RETAINED_CONTRACT_INFO = hfFixturePath('private-counter-016/compiled/compiler/contract-info.json');
+const LEDGER8_CONTRACT_INFO = hfFixturePath('private-counter-016/compiled/compiler/contract-info.json');
 const TWIN_CONTRACT_INFO = hfFixturePath('private-counter-twin/compiled/compiler/contract-info.json');
 const SOURCE = hfFixturePath('private-counter-twin/private-counter.compact');
 const FROZEN_STORE = path.dirname(hfFixturePath('pre-fork-private-state-store/store/CURRENT'));
@@ -150,7 +150,7 @@ const digestDirectory = async (root: string): Promise<string> => {
 const recordedStoreDigest = async (): Promise<string | undefined> =>
   /^- digest: ([0-9a-f]{64})$/m.exec(await fs.readFile(FROZEN_STORE_ENVELOPE, 'utf8'))?.[1];
 
-const RETAINED_RUNTIME_VERSION = '0.16.0';
+const LEDGER8_RUNTIME_VERSION = '0.16.0';
 const COIN_PUBLIC_KEY = 'ca'.repeat(32);
 const CONTRACT_ADDRESS = `02${'1d'.repeat(31)}` as ContractAddress;
 const PASSWORD = 'Fork-Window-Pass9!';
@@ -282,7 +282,7 @@ const VERSION_MEMBERS = ['compiler-version', 'compiler-commit', 'language-versio
 const withoutVersions = (info: CompiledContractInfo): Record<string, unknown> =>
   Object.fromEntries(Object.entries(info).filter(([member]) => !VERSION_MEMBERS.includes(member)));
 
-/** The retained build, typed as the engine's own `executeCircuit` demands it. */
+/** The ledger 8 build, typed as the engine's own `executeCircuit` demands it. */
 interface Ledger8EngineContract extends CompactContract.Contract<CounterPrivateState> {
   initialState(constructorContext: unknown): {
     readonly currentPrivateState: CounterPrivateState;
@@ -290,7 +290,7 @@ interface Ledger8EngineContract extends CompactContract.Contract<CounterPrivateS
   };
 }
 
-interface RetainedModule {
+interface Ledger8Module {
   readonly Contract: new (witnesses: Witnesses) => Ledger8EngineContract;
   readonly ledger: (state: unknown) => CounterLedger;
 }
@@ -323,7 +323,7 @@ interface CompactRuntimeLike {
 /**
  * The CURRENT runtime, by its own types — which are the right ones for it,
  * since this repo resolves `@midnight-ntwrk/compact-runtime` to 0.21.0.
- * The retained-era path cannot use them (its VALUE is the 0.16 glue while these
+ * The ledger 8 path cannot use them (its VALUE is the 0.16 glue while these
  * types are 0.21's), which is why {@link CompactRuntimeLike} above spells out
  * by hand the few members that exist, and agree, on both sides.
  */
@@ -332,9 +332,9 @@ type CurrentRuntime = typeof currentRuntimeModule;
 /** The contract-state shape the current runtime's circuit context accepts. */
 type CurrentContractState = Parameters<CurrentRuntime['createCircuitContext']>[0]['contractState'];
 
-interface RetainedToolchain {
+interface Ledger8Toolchain {
   readonly runtime: CompactRuntimeLike;
-  readonly module: RetainedModule;
+  readonly module: Ledger8Module;
 }
 
 interface TwinToolchain {
@@ -344,13 +344,13 @@ interface TwinToolchain {
 
 describe('private state across the ledger v8 to v9 fork window', () => {
   let dbName: string;
-  let retained: RetainedToolchain;
+  let ledger8: Ledger8Toolchain;
   let twin: TwinToolchain;
 
   /**
    * Both toolchains, resolved once, in this order and nowhere else.
    *
-   * The retained build's own bare `@midnight-ntwrk/compact-runtime` import has
+   * The ledger 8 build's own bare `@midnight-ntwrk/compact-runtime` import has
    * to reach a real 0.16 instance, which this repo does not resolve that
    * specifier to — it pins 0.20.0, and the build's
    * `checkRuntimeVersion('0.16.0')` guard refuses it. `compact-runtime-ledger8`
@@ -369,13 +369,13 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     dbName = await fs.mkdtemp(path.join(os.tmpdir(), 'midnight-cross-window-'));
 
     vi.doMock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
-    // Before the reset below, so the engine and the retained build capture the
+    // Before the reset below, so the engine and the ledger 8 build capture the
     // same physical 0.16 instance: two copies would fail wasm-bindgen's own
     // class-identity checks deep inside a call.
     await loadLedger8Engine();
-    retained = {
+    ledger8 = {
       runtime: await import('@midnight-ntwrk/compact-runtime'),
-      module: (await import(/* @vite-ignore */ RETAINED_COMPILED)) as RetainedModule
+      module: (await import(/* @vite-ignore */ LEDGER8_COMPILED)) as Ledger8Module
     };
 
     vi.doUnmock('@midnight-ntwrk/compact-runtime');
@@ -412,14 +412,14 @@ describe('private state across the ledger v8 to v9 fork window', () => {
   };
 
   /**
-   * One `increment()` call on the RETAINED toolchain, through the only
+   * One `increment()` call on the LEDGER 8 toolchain, through the only
    * sanctioned runtime path to it. Returns the private state that execution
    * produced, the round it left behind, and what the witness was shown.
    */
-  const runRetainedIncrement = async (privateState: CounterPrivateState) => {
+  const runLedger8Increment = async (privateState: CounterPrivateState) => {
     const seen: WitnessView[] = [];
-    const contract = new retained.module.Contract(recordingWitnesses(seen));
-    const initial = contract.initialState(retained.runtime.createConstructorContext(privateState, COIN_PUBLIC_KEY));
+    const contract = new ledger8.module.Contract(recordingWitnesses(seen));
+    const initial = contract.initialState(ledger8.runtime.createConstructorContext(privateState, COIN_PUBLIC_KEY));
 
     const engine = await loadLedger8Engine();
 
@@ -431,16 +431,16 @@ describe('private state across the ledger v8 to v9 fork window', () => {
       // off different reads. Freshly constructed here, so the contract holds
       // nothing.
       contractState: { state: initial.currentContractState.data.state.encode(), balance: new Map(), entryPoints: [] },
-      address: retained.runtime.dummyContractAddress(),
+      address: ledger8.runtime.dummyContractAddress(),
       coinPk: COIN_PUBLIC_KEY,
       privateState
     });
     if (!isCounterPrivateState(transcript.privateStateAfter)) {
-      throw new Error('the retained execution did not hand back a private state of the expected shape');
+      throw new Error('the ledger 8 execution did not hand back a private state of the expected shape');
     }
     return {
       privateState: transcript.privateStateAfter,
-      round: retained.module.ledger(transcript.postContractState).round,
+      round: ledger8.module.ledger(transcript.postContractState).round,
       seen
     };
   };
@@ -466,23 +466,23 @@ describe('private state across the ledger v8 to v9 fork window', () => {
   };
 
   it('compiles the same source to the same private-state surface on both sides of the fork', async () => {
-    const retainedInfo = await readContractInfo(RETAINED_CONTRACT_INFO);
+    const ledger8Info = await readContractInfo(LEDGER8_CONTRACT_INFO);
     const twinInfo = await readContractInfo(TWIN_CONTRACT_INFO);
 
     // Everything but the toolchain versions, compared wholesale: the circuits,
     // the ledger and the witnesses all have to survive the recompile, and
     // gating only the witnesses would let the other two drift past this suite.
-    expect(withoutVersions(twinInfo)).toEqual(withoutVersions(retainedInfo));
+    expect(withoutVersions(twinInfo)).toEqual(withoutVersions(ledger8Info));
     // Non-empty, and named: this contract HAS private state, which is the
     // whole reason this pair exists. The assertion above would hold just as
     // well for two builds that both declared none.
-    expect(retainedInfo.witnesses.map((witness) => witness.name)).toEqual(['localIncrement']);
+    expect(ledger8Info.witnesses.map((witness) => witness.name)).toEqual(['localIncrement']);
     // Neither build can drift from the source they were compiled from without
     // this failing -- the version gates below only compare the two builds to
     // each other, so an edited source with neither side recompiled is invisible
     // to them.
     expect(createHash('sha256').update(await fs.readFile(SOURCE)).digest('hex'), RECOMPILE).toBe(SOURCE_SHA256);
-    expect(retainedInfo['runtime-version']).toBe(RETAINED_RUNTIME_VERSION);
+    expect(ledger8Info['runtime-version']).toBe(LEDGER8_RUNTIME_VERSION);
     // A gate, not decoration: the twin is only executable while its declared
     // runtime is the one this repo resolves. Bumping compact-runtime without
     // recompiling the fixture fails here, rather than as a version-mismatch
@@ -493,10 +493,10 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     // fixture would still load. That is the intent: the pair is recompiled
     // deliberately, never left to drift quietly.
     expect(twinInfo['runtime-version'], RECOMPILE).toBe(twin.runtime.versionString);
-    expect(retained.runtime.versionString).toBe(RETAINED_RUNTIME_VERSION);
+    expect(ledger8.runtime.versionString).toBe(LEDGER8_RUNTIME_VERSION);
   });
 
-  it('returns a private state written by a retained-toolchain execution to a later reader, value intact', async () => {
+  it('returns a private state written by a ledger 8 toolchain execution to a later reader, value intact', async () => {
     const preForkState: CounterPrivateState = {
       step: 7n,
       callCount: 0n,
@@ -506,8 +506,8 @@ describe('private state across the ledger v8 to v9 fork window', () => {
         ['0xbeef', 9n]
       ])
     };
-    const preFork = await runRetainedIncrement(preForkState);
-    // The retained runtime really ran the circuit and really called the witness:
+    const preFork = await runLedger8Increment(preForkState);
+    // The ledger 8 runtime really ran the circuit and really called the witness:
     // the round advanced by the step the witness disclosed, the witness was
     // shown the pre-call ledger, and the state that reaches storage is the one
     // the witness handed back rather than the one passed in.
@@ -546,7 +546,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
   });
 
   it('lets the post-fork twin read the same meaning out of it, and continue from it', async () => {
-    const preFork = await runRetainedIncrement({
+    const preFork = await runLedger8Increment({
       step: 5n,
       callCount: 0n,
       secretKey: new Uint8Array(32).fill(0x5c),
@@ -560,8 +560,8 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     const postFork = await runTwinIncrement(carried);
 
     // Same meaning, not merely the same bytes: the current toolchain's witness
-    // was shown exactly what the retained one wrote, and reading `step` out of
-    // the carried state drove its ledger to the same round the retained
+    // was shown exactly what the ledger 8 one wrote, and reading `step` out of
+    // the carried state drove its ledger to the same round the ledger 8
     // execution reached.
     expect(postFork.seen).toEqual([{ ledger: { round: 0n }, privateState: preFork.privateState }]);
     expect(postFork.round).toBe(preFork.round);
@@ -659,7 +659,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
   });
 
   it('keeps the values written before the fork intact when the post-fork dApp writes on top of them', async () => {
-    const preFork = await runRetainedIncrement({
+    const preFork = await runLedger8Increment({
       step: 3n,
       callCount: 0n,
       secretKey: new Uint8Array(32).fill(0x33),

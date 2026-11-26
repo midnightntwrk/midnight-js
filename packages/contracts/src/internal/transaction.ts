@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   type CoinPublicKey,
   type ContractAddress,
   type EncPublicKey,
   Transaction as Ledger9Transaction
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { ChargedState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { LEDGER_ERAS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   LedgerTransaction,
@@ -31,7 +31,8 @@ import {
   type PublicStatesRead,
   SerializedContractState,
   SucceedEntirely
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
+import { assertNever } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9CallResult } from '../call';
 import { type Ledger9ContractProviders } from '../contract-providers';
@@ -53,6 +54,7 @@ import {
   readHeadEra,
   type ResolvedOperationEra
 } from './era';
+import { mergeUnprovenTransactions } from './utils/merge-unproven';
 
 /**
  * Where a call's next private state is stored once the call succeeds.
@@ -157,7 +159,10 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
     unprovenTx: LedgerTransaction.seal(
       'v9',
       'Unproven',
-      current.unprovenTx.deserialize({ v9: Ledger9Transaction }).merge(next.unprovenTx.deserialize({ v9: Ledger9Transaction }))
+      mergeUnprovenTransactions(
+        current.unprovenTx.deserialize({ v9: Ledger9Transaction }),
+        next.unprovenTx.deserialize({ v9: Ledger9Transaction })
+      )
     ),
     circuitId: Array.from(circuitIds)
   };
@@ -213,6 +218,7 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
   // REFUSED FROM THE READING ALONE, before any era is acquired. Acquiring first would make every
   // refused scope pay to instantiate a ledger it is about to be refused on -- and would make the
   // refusal depend on that instantiation succeeding.
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 9 path refuses every other era
   if (reading.head !== 'v9') {
     throw scopeEraMismatch('withLedger9ContractScopedTransaction', reading.head);
   }
@@ -431,7 +437,7 @@ export const readScopeEra = (u: unknown): LedgerEra | 'unrecognised' | undefined
     return undefined;
   }
   const era: unknown = Reflect.get(u, ScopeEra);
-  return era === 'v8' || era === 'v9' ? era : 'unrecognised';
+  return LEDGER_ERAS.find((known) => known === era) ?? 'unrecognised';
 };
 
 /** @internal Whether `u` is a scope context of the ledger 9 era. */
@@ -440,6 +446,7 @@ export const isLedger9ScopeContext = <
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 >(
   u: unknown
+// eslint-disable-next-line no-restricted-syntax -- a predicate for one named era: every other era answers false
 ): u is Transaction.Ledger9TransactionContext<C, PCK> => readScopeEra(u) === 'v9';
 
 /** @internal The refusal of a value passed where a transaction context goes that is not one. */
@@ -462,7 +469,7 @@ export const unrecognisedScopeContext = (entryPoint: ScopeEntryPoint): InvalidAr
 export const foreignLedger8ScopeContext = (entryPoint: ScopeEntryPoint): InvalidArgumentError =>
   new InvalidArgumentError(
     `${entryPoint} was passed a ledger 8 transaction context made by another copy of ` +
-      '@midnight-ntwrk/midnight-js-contracts. Install one copy of the package.'
+      '@midnightntwrk/midnight-js-contracts. Install one copy of the package.'
   );
 
 /**
@@ -689,11 +696,17 @@ export const scopedTransaction = async <
   // would be created and the transaction the caller believed was nested would
   // be submitted on its own. That is the same "silently ran outside the scope
   // it was handed" failure `'ledger8-call-in-scope'` exists to stop, one case over.
-  switch (readScopeEra(txCtxOrOptions)) {
+  const outerEra = readScopeEra(txCtxOrOptions);
+  switch (outerEra) {
     case 'v8':
       throw scopeEraMismatch('withLedger9ContractScopedTransaction', 'v8');
     case 'unrecognised':
       throw unrecognisedScopeContext('withLedger9ContractScopedTransaction');
+    case 'v9':
+    case undefined:
+      break;
+    default:
+      return assertNever(outerEra, 'withLedger9ContractScopedTransaction');
   }
   const outerTxCtx = isLedger9ScopeContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
   if (outerTxCtx !== undefined) {

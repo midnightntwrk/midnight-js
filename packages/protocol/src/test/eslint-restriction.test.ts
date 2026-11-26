@@ -32,7 +32,7 @@ const CONSUMER_PATH = 'packages/contracts/src/some-consumer.ts';
 const PROTOCOL_INTERNAL_PATH = 'packages/protocol/src/some-reexport.ts';
 const PACKAGE_TEST_PATH = 'packages/contracts/src/test/some-consumer.test.ts';
 const TESTKIT_PATH = 'testkit-js/testkit-js/src/some-helper.ts';
-const ACL_REPLACEMENT_PREFIX = '@midnight-ntwrk/midnight-js-protocol';
+const ACL_REPLACEMENT_PREFIX = '@midnightntwrk/midnight-js-protocol';
 const RULE_ID = 'no-restricted-imports';
 const TS_RULE_ID = '@typescript-eslint/no-restricted-imports';
 const SYNTAX_RULE_ID = 'no-restricted-syntax';
@@ -72,7 +72,7 @@ describe('Protocol ACL: no-restricted-imports canaries', () => {
   it.each([
     '@midnightntwrk/ledger-v9',
     '@midnight-ntwrk/compact-runtime',
-    '@midnight-ntwrk/compact-js',
+    '@midnightntwrk/compact-js',
     '@midnightntwrk/onchain-runtime-v4',
     '@midnight-ntwrk/platform-js',
     'compact-runtime-ledger8'
@@ -283,6 +283,68 @@ describe('protocol/v8/engine gate canaries', () => {
     const messages = await lintMessagesFor(dynamicImportStatement(ENGINE_SUBPATH), PROTOCOL_INTERNAL_PATH, SYNTAX_RULE_ID);
 
     expect(messages).toEqual([]);
+  });
+});
+
+describe('era-comparison gate', () => {
+  it.each([
+    ['=== on the right', "export const f = (era: string) => era === 'v8';\n"],
+    ['!== on the left', "export const f = (era: string) => 'v9' !== era;\n"],
+    ['== loose equality', "export const f = (era: string) => era == 'v10';\n"],
+    ['!= loose inequality', "export const f = (era: string) => era != 'v8';\n"],
+    ['a template literal', 'export const f = (era: string) => era === `v8`;\n'],
+    ['an `as const` literal', "export const f = (era: string) => era === ('v8' as const);\n"],
+    ['a `satisfies` literal', "export const f = (era: string) => ('v9' satisfies string) !== era;\n"]
+  ])('flags an era literal compared with %s', async (_name, code) => {
+    const messages = await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID);
+
+    expect(messages.map(({ message }) => message)).toEqual([expect.stringContaining('assertNever')]);
+  });
+
+  it('allows an era literal as a switch case label', async () => {
+    const code = "export const f = (era: string) => { switch (era) { case 'v8': return 1; default: return 2; } };\n";
+
+    expect(await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID)).toEqual([]);
+  });
+
+  it('allows a comparison with a string that is not an era', async () => {
+    const code = "export const f = (name: string) => name === 'v8-legacy' || name === `v${name.length}`;\n";
+
+    expect(await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID)).toEqual([]);
+  });
+
+  it.each([
+    ['protocol sources', PROTOCOL_INTERNAL_PATH],
+    ['a package test file', PACKAGE_TEST_PATH],
+    ['a testkit-js file', TESTKIT_PATH]
+  ])('allows an era comparison in %s', async (_name, filePath) => {
+    const code = "export const f = (era: string) => era === 'v8';\n";
+
+    expect(await lintMessagesFor(code, filePath, SYNTAX_RULE_ID)).toEqual([]);
+  });
+
+  it('flags an era comparison in the plain-throw exempt folders', async () => {
+    const code = "export const f = (era: string) => era === 'v8';\n";
+
+    expect(await lintMessagesFor(code, 'packages/compact/src/some-cli.ts', SYNTAX_RULE_ID)).toHaveLength(1);
+  });
+
+  it('keeps the cast, plain-throw and v8 gates beside it in one package source file', async () => {
+    const code =
+      "export const f = (era: string) => era === 'v8';\n" +
+      'export const y = 0 as any;\n' +
+      'export const g = () => { throw new Error("x"); };\n' +
+      dynamicImportStatement(LEDGER8_SUBPATH);
+
+    const messages = await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID);
+
+    expect(messages.map(({ line }) => line)).toEqual([1, 2, 3, 4]);
+    expect(messages.map(({ message }) => message)).toEqual([
+      expect.stringContaining('assertNever'),
+      expect.stringContaining("Unsafe cast to 'any'"),
+      expect.stringContaining('MidnightJsError subclass'),
+      expect.stringContaining('Dynamic imports of protocol/v8 are not allowed')
+    ]);
   });
 });
 

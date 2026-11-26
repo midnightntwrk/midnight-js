@@ -1,27 +1,28 @@
 name: Publish (manual)
 #
 # Workaround to publish the current `main` on demand, WITHOUT a version-bump
-# commit and WITHOUT the full CI/e2e cycle (main is assumed already tested).
+# commit and WITHOUT re-running CI/e2e. Instead it requires the test evidence of
+# this commit's completed ci.yml push run and attaches it, with the integrity of
+# the published packages, to the GitHub Release (new or existing).
 #
-# It publishes the version currently in the root package.json AS-IS, for a
-# version that has NOT yet been published — e.g. to finish a release whose
-# automatic publish never completed (CI timed out mid-run), or to publish main
-# ahead of the last release.
+# It publishes the version currently in the root package.json AS-IS — e.g. to
+# finish a release whose automatic publish never completed (CI timed out
+# mid-run), or to publish main ahead of the last release.
 #
-# The guard is an UNCONDITIONAL hard stop: if the current version is already on
-# the registry, the workflow refuses to run. There is deliberately no override —
-# this workflow must never be able to touch already-published artefacts.
+# HEAD must be a commit whose ci.yml push run ran every test lane. A commit the
+# path filter skips (docs only, for example) has no evidence, so this refuses it.
 #
-# This does NOT touch ci.yml or the automatic release path. See
-# docs/superpowers/specs/2026-07-08-manual-publish-from-main-design.md.
+# Already-published artefacts are never touched: publish-packages.mjs skips
+# every package/registry that already has this version, so a run on a fully
+# published version publishes nothing. Re-running the failed ci.yml publish job
+# finishes a partial release the same way.
 
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: write
   id-token: write
   packages: write
@@ -33,7 +34,9 @@ concurrency:
 jobs:
   publish:
     name: Publish current main
+    if: github.repository == 'midnightntwrk/midnight-js'
     runs-on: ubuntu-latest
+    environment: npm-publish-stable
     steps:
       - name: Guard - main only
         if: github.ref != 'refs/heads/main'
@@ -48,40 +51,55 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: yarn install --immutable
 
-      # Unconditional hard stop: if this version is already on the registry, refuse
-      # to run. This workflow must never touch already-published artefacts, so
-      # there is no override — bump the version to publish new code.
-      - name: Guard - refuse if version already published
-        id: guard
-        env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+      - name: Read version
+        id: version
         run: |
           set -euo pipefail
           version=$(jq -r .version package.json)
-          echo "Checking whether @midnight-ntwrk/midnight-js@${version} is already published..."
-          exists=$(yarn npm info "@midnight-ntwrk/midnight-js" --json 2>/dev/null \
-            | jq -r --arg v "$version" '.versions | has($v)' 2>/dev/null || echo "false")
-          if [ "$exists" = "true" ]; then
-            echo "::error::v${version} is already published — refusing to run. Bump the version to publish new code."
-            exit 1
-          fi
-          echo "v${version} is not published yet — proceeding."
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Find the CI run of this commit
+        id: ci_run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          run_id=$(gh run list -R "$REPO" -w ci.yml -e push -c "$SHA" -s completed -L 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run_id" ]; then
+            echo "::error::No completed ci.yml push run for ${SHA}. Wait for CI on main to finish, then run this workflow again."
+            exit 1
+          fi
+          echo "Using test evidence from ci.yml run ${run_id}."
+          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
+
+      # Before the first publish: a release with missing or failed evidence must stop here.
+      # If main's last CI run is older than the repository's retention period, its
+      # evidence is gone and this fails; push a new commit to main for a fresh run.
+      - name: Collect test evidence
+        id: evidence
+        uses: ./.github/actions/collect-test-evidence
+        with:
+          run-id: ${{ steps.ci_run.outputs.run_id }}
+          version: ${{ steps.version.outputs.version }}
+          sha: ${{ github.sha }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build packages
         run: yarn build:core
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Extract release notes
         env:
-          VERSION_NUMBER: ${{ steps.guard.outputs.version }}
+          VERSION_NUMBER: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
           # CHANGELOG headers use bare versions in brackets ("## [4.1.0]").
@@ -96,21 +114,36 @@ jobs:
             echo "Manual release of v${VERSION_NUMBER} from main @ $(git rev-parse --short HEAD)." > release_notes.md
           fi
 
+      - name: Link test evidence in release notes
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ steps.ci_run.outputs.run_id }}
+          SUMMARY: ${{ steps.evidence.outputs.summary }}
+          PUBLISHED: published-packages-${{ steps.version.outputs.tag }}.txt
+        run: |
+          printf "\n**Test evidence:** \`%s\` and the tarball attached to this release (CI run %s).\n" "$SUMMARY" "$RUN_URL" >> release_notes.md
+          printf "\n**Published packages:** \`%s\` lists the sha512 integrity of each @midnightntwrk package; compare it with \`npm view <package>@<version> dist.integrity\`.\n" "$PUBLISHED" >> release_notes.md
+
       - name: Validate packages before publishing
         uses: ./.github/actions/validate-packages
         with:
           workspace-path: './packages'
 
       - name: Publish packages
-        run: |
-          yarn deploy --filter="./packages/*" --cache-dir ./turbo --concurrency=1
+        run: node .github/scripts/publish-packages.mjs
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          MIDNIGHT_WORKSPACE_DIR: 'packages'
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}
+          MIDNIGHT_PUBLISHED_MANIFEST: published-packages-${{ steps.version.outputs.tag }}.txt
 
       - name: Bump testkit-js versions
         env:
-          VERSION_NUMBER: ${{ steps.guard.outputs.version }}
+          VERSION_NUMBER: ${{ steps.version.outputs.version }}
         run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version "$VERSION_NUMBER"
+
+      - name: Build testkit-js packages
+        run: yarn build:testkit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Validate testkit-js packages before publishing
         uses: ./.github/actions/validate-packages
@@ -118,22 +151,55 @@ jobs:
           workspace-path: './testkit-js'
 
       - name: Publish testkit-js packages
-        run: |
-          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1
+        run: node .github/scripts/publish-packages.mjs
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          MIDNIGHT_WORKSPACE_DIR: 'testkit-js'
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}
+          MIDNIGHT_PUBLISHED_MANIFEST: published-packages-${{ steps.version.outputs.tag }}.txt
+
+      - name: Check for an existing GitHub Release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if error=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" 2>&1 >/dev/null); then
+            echo "::notice::Release $TAG already exists - attaching the evidence to it."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif [ "$error" = "release not found" ]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Could not check for release ${TAG}: ${error}"
+            exit 1
+          fi
+
+      - name: Attach evidence to the existing GitHub Release
+        if: vars.NPM_PUBLISH_DRY_RUN != 'true' && steps.release.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          BUNDLE: ${{ steps.evidence.outputs.bundle }}
+          SUMMARY: ${{ steps.evidence.outputs.summary }}
+          PUBLISHED: published-packages-${{ steps.version.outputs.tag }}.txt
+        run: gh release upload "$TAG" "$BUNDLE" "$SUMMARY" "$PUBLISHED" --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # ratchet:softprops/action-gh-release@v3.0.3
+        if: vars.NPM_PUBLISH_DRY_RUN != 'true' && steps.release.outputs.exists != 'true'
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # ratchet:softprops/action-gh-release@v3.0.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.guard.outputs.tag }}
-          name: Release ${{ steps.guard.outputs.tag }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Release ${{ steps.version.outputs.tag }}
           body_path: release_notes.md
+          files: |
+            ${{ steps.evidence.outputs.bundle }}
+            ${{ steps.evidence.outputs.summary }}
+            published-packages-${{ steps.version.outputs.tag }}.txt
+          fail_on_unmatched_files: true
           draft: false
           # A version with a pre-release identifier (e.g. 5.0.0-beta.1) is flagged
           # as a pre-release and must NOT become the "Latest" release.
-          prerelease: ${{ contains(steps.guard.outputs.version, '-') }}
-          make_latest: ${{ contains(steps.guard.outputs.version, '-') && 'false' || 'true' }}
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          make_latest: ${{ contains(steps.version.outputs.version, '-') && 'false' || 'true' }}

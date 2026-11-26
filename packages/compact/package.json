@@ -1,16 +1,21 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-compact",
+  "name": "@midnightntwrk/midnight-js-compact",
   "description": "Compact fetcher",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/compact"
   },
-  "author": "IOG",
+  "homepage": "https://github.com/midnightntwrk/midnight-js/tree/main/packages/compact#readme",
+  "bugs": {
+    "url": "https://github.com/midnightntwrk/midnight-js/issues"
+  },
+  "author": "Midnight Foundation",
   "engines": {
     "node": ">=22.12"
   },
   "license": "Apache-2.0",
-  "version": "5.0.1-rc.1",
+  "version": "5.0.3",
   "type": "module",
   "bin": {
     "fetch-compactc": "dist/fetch-compact.mjs",
@@ -21,21 +26,20 @@
     "build": "tsc -p tsconfig.build.json && cp src/run-compactc.cjs dist/",
     "lint": "eslint ./src",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "vite": "^8.3.4",
-    "vitest": "^5.0.4"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   },
   "files": [
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@midnightntwrk/midnight-js-utils": "workspace:*"
   },
   "packageManager": "yarn@4.14.1"
 }

@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import * as ledger from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   ledgerVersionOfLedgerParameters,
   parseSerializedTag,
   toHex
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -38,7 +38,7 @@ const tagOf = (bytes: Uint8Array): string => parseSerializedTag(bytes).tag;
 // ---------------------------------------------------------------------------
 
 describe('the ledger parameters each runtime writes', () => {
-  test('the retained era writes the envelope this client maps onto v8', async () => {
+  test('ledger 8 writes the envelope this client maps onto v8', async () => {
     const bytes = await mintLedger8LedgerParametersBytes();
 
     expect(tagOf(bytes)).toBe('midnight:ledger-parameters[v5]');

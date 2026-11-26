@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   assertProvidersSupportEra,
@@ -23,8 +23,8 @@ import {
   LedgerTransaction,
   type MidnightProviders,
   TransactionEraMismatchError,
-  type UnprovenTx} from '@midnight-ntwrk/midnight-js-types';
-import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+  type UnprovenTx} from '@midnightntwrk/midnight-js-types';
+import { assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import { EraInvariantViolationError,EraMismatchError, type EraMismatchReason, type SubmittedTransaction } from './errors';
@@ -79,6 +79,7 @@ export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK exte
   options: Ledger9PayloadSubmitOptions<PCK>
 ): Promise<string> => {
   const unprovenTx = LedgerTransaction.require(options.unprovenTx, 'Unproven', 'submitTx');
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 9 path refuses every other era
   if (unprovenTx.era !== 'v9') {
     throw new TransactionEraMismatchError('v9', unprovenTx.era);
   }

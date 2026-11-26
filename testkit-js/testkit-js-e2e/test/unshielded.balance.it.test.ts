@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
-import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { type FinalizedTxRecord, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { deployContract, submitCallTx } from '@midnightntwrk/midnight-js-contracts';
+import { type ContractAddress, sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { type FinalizedTxRecord, SucceedEntirely } from '@midnightntwrk/midnight-js-types';
 import {
   type ContractConfiguration,
   createLogger,
@@ -25,7 +25,7 @@ import {
   initializeMidnightProviders,
   type MidnightWalletProvider,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 import { firstValueFrom, timeout } from 'rxjs';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';

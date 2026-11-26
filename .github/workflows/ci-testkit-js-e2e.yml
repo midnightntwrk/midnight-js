@@ -1,6 +1,4 @@
 name: CI - TestKit.js (e2e)
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
   contents: read
@@ -36,25 +34,14 @@ on:
         description: Midnight network to use (testnet/devnet/undeployed)
         required: true
         default: 'undeployed'
-    # Declared so a caller can hand over these four credentials instead of the
-    # whole repository's secrets. Only the packages token is required; the
-    # Docker Hub pair and the reporting token are absent in some repositories,
-    # and every step that uses them tolerates an empty value.
+    # Declared so a caller can hand over these two credentials instead of the
+    # whole repository's secrets. The Docker Hub pair is absent in some
+    # repositories, and the step that uses it is skipped when it is empty.
     secrets:
-      MIDNIGHTCI_PACKAGES_WRITE:
-        required: true
       DOCKERHUB_USERNAME:
         required: false
       DOCKERHUB_TOKEN:
         required: false
-      GH_TOKEN:
-        required: false
-
-concurrency:
-  group: TK-JS-e2e-${{ github.workflow }}-${{ inputs.testkit_docker_env || 'default' }}-${{ github.event.pull_request.number || github.ref }}
-  # Only cancel superseded PR runs; queue push-to-main runs so a mid-flight
-  # release (gated on this workflow in ci.yml) is never cancelled half-done.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   prepare_images:
@@ -72,27 +59,19 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
         with:
           path: image-cache
-          key: docker-images-zst-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env)) }}
+          key: docker-images-zst-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env), 'testkit-js/compose.yml') }}
 
-      - name: Log in to GitHub Container registry
-        if: steps.image-cache.outputs.cache-hit != 'true'
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
-        with:
-          registry: 'https://ghcr.io'
-          username: MidnightCI
-          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      # The steps in e2e_tests key the extra registry logins and the longer job timeout off a
-      # `fork.` filename prefix, because the matrix carries filenames and nothing else. Assert the
-      # convention here rather than letting a violation surface as an opaque `unauthorized` on a
-      # cache hit -- a failure that only appears on some runs and points nowhere near the cause.
+      # The steps in e2e_tests key the Docker Hub login and the longer job timeout off a `fork.`
+      # filename prefix, because the matrix carries filenames and nothing else. Assert the
+      # convention here rather than letting a violation surface as a rate-limited pull or a timeout
+      # -- a failure that only appears on some runs and points nowhere near the cause.
       - name: Check fork-stack tests follow the fork.* naming convention
         run: |
           set -euo pipefail
           cd testkit-js/testkit-js-e2e/test
           offenders=$(grep -l 'ForkTestEnvironment' *.test.ts | grep -v '^fork\.' || true)
           if [ -n "$offenders" ]; then
-            echo "::error::These tests drive ForkTestEnvironment but are not named fork.*, so they will not get the fork stack's registry logins or job timeout: $offenders"
+            echo "::error::These tests drive ForkTestEnvironment but are not named fork.*, so they will not get the fork stack's Docker Hub login or job timeout: $offenders"
             exit 1
           fi
 
@@ -105,9 +84,9 @@ jobs:
           mkdir -p image-cache
           docker compose -f testkit-js/compose.yml pull
           docker save \
-            "ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_VERSION}" \
-            "${INDEXER_IMAGE:-ghcr.io/midnight-ntwrk/indexer-standalone}:${INDEXER_VERSION}" \
-            "${MIDNIGHT_NODE_IMAGE:-ghcr.io/midnight-ntwrk/midnight-node}:${MIDNIGHT_NODE_VERSION}" \
+            "midnightntwrk/proof-server:${PROOF_SERVER_VERSION}" \
+            "${INDEXER_IMAGE:-midnightntwrk/indexer-standalone}:${INDEXER_VERSION}" \
+            "${MIDNIGHT_NODE_IMAGE:-midnightntwrk/midnight-node}:${MIDNIGHT_NODE_VERSION}" \
             | zstd -T0 > image-cache/images.tar.zst
 
   e2e_tests:
@@ -131,9 +110,8 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          cache-key-prefix: 'turbo-testkit'
           testkit-docker-env: ${{ inputs.testkit_docker_env }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -162,7 +140,7 @@ jobs:
         uses: ./.github/actions/pull-lfs
 
       - name: Copy the prover keys into the e2e dist
-        run: yarn workspace @midnight-ntwrk/testkit-js-e2e compact-copy
+        run: yarn workspace @midnightntwrk/testkit-js-e2e compact-copy
 
       - name: Post-Install dependencies
         run: yarn postinstall
@@ -172,29 +150,12 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
         with:
           path: image-cache
-          key: docker-images-zst-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env)) }}
+          key: docker-images-zst-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env), 'testkit-js/compose.yml') }}
 
-      # ghcr is normally only needed on a cache miss: on a hit the images are
-      # loaded from the tarball below and `docker compose up` finds them locally
-      # (no pull). Mirrors prepare_images' conditional login and removes a
-      # per-matrix-job ghcr round-trip that was prone to `Client.Timeout`.
-      #
-      # A `fork.` test file is the exception: it stands up its own compose stack
-      # (compose-fork.yml) whose images are not in the cached set at all, so on a
-      # cache hit it would reach ghcr unauthenticated and fail with
-      # `unauthorized`. Only that job pays the extra login.
-      - name: Log in to GitHub Container registry
-        if: steps.image-cache.outputs.cache-hit != 'true' || startsWith(matrix.test-file, 'fork.')
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
-        with:
-          registry: 'https://ghcr.io'
-          username: MidnightCI
-          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      # The fork stack's toolkit image is on Docker Hub, not ghcr, so the login above does not
-      # authorize it. Anonymous pulls from shared runner IPs hit Docker Hub's rate limit, and the
-      # pull happens inside enactFork() -- minutes into the test -- where it looks like a governance
-      # failure rather than a registry one.
+      # The fork stack (compose-fork.yml) pulls its own images, none of them in the cached set.
+      # Anonymous pulls from shared runner IPs hit Docker Hub's rate limit, and the pull happens
+      # inside enactFork() -- minutes into the test -- where it looks like a governance failure
+      # rather than a registry one.
       #
       # No Docker Hub credentials are configured for this repo today, and an empty login is a hard
       # failure in the action, so this is inert until someone adds them. The anonymous pull that the
@@ -212,9 +173,9 @@ jobs:
 
       - name: Run e2e tests - ${{ matrix.test-file }}
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') && (inputs.run_fork_lane || !startsWith(matrix.test-file, 'fork.')) }}
-        run: yarn e2e-single --filter="./testkit-js/*" --concurrency 1 --cache-dir ./turbo
+        run: yarn e2e-single --only --filter="./testkit-js/*" --concurrency 1
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
           MN_TEST_ENVIRONMENT: ${{ inputs.network }}
           MN_TEST_FILE: ${{ matrix.test-file }}
 
@@ -232,6 +193,9 @@ jobs:
     # Run on success/failure AND cancelled/skipped so reviewers can still see a row
     # indicating why no test results exist (otherwise the absence is silent).
     if: always()
+    # The always() npx steps still run when setup-npm fails, so the cooldown is set here too.
+    env:
+      NPM_CONFIG_MIN_RELEASE_AGE: '7'
     steps:
 
       - name: Checkout code
@@ -242,6 +206,17 @@ jobs:
         with:
           pattern: test-results-${{ inputs.testkit_docker_env || 'default' }}-*
           path: test-results
+
+      # Runs after the download so a setup failure cannot skip it.
+      # Without these two steps this job runs `npx` and `npm install -g` on the runner image's
+      # own Node.js and npm, outside both the .nvmrc pin and the npm pin.
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # ratchet:actions/setup-node@v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Set up npm
+        uses: ./.github/actions/setup-npm
 
       - name: Generate Allure Report
         if: always()
@@ -302,7 +277,7 @@ jobs:
 
       - name: Publish Test Report
         if: always() && github.event_name != 'schedule'
-        uses: ctrf-io/github-test-reporter@7974087018bf4857cf5a9d78723e152038c3fa31 # ratchet:ctrf-io/github-test-reporter@v1.3.0
+        uses: ctrf-io/github-test-reporter@dbb08957b5b2af918b39136ab2c5532002c7649b # ratchet:ctrf-io/github-test-reporter@v1.3.2
         with:
           title: "E2E Tests Results (${{ inputs.testkit_docker_env || 'default' }})"
           report-path: 'ctrf-results/ctrf-report-merged.json'
@@ -313,7 +288,7 @@ jobs:
           collapse-large-reports: true
           comment-tag: "${{ github.workflow }}-${{ github.job }}-${{ inputs.testkit_docker_env || 'default' }}"
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Upload CTRF Summary
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2

@@ -14,8 +14,8 @@
  */
 
 
-import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import type * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import { hashVerifierKey } from '@midnightntwrk/compact-js';
 import * as ledgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
@@ -233,7 +233,7 @@ describe('decodeContractStateWith', () => {
 
 // The balance is the contract's own, and it lives on `ContractState.balance`
 // rather than inside the primary state — so a reader that returns only `state`
-// leaves a caller no way to reach it. A retained-era call that executes without
+// leaves a caller no way to reach it. A ledger 8 call that executes without
 // it reads every balance back as zero.
 describe('decodeContractStateWith carries the contract balance', () => {
   const COLOUR = { tag: 'unshielded', raw: 'ab'.repeat(32) } as const;
@@ -296,11 +296,11 @@ describe('decodeContractStateWith carries the contract balance', () => {
   });
 });
 
-// The RETAINED-era path is the only place this code path runs in production, and
+// The ledger 8 path is the only place this code path runs in production, and
 // every test above it reads a v9 state. `DecodableContractState.balance` is
-// structural, so a retained state whose `.balance` resolved to `undefined`
+// structural, so a ledger 8 state whose `.balance` resolved to `undefined`
 // would decode to an empty map and reproduce #1345 with the v9 tests all green.
-describe('decodeContractStateWith carries the balance off a RETAINED-era state', () => {
+describe('decodeContractStateWith carries the balance off a ledger 8 state', () => {
   const COLOUR = { tag: 'unshielded', raw: 'cd'.repeat(32) } as const;
 
   it('reads back the balance a ledger-v8 state declares', () => {

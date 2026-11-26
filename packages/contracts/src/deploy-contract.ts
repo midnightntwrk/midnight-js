@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import type { CoinPublicKey, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { sampleSigningKey, type SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { PrivateStateId } from '@midnightntwrk/midnight-js-types';
+import { assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
 import type { Ledger9ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type Ledger9ContractProviders } from './contract-providers';
@@ -54,14 +54,14 @@ import type { Ledger9FinalizedDeployTxData } from './tx-model';
  * private-state variant uninhabitable — so the pairing rule can only be stated by
  * making the two variants siblings over this.
  *
- * {@link Ledger8DeployContractOptionsShared} plays the same role for the
- * retained era, which arrives there by a different route: its variants are
+ * {@link Ledger8DeployContractOptionsShared} plays the same role for
+ * ledger 8, which arrives there by a different route: its variants are
  * interfaces, and an interface redeclaring the member is rejected outright as an
  * incompatible extension. This era cannot use interfaces, because `args` reaches
  * both variants through the {@link Ledger9ContractConstructorOptionsWithArguments}
  * conditional and an interface cannot extend a conditional type.
  *
- * PUBLISHED, unlike its retained-era counterpart, purely so the two members
+ * PUBLISHED, unlike its ledger 8 counterpart, purely so the two members
  * below keep a documented page of their own: TypeDoc inlines the members an
  * interface inherits, but renders an unexported alias as bare text, which would
  * delete `signingKey` and `additionalCoinEncPublicKeyMappings` from the
@@ -235,19 +235,19 @@ const ledger9DeployFlow = async <C extends Contract.Any>(
 };
 
 /*
- * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * OVERLOAD ORDER IS LOAD-BEARING: the ledger 8 overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
  * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
  * gives an uncommented signature the comment of the first commented sibling -- which published
  * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * Reachable only BEFORE THE FORK: the retained era has no post-fork deployment, so a retained
+ * Reachable only BEFORE THE FORK: ledger 8 has no post-fork deployment, so a ledger 8
  * artifact after the fork is refused with `EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`). Recompile with the
- * current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
+ * current toolchain and deploy that artifact instead; the ledger 8 artifact keeps working for calls
  * against contracts deployed before the fork.
  *
  * A verifier key is registered for every entry point the artifact declares.
@@ -303,16 +303,16 @@ export async function deployContract<C extends Contract.Any>(
  *                                  built or submitted; the ZK config provider is asked for the
  *                                  artifacts' declared runtime version, and no other provider is
  *                                  consulted.
- * @throws Ledger8SigningKeyError with reason `'unusable'` If a retained-era deploy is given a `signingKey` that is not a
+ * @throws Ledger8SigningKeyError with reason `'unusable'` If a ledger 8 deploy is given a `signingKey` that is not a
  *                                        `schnorr` key of 64 hex characters. Raised before anything
  *                                        is composed.
- * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` If a retained-era artifact is deployed after the fork.
+ * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` If a ledger 8 artifact is deployed after the fork.
  *                                Raised before the constructor runs and before any verifier key is
  *                                fetched.
  * @throws EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` If a ledger 9 artifact is deployed
  *                                before the fork. Raised after one network version read, before the
  *                                constructor runs and before anything is proven.
- * @throws Ledger8UnconfirmedError with operation `'deploy'` If what the chain did with a submitted retained-era
+ * @throws Ledger8UnconfirmedError with operation `'deploy'` If what the chain did with a submitted ledger 8
  *                                        deployment cannot be confirmed - the record unreadable, or
  *                                        back from an era the head it composed on cannot have
  *                                        recorded. Carries the signing key, and the underlying

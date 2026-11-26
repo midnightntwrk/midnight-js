@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { LedgerParameters, sampleContractAddress, Transaction, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { LedgerParameters, sampleContractAddress, Transaction, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
   type CircuitContext,
   type ContractModuleProvider,
@@ -24,8 +24,8 @@ import {
   type ContractStateProvider,
   finalizeCallProofData,
   StateValue
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { LEDGER_STATE_TAGS } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   InvalidSerializedStateError,
@@ -33,8 +33,8 @@ import {
   SerializedContractState,
   SerializedLedgerParameters,
   SerializedZswapChainState
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, UTILS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
@@ -67,8 +67,8 @@ vi.mock('../get-states', () => ({
 }));
 
 vi.mock('../internal/utils', async () => {
-  const ledger = await import('@midnight-ntwrk/midnight-js-protocol/v9');
-  const runtime = await import('@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime');
+  const ledger = await import('@midnightntwrk/midnight-js-protocol/v9');
+  const runtime = await import('@midnightntwrk/midnight-js-protocol/v9/compact-runtime');
   return {
     createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', new runtime.ContractState(), ledger.Transaction.fromParts('undeployed')]),
     createUnprovenLedgerCallTx: vi.fn(() => ledger.Transaction.fromParts('undeployed')),
@@ -194,7 +194,7 @@ describe('unproven-call-tx', () => {
       expect(result.public.logEvents).toEqual([]);
     });
 
-    it('publishes the post-call state as an ENCODED value beside the handle, as the retained era does', async () => {
+    it('publishes the post-call state as an ENCODED value beside the handle, as the ledger 8 era does', async () => {
       const options = createMockCallOptions({
         initialContractState: await getInitialContractState()
       });

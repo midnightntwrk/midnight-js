@@ -16,7 +16,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 // The modules that DECLARE the classes, so the barrel is checked for identity and not only for
@@ -44,7 +44,7 @@ const ERA_NEUTRAL_MEMBERS = ['EraMismatchError', 'TxFailedError', 'isLedger8Resu
 const LEDGER8_ERROR_PATTERN = /^Ledger8\w*Error$/;
 
 /**
- * The retained-era error names the BUILT bundle ships.
+ * The ledger 8 error names the BUILT bundle ships.
  *
  * The bundle rather than `../index`, for the reason `contracts-value-acl.test.ts` states: vitest
  * resolves the barrel through its own per-file transform, so a member rollup elides stays invisible
@@ -67,8 +67,8 @@ const distLedger8ErrorNames = (): string[] => {
   return exported.filter((name) => LEDGER8_ERROR_PATTERN.test(name)).sort();
 };
 
-describe('the retained-era errors are published flat', () => {
-  it('exports exactly the five retained-era error classes', () => {
+describe('the ledger 8 errors are published flat', () => {
+  it('exports exactly the five ledger 8 error classes', () => {
     const published = Object.keys(barrel).filter((name) => LEDGER8_ERROR_PATTERN.test(name)).sort();
 
     expect(published).toEqual([...LEDGER8_ERRORS].sort());
@@ -78,7 +78,7 @@ describe('the retained-era errors are published flat', () => {
     expect('Ledger8' in barrel).toBe(false);
   });
 
-  it('leaves no retained-era runtime name on the surface beyond the errors, the guards and the low-level functions', () => {
+  it('leaves no ledger 8 runtime name on the surface beyond the errors, the guards and the low-level functions', () => {
     const allowed = [...LEDGER8_ERRORS, 'isLedger8Result', 'createLedger8UnprovenCallTx', 'createLedger8UnprovenCallTxFromInitialStates',
       'createLedger8UnprovenDeployTx',
       'createLedger8UnprovenDeployTxFromVerifierKeys',

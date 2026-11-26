@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
-import { type CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { KeyMaterialProvider, ProvingProvider } from '@midnightntwrk/dapp-connector-api';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { proveLedger8Transaction } from '@midnightntwrk/midnight-js-protocol/prove';
+import { type CostModel, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
   type ProveTxConfig,
   type ZKConfigProvider,
   type ZKConfigRegistry
-} from '@midnight-ntwrk/midnight-js-types';
-import type { KeyMaterialProvider, ProvingProvider } from '@midnightntwrk/dapp-connector-api';
+} from '@midnightntwrk/midnight-js-types';
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './dapp-connector-proving-provider';
 
@@ -74,8 +74,8 @@ const refuseTimeout = (config: ProveTxConfig | undefined): void => {
  * in the call tree.
  * @param costModel - Cost model applied during transaction proving on the CURRENT ledger era.
  *
- * **Not consulted on the retained (`v8`) era**, which uses that era's own cost model instead. This
- * is not an oversight and not a silent fallback: the retained ledger ships its own `CostModel`
+ * **Not consulted on ledger 8 (`v8`)**, which uses that era's own cost model instead. This
+ * is not an oversight and not a silent fallback: ledger 8 ships its own `CostModel`
  * class and type-checks `prove()`'s argument against it across the WASM boundary, so the value
  * passed here would be rejected outright. Pairing the transaction with its own era's model is the
  * only correct pairing, so an override is not offered at all rather than offered and quietly

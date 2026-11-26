@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { PrivateStateId } from '@midnightntwrk/midnight-js-types';
+import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9CallResult } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';
@@ -128,18 +128,18 @@ const ledger9CallFlow = async <C extends Contract.Any, PCK extends Contract.Prov
 };
 
 /*
- * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * OVERLOAD ORDER IS LOAD-BEARING: the ledger 8 overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
  * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
  * gives an uncommented signature the comment of the first commented sibling -- which published
  * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Which pipeline runs is decided by the NETWORK'S LEDGER VERSION, not by this overload: before the fork the
- * retained-era-native pipeline runs, after it the keep-state one.
+ * ledger 8 pipeline runs, after it the keep-state one.
  *
  * @see {@link KeepStatePipeline} for the era table, and for why a provider needs to serve v8
  *      handles only while the network is still before the fork.
@@ -308,18 +308,18 @@ const ledger9CallAsyncFlow = async <C extends Contract.Any, PCK extends Contract
 };
 
 /*
- * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * OVERLOAD ORDER IS LOAD-BEARING: the ledger 8 overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
  * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
  * gives an uncommented signature the comment of the first commented sibling -- which published
  * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Which pipeline runs is decided by the NETWORK'S LEDGER VERSION, not by this overload: before the fork the
- * retained-era-native pipeline runs, after it the keep-state one.
+ * ledger 8 pipeline runs, after it the keep-state one.
  *
  * @see {@link KeepStatePipeline} for the era table, and for why a provider needs to serve v8
  *      handles only while the network is still before the fork.

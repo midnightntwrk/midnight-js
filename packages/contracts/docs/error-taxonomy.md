@@ -13,7 +13,7 @@ that way here.
 
 The code is `packages/contracts/src/errors.ts`. The remediation an error asks
 for is a separate thread — see [ForkCrossedRemediation](./stale-head-remediation.md).
-The order a retained-era operation runs in, which fixes where each refusal can
+The order a ledger 8 operation runs in, which fixes where each refusal can
 sit, is [KeepStatePipeline](./keep-state-pipeline.md).
 
 ## One class per fault
@@ -146,7 +146,7 @@ Before that check each state is rebuilt from its `era` and `serialize()` with th
 `fromBytes` of the class of its kind (`SerializedContractState`,
 `SerializedLedgerParameters`, `SerializedZswapChainState`). The class guards, such as
 `SerializedContractState.isSerializedContractState`, answer `false` for
-a state made by a second installed copy of `@midnight-ntwrk/midnight-js-types`,
+a state made by a second installed copy of `@midnightntwrk/midnight-js-types`,
 and a dApp can end up with two copies the same way it ends up with two runtimes.
 Refusing such a state would name a provider fault where there is none. The
 rebuild checks the tag again, so forged bytes and a state of another kind are
@@ -173,7 +173,7 @@ dApp to pass a decoder it never passed.
 
 Building a transaction's Zswap offer for a spend of a coin the contract already
 holds on chain needs the contract's Zswap CHAIN state, to locate the coin's
-commitment in the chain's Merkle tree. The retained-era pipeline does not read
+commitment in the chain's Merkle tree. The ledger 8 pipeline does not read
 one. A coin the same call produced needs no chain state — it is paired with its
 own output as a transient — which is why only spends of previously held coins
 are refused. The other reason, `'unmappable-recipient'`, refuses a shielded
@@ -184,7 +184,7 @@ condition surfaced as a bare assertion inside the offer builder, naming neither
 the era nor the circuit, which told a caller nothing about why its call could not
 be composed.
 
-The fix is to supply the retained-era path with a Zswap chain state, tracked
+The fix is to supply the ledger 8 path with a Zswap chain state, tracked
 separately. Until then this refuses in the caller's own test run rather than in
 production.
 
@@ -201,7 +201,7 @@ scope of the era the head is on.
 
 ## After submission, the signing key rides along
 
-The retained-era deploy path has a region that begins the moment a deployment is
+The ledger 8 deploy path has a region that begins the moment a deployment is
 submitted. Inside it, a deployment may exist on chain under a maintenance
 authority whose key this process is the only holder of. Every error raised in
 that region carries the key.

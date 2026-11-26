@@ -15,7 +15,7 @@
 
 import path from 'node:path';
 
-import { deployContract, EraMismatchError } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, EraMismatchError } from '@midnightntwrk/midnight-js-contracts';
 import {
   createLogger,
   type EnvironmentConfiguration,
@@ -23,7 +23,7 @@ import {
   initializeMidnightProviders,
   type MidnightWalletProvider,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';

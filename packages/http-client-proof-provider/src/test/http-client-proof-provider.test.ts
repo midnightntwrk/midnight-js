@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { CostModel, type ProvingProvider, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { ConfigurationError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { CostModel, type ProvingProvider, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   InvalidTransactionHandleError,
   type Ledger9UnboundTransaction,
@@ -26,8 +26,8 @@ import {
   type VerifierKey,
   ZKConfigProvider,
   type ZKIR
-} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { ProvingProviderConfig } from '../http-client-proving-provider';
@@ -166,7 +166,7 @@ describe('httpClientProofProvider', () => {
   });
 
   // Set equality rather than `toContain`: this provider serves both eras, and
-  // an era silently dropped from the declaration would have a retained-era
+  // an era silently dropped from the declaration would have a ledger 8
   // operation refused before it started -- which `toContain` would not catch.
   test('declares both eras, matching the two handlers it is built from', () => {
     wireMocks();

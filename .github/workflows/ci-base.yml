@@ -1,6 +1,4 @@
 name: Continuous Integration
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
   contents: read
@@ -14,12 +12,12 @@ on:
     inputs:
       yarn_filter:
         type: string
-        description: Optional filter to include when running Yarn (i.e., --filter=...)
+        description: Optional turbo --filter pattern for build, test and it (e.g., ./packages/*). Empty runs every workspace.
         required: false
         default: ''
       yarn_lint_paths:
         type: string
-        description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
+        description: Optional paths passed to `yarn lint` (e.g., ./packages).
         required: false
         default: ''
 
@@ -28,29 +26,40 @@ jobs:
     name: Build, Lint and Unit/Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
     steps:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
+      - name: Check workflow inputs
+        run: |
+          case "$WORKSPACE_FILTER" in
+            -*|*\"*|*\'*|*[[:space:]]*)
+              echo "::error::yarn_filter must be a bare turbo pattern such as ./packages/*, got: $WORKSPACE_FILTER"
+              exit 1
+              ;;
+          esac
+
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
-        with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          docker-login: 'true'
-          docker-password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Install dependencies
         run: |
           yarn install --immutable
 
       - name: Run build
-        run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
+        run: yarn build ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"}
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Run linter
         if: ${{ inputs.yarn_lint_paths != '' }}
-        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
+        run: |
+          read -ra paths <<< "${LINT_PATHS//$'\n'/ }"
+          yarn lint -- "${paths[@]}"
+        env:
+          LINT_PATHS: ${{ inputs.yarn_lint_paths }}
 
       - name: Check dependency constraints
         run: yarn constraints
@@ -79,16 +88,24 @@ jobs:
 
       - name: Run tests
         run: |
-          yarn test ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+          yarn test ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"} --concurrency 1
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Integration tests
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
         run: |
-          yarn it ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+          yarn it ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"} --concurrency 1
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # Read by `.github/actions/collect-test-evidence` when a release is published.
+      - name: Upload test evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
+        with:
+          name: evidence-unit-packages
+          path: packages/*/reports/report/test-report*.xml
+          if-no-files-found: error
 
       - name: Aggregate coverage reports
         run: |
@@ -144,7 +161,7 @@ jobs:
             **/test-report*.xml
 
       - name: Publish Test Summary Comment
-        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # ratchet:EnricoMi/publish-unit-test-result-action@v2.24.0
+        uses: EnricoMi/publish-unit-test-result-action@da5b7be67623cd59bbbd1a0ce4f022050a55605f # ratchet:EnricoMi/publish-unit-test-result-action@v2.26.0
         if: success() || failure()
         with:
           check_name: 'Unit Test Results - MidnightJS'
@@ -170,9 +187,7 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          docker-login: 'true'
-          docker-password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: yarn install --immutable

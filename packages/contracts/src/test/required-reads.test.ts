@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
+import type * as MidnightJsUtils from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError } from '../errors';
@@ -31,7 +31,7 @@ const decode = vi.hoisted(() => ({
   deserializeLedger9Parameters: vi.fn()
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+vi.mock('@midnightntwrk/midnight-js-utils', async (importOriginal) => ({
   ...(await importOriginal<typeof MidnightJsUtils>()),
   ...decode
 }));

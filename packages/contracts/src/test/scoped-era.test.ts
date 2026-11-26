@@ -27,13 +27,13 @@
  * functions bound to one era refuse a head of the other before the scope body
  * runs; the ledger 8 scope itself is covered by `./ledger8-scope.test.ts`.
  */
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
+import { LEDGER_ERAS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { CompiledContract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { AnyProvableCircuitId } from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
@@ -68,7 +68,7 @@ vi.mock('../submit-tx');
  */
 const eraLoadSlot = vi.hoisted((): { readonly acquired: string[]; rejectFor?: string } => ({ acquired: [] }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,
@@ -267,7 +267,7 @@ describe('per-scope era resolution', () => {
     // pre-fork subpath exists for -- pay to instantiate a ledger it will never
     // use, and would replace this refusal with an acquisition failure whenever
     // that subpath cannot be loaded. Then the caller is told to acquire the
-    // retained runtime, which is the wrong instruction for it, and never sees
+    // ledger 8 runtime, which is the wrong instruction for it, and never sees
     // the two-way remediation at all.
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(PRE_FORK_PROTOCOL_VERSION);
     eraLoadSlot.rejectFor = 'v8';
@@ -442,29 +442,29 @@ describe('the era ordering the forward-only fork guard relies on', () => {
   });
 });
 
-describe('a retained-era call handed a scope', () => {
-  // A retained-era artifact, in the shape `resolveArtifactEra` recognises: own
+describe('a ledger 8 call handed a scope', () => {
+  // A ledger 8 artifact, in the shape `resolveArtifactEra` recognises: own
   // `impureCircuits`, and an `initialState` that is a SYNCHRONOUS function.
   // Asserted below rather than assumed, so this fixture cannot drift into the
   // current-era path and make the negative vacuous.
-  const retainedContract = {
-    impureCircuits: { retainedCircuit: (): void => undefined },
+  const ledger8Contract = {
+    impureCircuits: { ledger8Circuit: (): void => undefined },
     initialState: (): Record<string, never> => ({})
   };
 
-  const retainedCallOptions = () => ({
-    compiledContract: retainedContract,
+  const ledger8CallOptions = () => ({
+    compiledContract: ledger8Contract,
     contractAddress: createMockContractAddress(),
-    circuitId: 'retainedCircuit',
+    circuitId: 'ledger8Circuit',
     args: []
   });
 
-  it('is the shape the era dispatch calls retained-era', async () => {
-    // Paired with the artifact declaration a retained bundle carries, because the shape alone no
+  it('is the shape the era dispatch calls ledger 8', async () => {
+    // Paired with the artifact declaration a ledger 8 bundle carries, because the shape alone no
     // longer decides the era -- it only says which declaration is consulted.
-    const declaringRetained = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
+    const declaringLedger8 = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
 
-    await expect(resolveArtifactEra(retainedContract, declaringRetained)).resolves.toBe('v8');
+    await expect(resolveArtifactEra(ledger8Contract, declaringLedger8)).resolves.toBe('v8');
   });
 
   it('is REFUSED rather than silently run outside the scope it was handed', () => {
@@ -473,7 +473,7 @@ describe('a retained-era call handed a scope', () => {
 
     let caught: unknown;
     try {
-      assertScopeAdmitsLedger8Call('retainedCircuit', scope, 'submitCallTx');
+      assertScopeAdmitsLedger8Call('ledger8Circuit', scope, 'submitCallTx');
     } catch (error) {
       caught = error;
     }
@@ -481,15 +481,15 @@ describe('a retained-era call handed a scope', () => {
     expect(caught).toBeInstanceOf(EraMismatchError);
     expect((caught as EraMismatchError).reason).toBe('ledger8-call-in-scope');
     expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
-    expect((caught as EraMismatchError).message).toContain('retainedCircuit');
-    expect((caught as EraMismatchError).circuitId).toBe('retainedCircuit');
+    expect((caught as EraMismatchError).message).toContain('ledger8Circuit');
+    expect((caught as EraMismatchError).circuitId).toBe('ledger8Circuit');
     // The remediation has to say where the call CAN go, because the caller's
     // batching intent cannot be honoured either way.
     expect((caught as Error).message).toContain('submitCallTx');
   });
 
   it('runs normally when it was handed no scope at all', () => {
-    expect(() => assertScopeAdmitsLedger8Call('retainedCircuit', undefined, 'submitCallTx')).not.toThrow();
+    expect(() => assertScopeAdmitsLedger8Call('ledger8Circuit', undefined, 'submitCallTx')).not.toThrow();
   });
 
   it('DELIVERS that refusal with its code intact, through the scope that raised it', async () => {
@@ -500,7 +500,7 @@ describe('a retained-era call handed a scope', () => {
     // caller got something `hasErrorCode` cannot see.
     const providers = createMockProviders();
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
-    // The bundle has to declare the RETAINED toolchain for this call to reach the scope refusal at
+    // The bundle has to declare the LEDGER 8 toolchain for this call to reach the scope refusal at
     // all: the shared mock set is the current-era one, and an artifact whose declaration disagrees
     // with its shape is refused at the era decision, before any scope is consulted.
     providers.zkConfigProvider.getArtifactRuntimeVersion = vi.fn().mockResolvedValue('0.16.0');
@@ -509,11 +509,11 @@ describe('a retained-era call handed a scope', () => {
     let caught: unknown;
     try {
       await withContractScopedTransaction(providers, async (txCtx) => {
-        // @ts-expect-error -- the retained-era overload admits only a ledger 8
+        // @ts-expect-error -- the ledger 8 overload admits only a ledger 8
         // scope, which is what makes this reachable from JavaScript only. The
         // directive PINS that claim: an overload that started accepting a
         // ledger 9 scope here would fail this line rather than silently widen the API.
-        await submitCallTx(providers, retainedCallOptions(), txCtx);
+        await submitCallTx(providers, ledger8CallOptions(), txCtx);
       });
     } catch (error) {
       caught = error;
@@ -522,8 +522,8 @@ describe('a retained-era call handed a scope', () => {
     expect(caught).toBeInstanceOf(EraMismatchError);
     expect((caught as EraMismatchError).reason).toBe('ledger8-call-in-scope');
     expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
-    expect((caught as EraMismatchError).message).toContain('retainedCircuit');
-    expect((caught as EraMismatchError).circuitId).toBe('retainedCircuit');
+    expect((caught as EraMismatchError).message).toContain('ledger8Circuit');
+    expect((caught as EraMismatchError).circuitId).toBe('ledger8Circuit');
   });
 
   it.each([
@@ -536,7 +536,7 @@ describe('a retained-era call handed a scope', () => {
     // contract-scoped transaction" would name a scope it never had.
     let caught: unknown;
     try {
-      assertScopeAdmitsLedger8Call('retainedCircuit', bad, 'submitCallTx');
+      assertScopeAdmitsLedger8Call('ledger8Circuit', bad, 'submitCallTx');
     } catch (error) {
       caught = error;
     }

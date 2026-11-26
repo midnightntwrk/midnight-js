@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   FailEntirely,
   FailFallible,
@@ -22,8 +22,8 @@ import {
   SegmentFail,
   SegmentSuccess,
   type TxStatus
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -42,7 +42,7 @@ import {
 import { createMockFinalizedTxData } from './test-mocks';
 
 // The v8 variant of the record union. Its `tx` is a live `Ledger8FinalizedTransaction` handle
-// from the retained ledger module, which no unit test can construct and none
+// from the ledger 8 module, which no unit test can construct and none
 // of these read -- every assertion here is about the tag and the members
 // around it. One cast, in one place, rather than one per call site.
 const ledger8FailedRecord = (status: TxStatus = FailFallible): Ledger8FinalizedTxData => ({
@@ -258,7 +258,7 @@ describe('EraInvariantViolationError', () => {
     expect(error.message).toContain('increment');
   });
 
-  // The default keeps every call site that predates the retained-era pipelines
+  // The default keeps every call site that predates the ledger 8 pipelines
   // reading as it did: those flows submit and accept v9 and nothing else.
   it('defaults the accepted era to the current one', () => {
     expect(new EraInvariantViolationError('proveTx').expected).toBe('v9');
@@ -434,7 +434,7 @@ describe('Ledger8NotStoredError', () => {
 describe('Ledger8SigningKeyError', () => {
   const ADDRESS = '0500'.repeat(8);
 
-  it('names the address and the option, and says what a retained key looks like, when the key is unusable', () => {
+  it('names the address and the option, and says what a ledger 8 key looks like, when the key is unusable', () => {
     const error = new Ledger8SigningKeyError('unusable', ADDRESS);
 
     expect(error.reason).toBe('unusable');

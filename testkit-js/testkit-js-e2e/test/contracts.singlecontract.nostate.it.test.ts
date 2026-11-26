@@ -23,8 +23,8 @@ import {
   type Ledger9UnsubmittedDeployTxData,
   submitCallTx,
   submitDeployTx,
-  type UnsubmittedCallTxData} from '@midnight-ntwrk/midnight-js-contracts';
-import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+  type UnsubmittedCallTxData} from '@midnightntwrk/midnight-js-contracts';
+import { LedgerParameters, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   type CoinPublicKey,
   ContractState,
@@ -32,9 +32,9 @@ import {
   emptyZswapLocalState,
   sampleSigningKey,
   type SigningKey
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { SerializedLedgerParameters, SerializedZswapChainState } from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { SerializedLedgerParameters, SerializedZswapChainState } from '@midnightntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 import {
   createLogger,
   type EnvironmentConfiguration,
@@ -45,7 +45,7 @@ import {
   getTestEnvironment,
   initializeMidnightProviders,
   type MidnightWalletProvider,
-  type TestEnvironment} from '@midnight-ntwrk/testkit-js';
+  type TestEnvironment} from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 import { CompiledSimple } from '../src/contract';

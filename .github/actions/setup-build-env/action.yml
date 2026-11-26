@@ -1,27 +1,20 @@
 name: 'Setup build environment'
 description: >-
-  Shared bootstrap for CI jobs: direnv-loaded .envrc, optional GHCR login,
-  Node.js with the GitHub Packages registry, yarn auth, and the Turbo/Yarn
-  cache. Extracted to remove the setup block that was duplicated across ~8 jobs.
+  Shared bootstrap for CI jobs: direnv-loaded .envrc, Node.js, the pinned
+  npm, the node_modules cache and the turbo build cache. Extracted to remove the setup
+  block that was duplicated across ~8 jobs.
   The caller must run actions/checkout BEFORE this action — a local composite
   action cannot check out the repo it is loaded from.
 
 inputs:
-  node-auth-token:
-    description: Token for the @midnight-ntwrk GitHub Packages registry (npm auth).
-    required: true
-  docker-login:
-    description: "Set 'true' to log in to ghcr.io (build/e2e jobs that pull images)."
-    required: false
-    default: 'false'
-  docker-password:
-    description: Password for the ghcr.io login (only read when docker-login is 'true').
-    required: false
-    default: ''
   cache-key-prefix:
-    description: "Prefix for the Turbo/Yarn cache key ('turbo' for packages, 'turbo-testkit' for testkit)."
+    description: "Prefix for the turbo build cache key; a job that builds a different set of packages uses its own prefix."
     required: false
     default: 'turbo'
+  turbo-cache:
+    description: "Set 'false' to neither restore nor save the turbo build cache: for jobs that build nothing, and for publish jobs, which build from source."
+    required: false
+    default: 'true'
   testkit-docker-env:
     description: Value exported as TESTKIT_DOCKER_ENV before loading .envrc (empty falls back to the .envrc default).
     required: false
@@ -41,37 +34,44 @@ runs:
         direnv allow .
         direnv export gha >> "$GITHUB_ENV"
 
-    - name: Log in to GitHub Container registry
-      if: inputs.docker-login == 'true'
-      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # ratchet:docker/login-action@v4.2.0
-      with:
-        registry: 'https://ghcr.io'
-        username: MidnightCI
-        password: ${{ inputs.docker-password }}
-
     - name: Set up Node.js
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # ratchet:actions/setup-node@v7.1.0
       with:
-        registry-url: https://npm.pkg.github.com/
-        scope: '@midnight-ntwrk'
         node-version-file: '.nvmrc'
         cache: 'yarn'
-      env:
-        NODE_AUTH_TOKEN: ${{ inputs.node-auth-token }}
 
-    - name: Configure yarn
-      shell: bash
-      env:
-        NODE_AUTH_TOKEN: ${{ inputs.node-auth-token }}
-      run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$NODE_AUTH_TOKEN"
+    - name: Set up npm
+      uses: ./.github/actions/setup-npm
 
-    - name: Cache Turbo and Yarn dependencies
+    - name: Cache node_modules
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
       with:
-        path: |
-          **/node_modules
-          ~/.yarn
-          .turbo
-        key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+        path: '**/node_modules'
+        key: deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc') }}-${{ hashFiles('yarn.lock') }}
         restore-keys: |
-          ${{ inputs.cache-key-prefix }}-${{ runner.os }}-
+          deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc') }}-
+
+    # Only main saves: a PR's entry is readable by that PR alone, and saving one
+    # per push fills the repository cache and evicts the rarely used Docker and LFS entries.
+    - name: Cache turbo build output
+      if: inputs.turbo-cache == 'true' && github.ref == 'refs/heads/main'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
+      with:
+        path: .turbo/cache
+        key: ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-
+
+    - name: Restore turbo build output
+      if: inputs.turbo-cache == 'true' && github.ref != 'refs/heads/main'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache/restore@v6.1.0
+      with:
+        path: .turbo/cache
+        key: ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-
+
+    - name: Drop turbo build entries older than a week
+      if: inputs.turbo-cache == 'true'
+      shell: bash
+      run: if [ -d .turbo/cache ]; then find .turbo/cache -type f -mtime +7 -delete; fi

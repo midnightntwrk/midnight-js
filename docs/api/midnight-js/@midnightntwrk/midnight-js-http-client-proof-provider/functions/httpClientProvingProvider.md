@@ -1,0 +1,33 @@
+[**Midnight.js API Reference v5.0.3**](../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../packages.md) / [@midnightntwrk/midnight-js-http-client-proof-provider](../README.md) / httpClientProvingProvider
+
+# Function: httpClientProvingProvider()
+
+> **httpClientProvingProvider**\<`K`\>(`url`, `zkConfigProvider`, `config?`): `TimeoutAwareProvingProvider`
+
+## Type Parameters
+
+### K
+
+`K` *extends* `string`
+
+## Parameters
+
+### url
+
+`string`
+
+### zkConfigProvider
+
+[`ZKConfigRegistry`](../../midnight-js/types/classes/ZKConfigRegistry.md) \| [`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md)\<`K`\>
+
+### config?
+
+[`ProvingProviderConfig`](../interfaces/ProvingProviderConfig.md)
+
+## Returns
+
+`TimeoutAwareProvingProvider`

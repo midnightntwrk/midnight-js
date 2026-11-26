@@ -16,8 +16,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import type * as CompactContract from '@midnightntwrk/compact-js/effect/Contract';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import type { EncodedZswapLocalState } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
@@ -41,7 +41,7 @@ const OTHER_CONTRACT_VERIFIER_KEY = new Uint8Array(
   readFileSync(
     resolve(
       __dirname,
-      '../../../../testkit-js/testkit-js-e2e/src/contract/compiled-retained/block-time/keys/testBlockTimeLt.verifier'
+      '../../../../testkit-js/testkit-js-e2e/src/contract/compiled-ledger8/block-time/keys/testBlockTimeLt.verifier'
     )
   )
 );
@@ -143,15 +143,15 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
   });
 
   // MEASURED, and load-bearing well outside this package: a caller of the
-  // retained-era deploy has to be able to maintain the contract it puts on
+  // ledger 8 deploy has to be able to maintain the contract it puts on
   // chain.
   //
-  // Left alone, the retained constructor leaves an EMPTY committee with a
+  // Left alone, the ledger 8 constructor leaves an EMPTY committee with a
   // threshold of ONE: a rule change needing one signature from a set of zero
   // keys, which nothing can ever satisfy -- no verifier key could be inserted,
   // removed or replaced afterwards, and the authority itself could never be
   // updated either, because updating it is a rule change. Neither half of the
-  // retained path offers a place to put a key:
+  // ledger 8 path offers a place to put a key:
   // `createConstructorContext(initialPrivateState, coinPublicKey)` takes none,
   // and `ComposeDeployOptions` carries none. So `executeConstructor` writes the
   // authority itself, onto the state the constructor just built, before anyone
@@ -162,9 +162,9 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
   // derived its address from -- the one a caller stores and later calls
   // against. Between them sit `.serialize()`, the bridge into the v8
   // `ContractState` and `ContractDeploy`, each of which rebuilds the state from
-  // bytes. A retained runtime that stopped honouring the setter, or a deploy
+  // bytes. A ledger 8 runtime that stopped honouring the setter, or a deploy
   // leg that rebuilt the state from anything other than these bytes, would show
-  // up here as the empty committee coming back -- and the retained-era path of
+  // up here as the empty committee coming back -- and the ledger 8 path of
   // `deployContract` (`packages/contracts/src/deploy-contract.ts`) would again
   // be offering permanently unmaintainable deployments.
   it('sets the maintenance authority to the supplied signing key, and that authority survives into the composed deploy', async () => {
@@ -281,7 +281,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     expect(authority.counter).toBe(0n);
   });
 
-  it('accepts an UPPERCASE hex signing key, which the retained runtime accepts too', async () => {
+  it('accepts an UPPERCASE hex signing key, which the ledger 8 runtime accepts too', async () => {
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
     const uppercase = 'AB'.repeat(32);
 

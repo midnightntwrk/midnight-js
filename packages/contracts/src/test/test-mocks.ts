@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import * as PlatformContractAddress from '@midnightntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import {
   type AlignedValue,
   type CoinPublicKey,
@@ -32,9 +32,9 @@ import {
   type TokenType,
   ZswapChainState,
   type ZswapSecretKeys,
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { CompiledContract, type ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import { CompiledContract, type ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
   assert as compactAssert,
   ChargedState,
@@ -46,9 +46,9 @@ import {
   sampleSigningKey,
   type SigningKey,
   StateValue,
-  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { CURRENT_LEDGER_ERA, LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+  type ZswapLocalState} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_ERA, LEDGER_STATE_TAGS } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -71,8 +71,8 @@ import {
   type VerifierKey,
   ZKConfigProvider,
   type ZKIR
-} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, ledgerVersionOfContractState, ledgerVersionOfLedgerParameters } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { assertDefined, ledgerVersionOfContractState, ledgerVersionOfLedgerParameters } from '@midnightntwrk/midnight-js-utils';
 import { Option } from 'effect';
 import type { Mock } from 'vitest';
 
@@ -154,6 +154,7 @@ type MockCircuit = ReturnType<typeof createDefaultCircuit>;
 
 type MockContractClassOptions = {
   testCircuit: MockCircuit;
+  circuits?: Record<string, MockCircuit>;
   constructorErrorMessage?: string;
   initialStateErrorMessage?: string;
 }
@@ -182,7 +183,7 @@ const createMockContractClass = (options?: Partial<MockContractClassOptions>) =>
           currentZswapLocalState: emptyZswapLocalState(ctx.initialZswapLocalState.coinPublicKey)
         };
       });
-      this.circuits = {
+      this.circuits = finalOptions.circuits ?? {
         testCircuit: finalOptions.testCircuit
       };
       this.provableCircuits = this.circuits;
@@ -335,7 +336,7 @@ export const createMockProviders = (): Ledger9ContractProviders<Contract.Any, An
   privateStateProvider: createMockPrivateStateProvider(),
   zkConfigProvider: {
     // The ledger 9 value, because this is the ledger 9 provider set: every contract operation reads
-    // it, and a ledger 9 container served with a retained value is refused.
+    // it, and a ledger 9 container served with a ledger 8 value is refused.
     getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.21.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),

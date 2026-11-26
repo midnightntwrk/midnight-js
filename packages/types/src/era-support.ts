@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 
 import { ProviderEraUnsupportedError,type TransactionMethod } from './errors';
 

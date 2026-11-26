@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   type FinalizedTxRead,
   InvalidTransactionHandleError,
-  type ReadMethod} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+  type ReadMethod} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { EraInvariantViolationError } from '../errors';

@@ -31,7 +31,7 @@ This covers `Ledger9CallResult`, `Ledger9ContractConstructorResult`, `Ledger9Sub
 - **Each type declares its own literal.** A `Ledger9*` result declares `era: 'v9'`, a `Ledger8*`
   result `era: 'v8'`. A union of the two narrows on `result.era` alone. Declaring the whole
   `LedgerEra` union on both would type-check and narrow nothing. The `Ledger8*` results use the
-  literal, not a "retained era" type, because the ledger 8 pipeline is v8 for good.
+  literal, not a type for every older era, because the ledger 8 pipeline is v8 for good.
 - **One alphabet.** `result.era` is a `LedgerEra` (`'v8' | 'v9'`), the same values as a handle's,
   a state's and a record's `era`. The location says which fact it is: `result.era` is the
   pipeline, `result.public.era` is the ledger that recorded the transaction.

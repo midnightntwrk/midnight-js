@@ -32,6 +32,7 @@ import {
   UnknownLedgerEraError,
   UnknownProtocolVersionError
 } from '../errors';
+import { LEDGER_ERAS, protocolVersionToLedger } from '../version';
 
 // Every scoped package name the message names, so the assertion can be
 // two-directional: a missing name and a leaked extra name both fail.
@@ -62,18 +63,17 @@ describe('PROTOCOL_ERROR_CODES', () => {
   });
 });
 
-// The dual-publish (.github/scripts/publish-public-npm.mjs) rewrites
-// `@midnight-ntwrk/` -> `@midnightntwrk/` inside built .js/.d.ts files, not
-// only in package.json. Any scoped package name written as a single literal
-// here therefore ships rewritten: two names that differ only by scope collapse
-// into one, and a remediation hint that names both scopes silently degrades to
-// naming one of them twice. The scope fragments must stay separated from the
-// `/` so the rewrite has nothing to match.
-describe('resilience to the dual-publish scope rewrite', () => {
+// The alias publish (.github/scripts/publish-packages.mjs) rewrites this repo's
+// own `@midnightntwrk/` names to `@midnight-ntwrk/` inside built .js/.d.ts
+// files. A scoped package name written as a single literal is exposed to any
+// such pack-time rewrite: two names that differ only by scope collapse into one,
+// and a hint that names both scopes degrades to naming one twice. The scope
+// fragments stay separated from the `/` so no rewrite has anything to match.
+describe('resilience to the alias-publish scope rewrite', () => {
   const source = readFileSync(resolve(__dirname, '../errors.ts'), 'utf8');
 
   it('holds no scoped package literal that the pack-time rewrite would collapse', () => {
-    expect(source).not.toContain('@midnight-ntwrk/');
+    expect(source).not.toMatch(/@midnight-?ntwrk\//);
   });
 });
 
@@ -97,8 +97,7 @@ describe('UnknownProtocolVersionError', () => {
     expect(error.path).toBe('construct');
     expect(error.reason).toBe('unknown');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT);
-    expect(error.message).toMatch(/v8/);
-    expect(error.message).toMatch(/v9/);
+    expect(error.message).toContain('Supported eras: v8 (node 1.x) and v9 (node 2.x). ');
   });
 
   it('describes a malformed input without the misleading upgrade text', () => {
@@ -124,13 +123,12 @@ describe('Ledger8RuntimeMissingError', () => {
     expect(error.cause).toBe(cause);
     expect(error.message).toContain('midnight-js-protocol/v8');
     expect(error.message).toContain('reinstall');
-    // Self-reference, so it must name no scope at all: the dual-publish renames
-    // this package in `package.json` but never in a compiled string, and the
-    // subpath alone identifies the import under either scope.
+    // Self-reference, so it names no scope: the subpath alone identifies the
+    // import under either published scope.
     expect(packageNamesIn(error.message)).toEqual([]);
   });
 
-  // The two chunks pull different retained-era dependencies, so a message that
+  // The two chunks pull different ledger 8 dependencies, so a message that
   // names the wrong one sends an operator to an entry point that loaded fine.
   it('names the engine subpath, not the v8 one, when the engine chunk is what failed', () => {
     const error = new Ledger8RuntimeMissingError('/v8/engine', new Error("Cannot find package 'compact-runtime-ledger8'"));
@@ -208,6 +206,39 @@ describe('StateConversionFailedError', () => {
   });
 });
 
+// The era lists in these messages stay literals: importing the era tables into `errors.ts` moves the
+// error classes out of `dist/errors.js` (dist-error-identity.test.ts), so this test ties them instead.
+describe('supported-era lists in error messages', () => {
+  const NODE_MAJORS_TO_PROBE = 100;
+
+  const supportedEraEntries = (): string[] =>
+    Array.from({ length: NODE_MAJORS_TO_PROBE }, (_, major) => major).flatMap((major) => {
+      try {
+        return [`${protocolVersionToLedger(major * 1_000_000)} (node ${major}.x)`];
+      } catch (error) {
+        if (error instanceof UnknownProtocolVersionError && error.reason === 'unknown') {
+          return [];
+        }
+        throw error;
+      }
+    });
+
+  it('probes a node-major range that reaches every ledger era', () => {
+    const erasWithAMajor = supportedEraEntries().map((entry) => entry.split(' ')[0]);
+
+    expect([...new Set(erasWithAMajor)].sort()).toEqual([...LEDGER_ERAS].sort());
+  });
+
+  it.each([
+    ['UnknownProtocolVersionError', new UnknownProtocolVersionError(3_000_000, 'construct', 'unknown')],
+    ['UnknownLedgerEraError', new UnknownLedgerEraError('v10')]
+  ])('%s names exactly the supported eras with their node majors', (_, error) => {
+    const named = [...error.message.matchAll(/v\d+ \(node \d+\.x\)/g)].map(([entry]) => entry);
+
+    expect(named.sort()).toEqual(supportedEraEntries().sort());
+  });
+});
+
 describe('UnknownLedgerEraError', () => {
   it('carries the UNKNOWN_LEDGER_ERA code and names the supported eras', () => {
     const error = new UnknownLedgerEraError('v10');
@@ -215,8 +246,7 @@ describe('UnknownLedgerEraError', () => {
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe('UnknownLedgerEraError');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA);
-    expect(error.message).toContain('v8');
-    expect(error.message).toContain('v9');
+    expect(error.message).toContain('Supported eras are v8 (node 1.x) and v9 (node 2.x); ');
   });
 
   // The requested value reaches this class from an untyped JS caller, so it is
@@ -493,7 +523,7 @@ describe('ComposeOptionError', () => {
     expect(error.message).toMatch(/epoch/i);
   });
 
-  // The retained era composes exactly one call. Refusing a longer list is the
+  // Ledger 8 composes exactly one call. Refusing a longer list is the
   // difference between the two eras a caller most needs told, since composing
   // only the first entry would look like success.
   it('explains that a call list longer than one is not composable on the era that refuses it', () => {

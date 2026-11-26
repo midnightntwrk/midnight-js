@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
 import type {
   PrivateStateId,
   PrivateStateProvider,
   PublicDataProvider,
   PublicStatesRead
-} from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { assertIsContractAddress } from '@midnightntwrk/midnight-js-utils';
 
 import { ContractNotFoundError, PrivateStateNotFoundError } from './errors';
 

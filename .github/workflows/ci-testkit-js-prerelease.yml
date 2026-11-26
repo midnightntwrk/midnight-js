@@ -7,8 +7,6 @@ name: CI - TestKit.js (prerelease)
 # original monolithic workflow had. DO NOT merge this back into build.yml without
 # redesigning the wrapper DAG.
 
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
   contents: read
@@ -28,6 +26,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: npm-publish-canary
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -36,9 +35,8 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          cache-key-prefix: 'turbo-testkit'
           testkit-docker-env: ${{ inputs.testkit_docker_env }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -57,8 +55,13 @@ jobs:
       - name: Bump versions
         run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
 
-      - name: Publish packages
-        run: yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo -- --tag pre
+      - name: Build packages
+        run: yarn build:testkit
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Publish packages
+        run: node .github/scripts/publish-packages.mjs
+        env:
+          MIDNIGHT_WORKSPACE_DIR: 'testkit-js'
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvariantViolationError, MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
 
 import { UTILS_ERROR_CATEGORIES, UTILS_ERROR_CODES } from './error-codes';
 
@@ -77,7 +77,7 @@ export class UnhandledUnionMemberError extends MidnightJsError {
  * @example
  * ```ts
  * switch (record.era) {
- *   case 'v8': return readRetained(record);
+ *   case 'v8': return readLedger8(record);
  *   case 'v9': return readNative(record);
  *   default: return assertNever(record, 'readContractRecord');
  * }

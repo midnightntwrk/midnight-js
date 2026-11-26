@@ -24,12 +24,12 @@ import {
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { MaintenanceAuthorityMismatchError, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-contracts';
+import { MaintenanceAuthorityMismatchError, versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
+import { type ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import { sampleSigningKey, type SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { SucceedEntirely } from '@midnightntwrk/midnight-js-types';
+import type { ZkConfigIntegrityOptions } from '@midnightntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
   createLogger,
@@ -38,29 +38,29 @@ import {
   initializeMidnightProviders,
   type MidnightWalletProvider,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import { VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
-import { Contract as RetainedBlockTimeContract } from '../src/contract/compiled-retained/block-time/contract/index.js';
+import { Contract as Ledger8BlockTimeContract } from '../src/contract/compiled-ledger8/block-time/contract/index.js';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `governance_v8era_${new Date().toISOString()}.log`)
 );
 
 /**
- * Contract maintenance through a retained-era artifact against a live pre-fork chain, driven by
+ * Contract maintenance through a ledger 8 artifact against a live pre-fork chain, driven by
  * the `v8era` image set the `.v8era.` filename selects.
  *
  * One contract, one ordered story: a removed verifier key stops the circuit, an inserted one
  * brings it back, and a replaced authority moves the right to maintain from the old key to the new
  * one. Each step depends on the state the step before left on chain.
  */
-const ARTIFACT_PATH = path.resolve(__dirname, '../src/contract/compiled-retained/block-time');
+const ARTIFACT_PATH = path.resolve(__dirname, '../src/contract/compiled-ledger8/block-time');
 const CIRCUIT_ID = 'testBlockTimeGte';
 const BLOCK_TIME_BUFFER_SECONDS = 60n;
 
-class RetainedBlockTimeConfiguration implements ContractConfiguration {
+class Ledger8BlockTimeConfiguration implements ContractConfiguration {
   readonly privateStateStoreName = `governance-v8era-private-store-${Date.now()}`;
 
   readonly zkConfigPath = ARTIFACT_PATH;
@@ -71,11 +71,11 @@ class RetainedBlockTimeConfiguration implements ContractConfiguration {
   }
 }
 
-const contract = new RetainedBlockTimeContract<undefined>({});
+const contract = new Ledger8BlockTimeContract<undefined>({});
 
 const pastTime = (): bigint => BigInt(Math.floor(Date.now() / 1_000)) - BLOCK_TIME_BUFFER_SECONDS;
 
-describe('Contract maintenance through a retained-era artifact on a pre-fork (ledger v8) network', () => {
+describe('Contract maintenance through a ledger 8 artifact on a pre-fork (ledger v8) network', () => {
   let testEnvironment: TestEnvironment;
   let environmentConfiguration: EnvironmentConfiguration;
   let wallet: MidnightWalletProvider;
@@ -94,12 +94,12 @@ describe('Contract maintenance through a retained-era artifact on a pre-fork (le
     testEnvironment = getTestEnvironment(logger);
     environmentConfiguration = await testEnvironment.start();
     wallet = await testEnvironment.getMidnightWalletProvider();
-    providers = initializeMidnightProviders(wallet, environmentConfiguration, new RetainedBlockTimeConfiguration());
+    providers = initializeMidnightProviders(wallet, environmentConfiguration, new Ledger8BlockTimeConfiguration());
 
     const deployed = await deployContract(providers, { compiledContract: contract });
     contractAddress = deployed.contractAddress;
     deployKey = deployed.deployTxData.private.signingKey;
-    logger.info(`Deployed retained block-time twin at address: ${contractAddress}`);
+    logger.info(`Deployed ledger 8 block-time twin at address: ${contractAddress}`);
   }, VERY_SLOW_TEST_TIMEOUT);
 
   afterAll(async () => {

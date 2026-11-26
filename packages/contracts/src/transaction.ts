@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { type PrivateStateId, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
-import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import type { CoinPublicKey, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { type PrivateStateId, type PublicStatesRead } from '@midnightntwrk/midnight-js-types';
+import { assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import * as Ledger8Scope from './internal/ledger8-scope';
@@ -211,13 +211,18 @@ export async function withContractScopedTransaction<C extends Contract.Any, PCK 
   const ledger9Body = fn as Ledger9ScopeBody<C, PCK>;
   const ledger8Body = fn as Ledger8ScopeBody;
   assertValidMidnightConfig(providers.config);
-  switch (Internal.readScopeEra(options)) {
+  const outerEra = Internal.readScopeEra(options);
+  switch (outerEra) {
     case 'v8':
       return Ledger8Scope.nestLedger8Scope(ledger8Body, Ledger8Scope.requireLedger8Scope(options, 'withContractScopedTransaction'));
     case 'v9':
       return Internal.scopedTransaction(providers, ledger9Body, options);
     case 'unrecognised':
       throw Internal.unrecognisedScopeContext('withContractScopedTransaction');
+    case undefined:
+      break;
+    default:
+      return assertNever(outerEra, 'withContractScopedTransaction');
   }
   const reading = await Internal.readScopeHead(providers.publicDataProvider, providers.loggerProvider);
   switch (reading.head) {
@@ -254,15 +259,21 @@ export async function withLedger8ContractScopedTransaction(
   options?: ScopedTransactionOptions
 ): Promise<AnyLedger8FinalizedCallTxData | AnyLedger8UnsubmittedCallTxData> {
   assertValidMidnightConfig(providers.config);
-  switch (Internal.readScopeEra(options)) {
+  const outerEra = Internal.readScopeEra(options);
+  switch (outerEra) {
     case 'v8':
       return Ledger8Scope.nestLedger8Scope(fn, Ledger8Scope.requireLedger8Scope(options, 'withLedger8ContractScopedTransaction'));
     case 'v9':
       throw Internal.scopeEraMismatch('withLedger8ContractScopedTransaction', 'v9');
     case 'unrecognised':
       throw Internal.unrecognisedScopeContext('withLedger8ContractScopedTransaction');
+    case undefined:
+      break;
+    default:
+      return assertNever(outerEra, 'withLedger8ContractScopedTransaction');
   }
   const reading = await Internal.readScopeHead(providers.publicDataProvider, providers.loggerProvider);
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 8 path refuses every other era
   if (reading.head !== 'v8') {
     throw Internal.scopeEraMismatch('withLedger8ContractScopedTransaction', reading.head);
   }

@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { CoinPublicKey, EncPublicKey, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerTransactionTypes } from '@midnightntwrk/midnight-js-protocol/transaction';
+import type { CoinPublicKey, EncPublicKey, TransactionId } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { FinalizedTx, LedgerTransaction, TransactionAnswer, UnboundTx, UnprovenTx } from '../ledger-transaction';

@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { ContractState, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { FailFallible, SerializedContractState } from '@midnight-ntwrk/midnight-js-types';
+import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { ContractState, type SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { FailFallible, SerializedContractState } from '@midnightntwrk/midnight-js-types';
 import {
   CONTRACTS_ERROR_CATEGORIES,
   CONTRACTS_ERROR_CODES,
   type ContractsErrorCode,
   type MidnightJsErrorCategory
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import * as errors from '../errors';
@@ -115,7 +115,7 @@ describe('contracts error classes', () => {
     expect([error.name, error.code]).toEqual(['ProviderFailedError', 'MIDNIGHT_JS_C_PROVIDER_FAILED']);
   });
 
-  it('the retained-deploy refusal carries the era-mismatch name, reason and code', () => {
+  it('the ledger 8 deploy refusal carries the era-mismatch name, reason and code', () => {
     const error = new errors.EraMismatchError('ledger8-deploy-on-ledger9-network');
 
     expect([error.name, error.reason, error.code]).toEqual([

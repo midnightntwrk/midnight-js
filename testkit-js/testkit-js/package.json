@@ -1,6 +1,6 @@
 {
-  "name": "@midnight-ntwrk/testkit-js",
-  "version": "5.0.1-rc.1",
+  "name": "@midnightntwrk/testkit-js",
+  "version": "5.0.3",
   "type": "module",
   "description": "Testing kit for Midnight JS packages",
   "types": "dist/index.d.ts",
@@ -16,10 +16,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "testkit-js/testkit-js"
   },
+  "homepage": "https://github.com/midnightntwrk/midnight-js/tree/main/testkit-js/testkit-js#readme",
+  "bugs": {
+    "url": "https://github.com/midnightntwrk/midnight-js/issues"
+  },
+  "author": "Midnight Foundation",
   "packageManager": "yarn@4.14.1",
-  "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist reports coverage logs tsconfig.build.tsbuildinfo .rollup.cache managed midnight-level-db",
@@ -27,50 +32,49 @@
     "build:markdown-docs": "typedoc --validation --plugin typedoc-plugin-markdown --options typedoc.json",
     "test": "yarn ut",
     "ut": "DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.package.ut.config.ts run",
-    "it": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.package.it.config.ts run",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "it": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.package.it.config.ts run"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
-    "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
-    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-level-private-state-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "@midnightntwrk/dapp-connector-api": "4.1.0",
-    "@midnightntwrk/wallet-sdk": "2.0.0",
-    "@midnightntwrk/wallet-sdk-prover-client": "2.0.0",
-    "@midnightntwrk/zkir-v3": "3.2.0",
-    "@scure/bip39": "^2.3.0",
-    "axios": "^1.20.0",
+    "@midnightntwrk/midnight-js-compact": "workspace:*",
+    "@midnightntwrk/midnight-js-contracts": "workspace:*",
+    "@midnightntwrk/midnight-js-http-client-proof-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-level-private-state-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-node-zk-config-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*",
+    "@midnightntwrk/wallet-sdk": "2.0.1",
+    "@midnightntwrk/wallet-sdk-prover-client": "2.0.1",
+    "@midnightntwrk/zkir-v3": "3.2.1",
+    "@scure/bip39": "^2.4.0",
+    "axios": "^1.21.1",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",
     "effect": "^3.22.1",
     "pino": "^10.4.0",
     "pino-pretty": "^13.2.0",
     "rxjs": "^7.8.2",
-    "testcontainers": "^12.2.0",
-    "ws": "^8.20.0"
+    "testcontainers": "^12.2.1",
+    "ws": "^8.23.0"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.21.0",
     "@midnightntwrk/ledger-v8": "8.1.3",
-    "@midnightntwrk/ledger-v9": "1.0.2-rc.0",
+    "@midnightntwrk/ledger-v9": "1.0.2",
     "@types/ws": "^8.18.2",
     "@vitest/runner": "^4.1.11",
     "allure-commandline": "^2.46.1",
-    "allure-js-commons": "^3.13.0",
-    "allure-vitest": "^3.13.0",
+    "allure-js-commons": "^3.14.0",
+    "allure-vitest": "^3.14.0",
     "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0",
-    "rollup": "^4.60.4",
+    "rollup": "^4.68.2",
     "rxjs": "^7.8.2",
     "typedoc": "^0.28.20",
-    "typedoc-plugin-markdown": "4.13.1",
-    "vite": "^8.3.4",
-    "vitest": "^5.0.4"
+    "typedoc-plugin-markdown": "4.14.1",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   },
   "files": [
     "dist/"

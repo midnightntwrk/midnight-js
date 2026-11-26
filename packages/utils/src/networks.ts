@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { NetworkId } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { NetworkId } from '@midnightntwrk/midnight-js-types';
 
 /**
  * The network id and endpoints of a Midnight network.
@@ -63,7 +63,7 @@ const blockfrostNetwork = (
  *
  * These are defaults that can change between releases. To use other endpoints, pass your own
  * {@link MidnightNetwork}. A browser dApp with a DApp Connector wallet takes its endpoints from the wallet
- * with `dappConnectorNetwork` from `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider`.
+ * with `dappConnectorNetwork` from `@midnightntwrk/midnight-js-dapp-connector-proof-provider`.
  *
  * @example
  * ```typescript

@@ -15,7 +15,7 @@
 
 import { deflateSync } from 'node:zlib';
 
-import { EnvironmentUnsupportedError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { EnvironmentUnsupportedError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { describe, expect, test, vi } from 'vitest';
 
 import { IndexerPayloadTooLargeError } from '../errors';

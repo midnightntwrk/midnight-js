@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { PROVIDER_ERROR_CATEGORIES } from '@midnight-ntwrk/midnight-js-types';
+import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { PROVIDER_ERROR_CATEGORIES } from '@midnightntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { LEDGER_ERAS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 
 import { type EraEntryShape, type TransactionMethod, UnusableEraEntryError } from '../errors';
 

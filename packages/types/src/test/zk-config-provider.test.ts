@@ -19,7 +19,7 @@ import { ArtifactRuntimeVersionUnavailableError } from '../errors';
 import type { ProverKey, VerifierKey, ZKIR } from '../midnight-types';
 import { ZKConfigProvider } from '../zk-config-provider';
 
-// A provider written against the surface as it stood before the retained era existed: the three
+// A provider written against the surface as it stood before the framework served ledger 8: the three
 // artifact reads and nothing else. The point of the suite is what such a provider does now.
 class ArtifactOnlyZkConfigProvider extends ZKConfigProvider<string> {
   async getZKIR(): Promise<ZKIR> {

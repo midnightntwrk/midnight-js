@@ -3,7 +3,8 @@
 - Status: Accepted
 - Date: 2026-11-03
 - Related: [ADR 0014](./0014-build-provider-seams-from-per-era-handlers.md),
-  [ADR 0018](./0018-name-single-ledger-code-after-its-ledger.md)
+  [ADR 0018](./0018-name-single-ledger-code-after-its-ledger.md),
+  [ADR 0026](./0026-drop-the-retained-era-term.md)
 
 ## Context
 
@@ -16,7 +17,7 @@ block), and the object schema version `[vN]` inside a serialized tag. Using it f
 too would give one word three meanings.
 
 compact-js (`@midnight-ntwrk/compact-js` 3.0.0) also says "era": its `Ledger.Era` describes the
-facts of one era. `@midnight-ntwrk/midnight-js-protocol` re-exports compact-js's `Ledger` namespace
+facts of one era. `@midnightntwrk/midnight-js-protocol` re-exports compact-js's `Ledger` namespace
 from its `./v9/compact-js/effect` subpath, so our names must fit beside it.
 
 ## Decision
@@ -24,9 +25,11 @@ from its `./v9/compact-js/effect` subpath, so our names must fit beside it.
 We use the word "era" for the ledger era in the public API. The values are `'v8' | 'v9'`. They
 match the transaction handle's `era` and the package names `ledger-v8` / `ledger-v9`.
 
-- The era value type is `LedgerEra`, with `CurrentLedgerEra`, `RetainedLedgerEra`, `LEDGER_ERAS`,
-  `CURRENT_LEDGER_ERA` and `RETAINED_LEDGER_ERAS` (from `@midnight-ntwrk/midnight-js-protocol/version`),
+- The era value type is `LedgerEra`, with `CurrentLedgerEra`, `LEDGER_ERAS` and
+  `CURRENT_LEDGER_ERA` (from `@midnightntwrk/midnight-js-protocol/version`),
   and `UnknownLedgerEraError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA`) for a value that is not an era.
+  `RetainedLedgerEra` and `RETAINED_LEDGER_ERAS` are deprecated and leave in the next major release
+  ([ADR 0026](./0026-drop-the-retained-era-term.md)).
 - The object `loadLedgerEra` returns is `LedgerEraFacade`. It hides one era's ledger package
   behind methods that trade only plain data (ADR 0010). There is one facade per era, with the same
   interface for both.
@@ -39,7 +42,7 @@ These names still say "version", and stay as they are:
 - the `version` field holding a `LedgerEra` on `LedgerEraFacade` and on the era-aware errors in
   `protocol`;
 - `requestedVersion` on `UnknownLedgerEraError`, the value that was refused;
-- in `@midnight-ntwrk/midnight-js-protocol/version`: `VersionedRecord` (any record with a
+- in `@midnightntwrk/midnight-js-protocol/version`: `VersionedRecord` (any record with a
   `protocolVersion`), `protocolVersionToLedger`, `versionOfRecord` and
   `latestNetworkLedgerVersion`. These read the node's protocol version and map it to a
   `LedgerEra`, so "version" names their input;

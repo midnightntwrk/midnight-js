@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract } from '@midnightntwrk/midnight-js-contracts';
 import {
   dappConnectorProofProvider,
   dappConnectorWalletProviders,
-} from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type MidnightProvider, type PrivateStateId, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
+import { indexerPublicDataProvider } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
+import { levelPrivateStateProvider } from '@midnightntwrk/midnight-js-level-private-state-provider';
+import { NodeZkConfigProvider } from '@midnightntwrk/midnight-js-node-zk-config-provider';
+import { CostModel } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type MidnightProvider, type PrivateStateId, type WalletProvider } from '@midnightntwrk/midnight-js-types';
 import {
   createLogger,
   DAppConnectorWalletAdapter,
@@ -32,7 +32,7 @@ import {
   getTestEnvironment,
   type MidnightWalletProvider,
   type TestEnvironment,
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 import * as api from '../src/counter-api';

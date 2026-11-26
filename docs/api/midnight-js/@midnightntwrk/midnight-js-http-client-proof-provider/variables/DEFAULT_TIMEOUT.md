@@ -1,0 +1,9 @@
+[**Midnight.js API Reference v5.0.3**](../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../packages.md) / [@midnightntwrk/midnight-js-http-client-proof-provider](../README.md) / DEFAULT\_TIMEOUT
+
+# Variable: DEFAULT\_TIMEOUT
+
+> `const` **DEFAULT\_TIMEOUT**: `300000` = `300000`

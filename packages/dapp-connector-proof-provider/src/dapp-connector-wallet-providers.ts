@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { deserializeTransactionAtStage, type LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { WalletConnectedAPI } from '@midnightntwrk/dapp-connector-api';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { deserializeTransactionAtStage, type LedgerTransactionTypes } from '@midnightntwrk/midnight-js-protocol/transaction';
+import { Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
   createWalletProviderFromHandlers,
   type MidnightProvider,
   type WalletProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import type { WalletConnectedAPI } from '@midnightntwrk/dapp-connector-api';
+} from '@midnightntwrk/midnight-js-types';
 
 /** The part of the DApp Connector's `ConnectedAPI` that {@link dappConnectorWalletProviders} calls. */
 export type DAppConnectorWalletAPI = Pick<

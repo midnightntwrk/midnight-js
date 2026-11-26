@@ -24,6 +24,7 @@ concurrency:
 jobs:
   prepare:
     name: Prepare release PR
+    if: github.repository == 'midnightntwrk/midnight-js'
     runs-on: ubuntu-latest
     steps:
       - name: Guard - main only
@@ -44,7 +45,7 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: yarn install --immutable

@@ -51,7 +51,7 @@ object. There is one way in and one way out:
 - `LedgerTransaction.fromBytes(era, stage, bytes)` makes a handle. It checks
   that the bytes start with the full header the ledger of `era` writes for
   `stage` (`LEDGER_TRANSACTION_TAGS` in
-  `@midnight-ntwrk/midnight-js-protocol/version`, one row per era and stage),
+  `@midnightntwrk/midnight-js-protocol/version`, one row per era and stage),
   and refuses other bytes with `InvalidTransactionHandleError`, reason
   `header-mismatch` (or `not-bytes`, `invalid-stage`).
   `LedgerTransaction.seal(era, stage, tx)` is a shortcut for
@@ -99,7 +99,7 @@ and `contractStateObservable`, and `PublicStatesRead` from
 - The class's own `fromBytes(era, bytes)` makes one, for example
   `SerializedContractState.fromBytes(era, bytes)`, and nothing else can. It
   checks that the bytes start with the tag the ledger of `era` writes for that kind
-  (`LEDGER_STATE_TAGS` in `@midnight-ntwrk/midnight-js-protocol/version`), and
+  (`LEDGER_STATE_TAGS` in `@midnightntwrk/midnight-js-protocol/version`), and
   refuses other bytes with `InvalidSerializedStateError`. A zswap chain state has the
   same tag in v8 and v9, so the check accepts it under either era.
 - Each class has a guard: `SerializedContractState.isSerializedContractState`,
@@ -151,7 +151,7 @@ On every value, `era` is the ledger era that WROTE it.
 
 - A finalized-transaction record is written in its own block, so its `era`
   is derived from that block's `protocolVersion`, resolved the same way the
-  `read`-path resolver in `@midnight-ntwrk/midnight-js-protocol` resolves it.
+  `read`-path resolver in `@midnightntwrk/midnight-js-protocol` resolves it.
 - A contract state can be older than the block that dates the read: a record
   keeps the encoding it was written in. Its `era` (`contractState.era`) is read
   from the state's own version tag. `protocolVersion` dates the block and only
@@ -175,7 +175,7 @@ path, and it is not rare.
 
 So narrow a `FinalizedTxRead` on `era` when your code treats the
 eras differently, and close the `switch` with `assertNever` from
-`@midnight-ntwrk/midnight-js-utils`, so a further era becomes a compile error
+`@midnightntwrk/midnight-js-utils`, so a further era becomes a compile error
 rather than a fall-through. To read the transaction itself, call
 `record.tx.deserialize` with the `Transaction` class of that era.
 

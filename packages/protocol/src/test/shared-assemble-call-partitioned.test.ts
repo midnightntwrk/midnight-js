@@ -124,8 +124,8 @@ const assembleWith = (
     version: 'v9'
   }).prototype;
 
-// The two shapes exist because neither leg subsumes the other: the retained
-// pre-fork execution leg hands over a raw public transcript it has not
+// The two shapes exist because neither leg subsumes the other: the ledger 8
+// execution leg hands over a raw public transcript it has not
 // partitioned, while the current v9 production path receives transcripts
 // compact-js has already partitioned. Collapsing them would force one leg to
 // undo work the other never did.
@@ -220,7 +220,7 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
     expect(render(fromPartitioned)).toBe(render(fromUnpartitioned));
   });
 
-  // The retained pipeline routes a Zswap coin against the pair this function
+  // The ledger 8 pipeline routes a Zswap coin against the pair this function
   // ANSWERS with, then lets the same call be recomposed from it. If the pair
   // returned were not the one the prototype was built from, the coin would be
   // routed against one split and the transaction recorded under another, and

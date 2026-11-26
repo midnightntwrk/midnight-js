@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
 

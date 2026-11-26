@@ -15,8 +15,8 @@
 
 import { readFileSync } from 'node:fs';
 
-import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import { encodeContractKeyLocation, hashVerifierKey } from '@midnightntwrk/compact-js';
 import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -35,8 +35,7 @@ const REGISTERED_VERIFIER_KEY = readFileSync(
 // mis-dispatch fixture"). Read by path rather than through testkit-js's typed
 // accessor, for the reason v8-golden-fixtures.test.ts gives: testkit-js
 // depends on this package, so a devDependency back would close a workspace
-// cycle. packages/protocol/turbo.json declares the fixture directory as a test
-// input, so editing it invalidates this package's test cache.
+// cycle.
 const FOREIGN_KEY_STATE_FIXTURE = 'state-co-v2-only-foreign.hex';
 
 

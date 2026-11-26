@@ -29,7 +29,7 @@ here against the real `@midnightntwrk/ledger-v8@8.1.2` /
 ## Consuming these fixtures
 
 The whole tree below `src/fixtures/hf/` is **published** with
-`@midnight-ntwrk/testkit-js`. The build copies it verbatim into
+`@midnightntwrk/testkit-js`. The build copies it verbatim into
 `dist/fixtures/hf/`, and `src/fixtures-hf.ts` resolves it relative to its own
 module URL, so the same accessors work from source inside this repo and from
 the installed package outside it:
@@ -40,7 +40,7 @@ import {
   hfFixturePath,
   hfFixturesManifest,
   readHfFixture
-} from '@midnight-ntwrk/testkit-js/fixtures-hf';
+} from '@midnightntwrk/testkit-js/fixtures-hf';
 
 const bytes = readHfFixture('state-v8.hex');                    // Uint8Array
 const era = hfFixturesManifest['state-v8.hex'].protocolVersion; // 1000000
@@ -73,7 +73,7 @@ Two things to know about what ships:
   `compact-runtime-ledger8`, an alias that exists in THIS workspace and not in
   an installed consumer's, so they will not resolve for you — the same caveat as
   the `index.js` above, one level up. `packages/contracts` imports them
-  type-only to type its retained-era fixtures; see [`counter-016/`](#counter-016).
+  type-only to type its ledger 8 fixtures; see [`counter-016/`](#counter-016).
 
 ## Fixtures
 
@@ -87,7 +87,7 @@ Two things to know about what ships:
 | `state-tampered-keyset-v9to8.hex` | 1000000 (claimed) / 2000000 (actual payload) | derive | `state-migrated-v9.hex` with only the tag's version digit flipped `'8'→'6'`. |
 | `state-tampered-bytes.hex` | 2000000 | derive | `state-migrated-v9.hex` with one payload byte bit-flipped past the header. |
 | `state-both-keys.hex` | null (ambiguous by design) | derive | `state-v8-v6-envelope.hex` ++ `state-migrated-v9.hex` concatenated — both envelope tags in one blob. |
-| `state-co-v2-only-foreign.hex` | 2000000 | mint (npm, cheap) | Mis-dispatch negative: a full, well-formed `ContractState` (deserializes cleanly on `ledger-v9`) whose `increment` operation slot carries a FOREIGN verifier key — borrowed from the golden `state-migrated-v9.hex`'s real `post` operation (a different, real migrated circuit, not built from the retained counter artifacts). Fails later, at execution, not at decode. |
+| `state-co-v2-only-foreign.hex` | 2000000 | mint (npm, cheap) | Mis-dispatch negative: a full, well-formed `ContractState` (deserializes cleanly on `ledger-v9`) whose `increment` operation slot carries a FOREIGN verifier key — borrowed from the golden `state-migrated-v9.hex`'s real `post` operation (a different, real migrated circuit, not built from the ledger 8 counter artifacts). Fails later, at execution, not at decode. |
 
 `fixtures.json` repeats this table machine-readably, plus the exact envelope
 tag / claimed-vs-actual era for each, plus `status` (`ok` / `synthetic` /
@@ -266,7 +266,7 @@ opposed to `twin-contract/compiled/`, which is the SAME source recompiled with
 a v9-era toolchain (`compactc 0.33.0-rc.2`, `runtime-version:
 0.18.0-rc.1`). The two are not interchangeable: `twin-contract/compiled/` emits
 0.18-era (async) codegen and cannot run against a `compact-runtime@0.16`
-instance; `counter-016/` emits the sync codegen the retained pre-fork engine
+instance; `counter-016/` emits the sync codegen the ledger 8 pre-fork engine
 (`packages/protocol/src/lib/v8/executable.ts`) actually exercises, and is the
 fixture `v8-executable.test.ts` runs `increment` against.
 
@@ -286,7 +286,7 @@ end-to-end positive and the AC0 scenario gated at unit tier.
 
 **The declaration file IS committed, with one line changed.** `compactc 0.31.1`
 emits `contract/index.d.ts` beside the module; it was left uncommitted until
-#1312, which is the defect that decided the question. `contracts`'s retained-era
+#1312, which is the defect that decided the question. `contracts`'s ledger 8
 type family is hand-written, and its compile-time tests used a hand-written
 stand-in for this artifact -- a stand-in written in terms of the family, so it
 agreed with the family whatever the family said and could not fail when the two
@@ -305,7 +305,7 @@ That is loud rather than silent -- the conformance assertions in
 `packages/contracts/src/test/typecheck/overloads.test-d.ts` go red -- but it
 fails somewhere that says nothing about a specifier, which is why the rewrite is
 pinned directly. The alias is this
-repo's own install of the same retained `@midnight-ntwrk/compact-runtime@0.16.0`
+repo's own install of the same ledger 8 `@midnight-ntwrk/compact-runtime@0.16.0`
 (see `packages/protocol/package.json`), which is the only way to name 0.16 here.
 `ledger8-contract.test.ts` asserts both halves of that rewrite on the committed
 bytes.
@@ -348,7 +348,7 @@ toolchain ever starts emitting V3 by default.
 None of the generated files are read at import time; the module's only own-time dependency is a bare
 `@midnight-ntwrk/compact-runtime` import, satisfied in tests by redirecting
 that specifier (module-registry-scoped to the one test file that imports this
-fixture) to this repo's own `compact-runtime-ledger8` — the same retained
+fixture) to this repo's own `compact-runtime-ledger8` — the same ledger 8
 `@midnight-ntwrk/compact-runtime@0.16.0`, installed under an alias so it can
 coexist with the root's `0.20.0` pin (see
 `packages/protocol/package.json`).
@@ -401,7 +401,7 @@ export circuit increment(): [] {
 `localIncrement()` reads the step out of the dApp's own private state, so
 executing `increment()` calls the witness, threads the private state through the
 runtime, and lets the witness hand a **new** private state back — which is what
-makes the state a test persists something the retained toolchain really
+makes the state a test persists something the ledger 8 toolchain really
 produced, rather than the caller's own object passed through by reference (which
 is all `counter-016` can offer, since nothing there ever touches private state).
 
@@ -411,7 +411,7 @@ see below):
 
 | Directory | Compiler | Language | Runtime | Codegen |
 |---|---|---|---|---|
-| `private-counter-016/compiled/` | 0.31.1 | 0.23.0 | **0.16.0** | sync (retained, pre-fork) |
+| `private-counter-016/compiled/` | 0.31.1 | 0.23.0 | **0.16.0** | sync (ledger 8, pre-fork) |
 | `private-counter-twin/compiled/` | 0.36.1 | 0.28.0 | **0.21.0** | async (current) |
 
 The two `contract-info.json` files are **identical apart from those three
@@ -420,7 +420,7 @@ witness — which is the machine-checkable form of the "PS-schema-identical twin
 claim, and is asserted rather than assumed (see below).
 
 **Both builds EXECUTE**, and that is the difference from `twin-contract/`. The
-retained build runs against the retained engine
+ledger 8 build runs against the ledger 8 engine
 (`packages/protocol/src/lib/v8/executable.ts`, reached through `loadLedger8Engine()`),
 exactly as `counter-016` does. The twin's declared runtime is **the one this
 repo resolves** (root `resolutions` pins `@midnight-ntwrk/compact-runtime` to
@@ -434,7 +434,7 @@ That coupling is committed **as a gate, not as decoration**: the consuming test
 asserts `private-counter-twin`'s declared `runtime-version` equals the runtime
 the repo actually resolves, so bumping `compact-runtime` without recompiling
 this fixture fails with a named assertion instead of a version-mismatch throw
-from deep inside the twin's own module body. The retained side is pinned to the
+from deep inside the twin's own module body. The ledger 8 side is pinned to the
 literal `0.16.0` for the same reason.
 
 Consumed by `testkit-js/testkit-js/test/cross-window.ut.test.ts`, which drives
@@ -455,8 +455,8 @@ left exactly as it is.
 
 **What is committed, and what is not.** `contract/index.js` and
 `compiler/contract-info.json` on both sides, plus `contract/index.d.ts` on the
-RETAINED side only — the same set `counter-016/` and `coin-receiver-016/` carry,
-and for the same reason: `packages/contracts` types its retained-era fixtures
+LEDGER 8 side only — the same set `counter-016/` and `coin-receiver-016/` carry,
+and for the same reason: `packages/contracts` types its ledger 8 fixtures
 from it, and this is the only fixture that declares a WITNESS. It carries the
 same one-line specifier rewrite as the other two. The current-toolchain side
 needs none, since nothing types a fixture from it. No `keys/`, no `zkir/`, no
@@ -477,13 +477,13 @@ artifact with that single line as the only difference, which is the property the
 "byte-verbatim" rule was protecting.
 
 **A consumer who wants to RUN these needs the runtime.** The fixture tree ships
-with `@midnight-ntwrk/testkit-js`, but `@midnight-ntwrk/compact-runtime` is a
+with `@midnightntwrk/testkit-js`, but `@midnight-ntwrk/compact-runtime` is a
 devDependency of that package, not a dependency — so importing either
 `contract/index.js` from an installed copy fails to resolve its own
 `@midnight-ntwrk/compact-runtime` import unless the consumer has one in their own
 tree. That is true of every compiled contract here; it matters for this pair
 first, because it is the only one a consumer would plausibly want to execute
-rather than read. The retained side additionally needs a real 0.16 instance,
+rather than read. The ledger 8 side additionally needs a real 0.16 instance,
 which no consumer resolves from that specifier by default — see the redirect the
 consuming test uses.
 
@@ -623,7 +623,7 @@ from the Apache-2.0 header check, which generated code must not carry.
 ### The three recorded `coin-receiver-016` fixtures
 
 Three fixtures were added beside the compiled artifact so that a **coin-moving
-call can be driven without a retained runtime**. They are minted, and on every
+call can be driven without a ledger 8 runtime**. They are minted, and on every
 run re-verified against a live execution, by
 `packages/protocol/src/test/era-record-coin-receiver.test.ts` — the same
 provenance pattern as `counter-016/increment-transcript.golden.json`, which was
@@ -632,7 +632,7 @@ itself minted from the retired `v8-execute.test.ts`'s own real execution.
 | File | What it is |
 |---|---|
 | `coin-receiver-016/receive-coin-transcript.recording.json` | The `TranscriptPojo` the real `compact-runtime@0.16` runtime produces for `receive_coin`, with the state it ran against. Values are TAGGED — `{"__bigint"}`, `{"__bytes"}` (lower-case hex), `{"__map"}` — because unlike the counter golden this recording is *decoded* and fed back to a real ledger, and `partitionContext.block.parentBlockHash` is a genuine hex string sitting beside genuine byte arrays. |
-| `coin-receiver-016/state-v6-envelope.hex` | A real retained-era `ContractState` (`contract-state[v6]`) whose `.data` is the state that same constructor built, with `receive_coin` registered. The state a pre-fork call is dispatched against. |
+| `coin-receiver-016/state-v6-envelope.hex` | A real ledger 8 `ContractState` (`contract-state[v6]`) whose `.data` is the state that same constructor built, with `receive_coin` registered. The state a pre-fork call is dispatched against. |
 | `coin-receiver-016/state-v9.hex` | The same primary state as a current-era `ContractState` (`contract-state[v8]`), with `receive_coin` registered. The state a post-fork keep-state call is dispatched against. |
 
 Neither `.hex` is reachable through `readHfFixture` — that accessor covers the
@@ -683,7 +683,7 @@ them, re-copy from a newer spike checkout and re-run
 `generate-all.mjs` (the tamper/derive scripts read the goldens back in, so
 they stay consistent automatically).
 
-To recompile `coin-receiver-016/` (needs the retained-era compiler — see its
+To recompile `coin-receiver-016/` (needs the ledger 8 compiler — see its
 section above for why the version is not negotiable):
 
 ```
@@ -696,7 +696,7 @@ cp /tmp/coin-receiver-out/compiler/contract-info.json  testkit-js/testkit-js/src
 To recompile `twin-contract/`:
 
 ```
-yarn fetch-compactc   # from packages/contracts/, once, if packages/compact isn't built yet — run `yarn turbo run build --filter=@midnight-ntwrk/midnight-js-compact` first
+yarn fetch-compactc   # from packages/contracts/, once, if packages/compact isn't built yet — run `yarn turbo run build --filter=@midnightntwrk/midnight-js-compact` first
 node packages/compact/dist/run-compactc.cjs testkit-js/testkit-js/src/fixtures/hf/twin-contract/counter.compact testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled
 rm testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js.map   # trim: not needed, keeps the fixture minimal
 ```
@@ -705,8 +705,8 @@ To recompile the `private-counter` pair — **both sides, from the one source,
 always together**, or the pair stops being a pair:
 
 ```
-compact list          # 0.31.1 must be installed, for the retained side
-# The retained side comes from a `compact`-installed toolchain; the current side
+compact list          # 0.31.1 must be installed, for the ledger 8 side
+# The ledger 8 side comes from a `compact`-installed toolchain; the current side
 # comes from the one THIS REPO pins (`.envrc`'s COMPACTC_VERSION), because that
 # is the version whose `runtime-version` the consuming test gates on. Fetch it
 # once, from packages/contracts/, if packages/compact/managed/ has no such
@@ -775,10 +775,7 @@ actually imports.
 The user's global `~/.npmrc` routes `@midnight-ntwrk` and `@midnightntwrk` to
 GitHub Packages with tokens that may not resolve public npm packages. This
 repo uses **Yarn Berry** (`nodeLinker: node-modules`), which ignores
-`~/.npmrc` entirely and uses `.yarnrc.yml`'s `npmScopes` instead.
-`.yarnrc.yml` already pins `midnight-ntwrk` (hyphenated) to GitHub Packages,
-but has **no entry for `midnightntwrk`** (no hyphen) — so `@midnightntwrk/*`
-packages (`ledger-v8`, `ledger-v9`) fell through to the default public
-registry and resolved without any `.npmrc`/`.yarnrc.yml` change. Both
-`yarn install` runs in this task (root install, and after adding the two new
-devDependencies) completed with no 401s. No registry fix was needed or made.
+`~/.npmrc` entirely and uses `.yarnrc.yml` instead. `.yarnrc.yml` declares
+no scope registry, so both `@midnight-ntwrk/*` and `@midnightntwrk/*`
+packages resolve from the default public registry (npmjs) without any
+`.npmrc`/`.yarnrc.yml` change.
