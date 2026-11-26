@@ -39,6 +39,13 @@ re-exports it and is what rollup emits as `dist/engine.js`, the chunk
 what holds the ledger 8 `compact-runtime@0.16` glue and the
 `@midnight-ntwrk/onchain-runtime-v3` WASM out of the package root.
 
+The root also re-exports the option, parameter and result types of the era
+facade's compose methods, and `INITIAL_LEDGER_PARAMETERS`, from
+`lib/era/load-era.ts`. Without them a caller could not name what the facade
+takes or returns, and could reach the constant only as a hand-written literal.
+The constant is a plain string in a module that imports nothing at run time, so
+the re-export adds nothing to the eager graph; `dist-laziness.test.ts` holds it.
+
 ## Where `LEDGER_ERAS` lives, and the cycle it avoids
 
 `LEDGER_ERAS` is declared in `lib/shared/ledger-version.ts`, a leaf module

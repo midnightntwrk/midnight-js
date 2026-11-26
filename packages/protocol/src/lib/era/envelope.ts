@@ -26,34 +26,12 @@ import type { LedgerEra } from '../../version';
 
 export type { EncodedStateValue };
 
-/**
- * The pre-fork `ContractState` statics {@link extractEncodedStateValue} needs
- * to read a `contract-state[v6]`-tagged state.
- *
- * @see {@link InjectedVendorSlices} for why this slice is derived from the
- * vendor's own class and narrowed to `deserialize`.
- * @see {@link ModuleGraphAndLazyLoading} for why it is reached by injection
- * rather than by a value import.
- * @see {@link Ledger8Execution} for the era pin the narrowing carries.
- */
+// The pre-fork `ContractState` statics, injected rather than imported; see InjectedVendorSlices.
 export type Ledger8ContractState = Pick<typeof OnchainRuntimeV3.ContractState, 'deserialize'>;
 
 type EnvelopeDecoder = (raw: Uint8Array, ledger8ContractState: Ledger8ContractState) => EncodedStateValue;
 
-/**
- * Reads the primary {@link EncodedStateValue} out of a raw, serialized
- * post-fork contract state, tagged `contract-state[v8]`.
- *
- * Reachable without a pre-fork runtime, unlike {@link extractEncodedStateValue},
- * which requires one for every era.
- *
- * @param raw The serialized `contract-state[v8]` state.
- * @returns The primary state read out of the serialized state.
- * @throws StateConversionFailedError at stage `'v9 state read'` if the
- * state is malformed, truncated, over-long, or tagged for the other era,
- * carrying the runtime's own diagnosis on `cause`.
- * @see {@link FailClosedDecoding}
- */
+// Needs no pre-fork runtime, unlike extractEncodedStateValue.
 export const extractLedger9EncodedStateValue = (raw: Uint8Array): EncodedStateValue => {
   try {
     return Ledger9ContractState.deserialize(raw).data.state.encode();
@@ -62,17 +40,8 @@ export const extractLedger9EncodedStateValue = (raw: Uint8Array): EncodedStateVa
   }
 };
 
-/**
- * One decoder per {@link LedgerEra}:
- *
- * - `v9` — a post-fork `contract-state[v8]`-tagged state, read via
- *   `@midnightntwrk/ledger-v9`.
- * - `v8` — a pre-fork `contract-state[v6]`-tagged state, read via
- *   onchain-runtime-v3, the same codec that produced it.
- *
- * A total `Record`, built on a null prototype and frozen -- see the
- * SharedTableDiscipline document.
- */
+// v8 reads `contract-state[v6]` with onchain-runtime-v3, v9 reads `contract-state[v8]` with
+// ledger-v9. Null prototype and frozen; see SharedTableDiscipline.
 const ENVELOPE_DECODERS: Readonly<Record<LedgerEra, EnvelopeDecoder>> = Object.freeze(
   Object.assign(Object.create(null) as Record<LedgerEra, EnvelopeDecoder>, {
     v8: (raw: Uint8Array, ledger8ContractState: Ledger8ContractState): EncodedStateValue =>
@@ -83,28 +52,7 @@ const ENVELOPE_DECODERS: Readonly<Record<LedgerEra, EnvelopeDecoder>> = Object.f
   } satisfies Record<LedgerEra, EnvelopeDecoder>)
 );
 
-/**
- * Extracts the primary {@link EncodedStateValue} out of a raw, serialized
- * `ContractState`, using the decoder that matches `version`.
- *
- * @param raw The serialized contract state.
- * @param version The era whose decoder reads `raw`. Validated at runtime, not
- * merely type-checked.
- * @param ledger8ContractState The pre-fork `ContractState` statics. Required
- * for every `version`, not just `'v8'`, and checked before any decoding
- * happens.
- * @returns The primary state read out of the serialized state — never a silently
- * empty or partial one.
- * @throws UnknownLedgerEraError if `version` is not a member of
- * `LEDGER_ERAS`.
- * @throws Ledger8RuntimeInvalidError if `ledger8ContractState` does not carry
- * `deserialize`.
- * @throws StateConversionFailedError at stage `'v8 state read'` or
- * `'v9 state read'` if the state cannot be decoded, carrying the
- * runtime's own diagnosis on `cause`.
- * @see {@link FailClosedDecoding}
- * @see {@link SharedTableDiscipline}
- */
+// The pre-fork runtime is required for every era and checked before decoding; see FailClosedDecoding.
 export const extractEncodedStateValue = (
   raw: Uint8Array,
   version: LedgerEra,

@@ -30,20 +30,13 @@ export const LEDGER_ERAS = Object.freeze(['v8', 'v9'] as const);
 export type LedgerEra = (typeof LEDGER_ERAS)[number];
 
 /**
- * The era whose objects this build links eagerly, today through `./v9`.
+ * The era this build links eagerly: `'v9'` today; it moves at the next hard
+ * fork. Use it instead of restating "which era is now" as a literal.
  *
- * "Current" is relative: today it is ledger 9 (`'v9'`). At the next hard fork it
- * moves to the new ledger. Code bound to one ledger is named after that ledger
- * (`Ledger9*`) instead.
+ * The type is the single literal, not {@link LedgerEra}, so a union of both
+ * eras' results narrows on `era`.
  *
- * A protocol fact rather than a consumer's choice: it is decided by which
- * ledger the package links eagerly, and every other era is reached lazily and
- * crosses package boundaries as bytes. Declared here so that no package
- * downstream restates "which era is now" as a literal of its own.
- *
- * The type is the single literal, not {@link LedgerEra}, so a value typed
- * by it DISCRIMINATES: `midnight-js-contracts` types a current-era result's
- * `era` with it, so a union of both eras' results narrows on `era`.
+ * @see ADR 0018
  */
 export const CURRENT_LEDGER_ERA = 'v9' as const satisfies LedgerEra;
 export type CurrentLedgerEra = typeof CURRENT_LEDGER_ERA;

@@ -13,22 +13,7 @@
  * limitations under the License.
  */
 
-/**
- * Ledger 8 execution, on compact-js's own era-pinned entries.
- *
- * This module replaced a hand-maintained execution layer — `execute.ts`, which
- * drove `compact-runtime@0.16` directly, and `down-convert.ts`, which built the
- * state it ran against. Both are gone; see
- * `docs/adr/0015-retained-era-execution-on-compact-js.md` for why.
- *
- * Everything crossing this module's surface is PLAIN DATA or an era-tagged
- * handle the caller already holds. No `Effect` value leaves it: the effects
- * compact-js returns are discharged here with `Effect.runPromise`, which is
- * also why every entry point is asynchronous — `ContractExecutable` builds its
- * work on `Effect.tryPromise`, so `runSync` cannot discharge it.
- *
- * @see {@link Ledger8Execution}
- */
+// Ledger 8 execution on compact-js's era-pinned entries; see ADR 0015 and Ledger8Execution.
 
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
@@ -57,28 +42,10 @@ import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
 import { type ContractStatePojo, describeValue, isContractBalance } from '../shared/contract-state';
 
-/**
- * The shape the ledger 8 runtime reads a signing key in: 32 bytes written in
- * hex, either case.
- *
- * MEASURED against the pinned runtime rather than guessed. `sampleSigningKey()`
- * answers 64 lowercase hex characters; an uppercase key of the same length is
- * accepted, a shorter or longer one fails with `failed to fill whole buffer`
- * and a non-hex one with `Invalid character 'z' at position 0`. The value being
- * a valid Schnorr scalar is a cryptographic property this cannot check, and the
- * runtime's own `Malformed Schnorr signing key` already names it.
- */
+// 32 bytes in hex, either case: measured against the pinned runtime (see Ledger8Execution).
 export const LEDGER8_SIGNING_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
 
-/**
- * The signature kind this era's maintenance authority accepts.
- *
- * MEASURED, not chosen: the era reports `supportsCmaSignatureKind` as
- * `schnorr=true, ecdsa=false`, and `Ledger.fromPlatformSigningKey` answers
- * `Left(ContractConfigurationError)` for an ecdsa key. Naming it here keeps the
- * bare hex string this era's callers hold assignable to platform-js's tagged
- * `SigningKey`, which is what `Configuration.Keys` serves.
- */
+// Measured, not chosen: the era reports `supportsCmaSignatureKind` as schnorr=true, ecdsa=false.
 const LEDGER8_SIGNATURE_KIND = 'schnorr' as const;
 
 /** A ledger 8 signing key: 32 bytes of hex. @see {@link LEDGER8_SIGNING_KEY_PATTERN} */
@@ -89,14 +56,10 @@ export const toPlatformSigningKey = (signingKey: Ledger8SigningKey): SigningKey.
   SigningKey.make(signingKey, LEDGER8_SIGNATURE_KIND);
 
 /**
- * A ledger 8 contract, as the caller holds it: the CONSTRUCTED artifact the
- * previous toolchain generates.
+ * A ledger 8 contract as the caller holds it: the constructed artifact the
+ * ledger 8 toolchain generates, not compact-js's `CompiledContract`.
  *
- * Deliberately not compact-js's `CompiledContract` container. That container is
- * a recipe — a class plus witnesses, instantiated fresh per operation — and the
- * ledger 8's callers hold an instance whose witnesses are already bound.
- * {@link containerFor} adapts one to the other here, which keeps the
- * adaptation in one place instead of on every consumer.
+ * @see {@link Ledger8Execution}
  */
 export interface Ledger8EngineContract {
   /** The map compact-js indexes to find the circuit to run. */
@@ -105,32 +68,12 @@ export interface Ledger8EngineContract {
   initialState(...args: never[]): unknown;
 }
 
-/**
- * The tag compact-js reports a ledger 8 contract under.
- *
- * It reaches nothing but error messages: the container's tag is chosen by
- * whoever builds it, and this era's callers pass an instance that carries no
- * name of its own.
- */
+// Reaches nothing but compact-js's error messages.
 const LEDGER8_CONTRACT_TAG = 'ledger8-contract';
 
-/**
- * Wraps a constructed ledger 8 contract in the container compact-js executes.
- *
- * `ContractExecutable` resolves the contract through `new ctor(witnesses)`, so
- * it needs a constructor. The caller has an instance, and its witnesses are
- * already bound to it — so the constructor hands that same instance back and
- * the witnesses arrive with it. Returning an object from a constructor is
- * ordinary JavaScript; the assertion is needed only because TypeScript types a
- * class expression by its declaration rather than by what it returns.
- *
- * Reusing one instance across calls is what this era already did before
- * compact-js served it, so this is the existing lifetime, not a new one.
- *
- * The compiled-assets path is a placeholder: it is read only by compact-js's
- * own `ZKConfiguration` reader, and {@link zkConfigurationLayer} replaces that
- * service outright, so nothing ever resolves it.
- */
+// compact-js builds the contract with `new ctor(witnesses)`; the constructor hands back the caller's
+// instance, whose witnesses are already bound. The assets path '.' is never read: zkConfigurationLayer
+// replaces the reader.
 export const containerFor = <PS>(contract: Ledger8EngineContract): CompiledContract.CompiledContract<
   Contract.Contract<PS>,
   PS,
@@ -138,13 +81,8 @@ export const containerFor = <PS>(contract: Ledger8EngineContract): CompiledContr
 > =>
   CompiledContract.make<Contract.Contract<PS>, PS>(
     LEDGER8_CONTRACT_TAG,
-    // The single assertion this adapter needs, and it is here rather than at any
-    // caller. A ledger 8 artifact satisfies compact-js's `Contract` structurally
-    // -- same four circuit maps, and a synchronous `initialState` satisfies its
-    // `Awaitable` return -- but the two declare their members over different
-    // private-state parameters, so TypeScript will not see it. Narrowing what
-    // this module ASKS for (see `Ledger8EngineContract`) is what keeps the assertion
-    // to one line instead of pushing a cast onto every consumer.
+    // The structural match is real, but the private-state parameters differ, so TypeScript needs
+    // this one assertion; see Ledger8Execution.
     class {
       constructor() {
         return contract;
@@ -152,28 +90,12 @@ export const containerFor = <PS>(contract: Ledger8EngineContract): CompiledContr
     } as Types.Ctor<Contract.Contract<PS>>
   ).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('.'));
 
-/**
- * The query-context members a composition leg needs to re-partition a call's
- * transcript in the TARGET era, as compact-js publishes them
- * (midnightntwrk/midnight-sdk#400).
- *
- * `block` and `effects` are the PRE-execution context's and `comIndices` the
- * POST-execution one's. compact-js's own partitioner makes exactly that split;
- * reading `block.comIndices` instead — one dot away, and keyed to `number`
- * rather than `bigint` — produces a partition the target era refuses, and
- * nothing reports it.
- */
 export type { PartitionContext };
 
 /**
- * The result of one ledger 8 circuit call: every artifact
- * {@link wrapKeepStateCall} (`../v9/wrap.ts`) needs to assemble a v9-native
- * `ContractCallPrototype`.
- *
- * `preContractState` and `postContractState` are LIVE HANDLES from the ledger 8
- * runtime; every other member is plain data. `postContractStateEncoded` is the
- * post-state's encoded form, carried beside the handle so a caller has a value
- * that outlives the runtime instance.
+ * The result of one ledger 8 circuit call: what `wrapKeepStateCall` needs to
+ * build a v9 call prototype. `preContractState` and `postContractState` are
+ * live ledger 8 handles; every other member is plain data.
  *
  * @see {@link Ledger8Execution}
  */
@@ -185,28 +107,18 @@ export interface TranscriptPojo {
   readonly publicTranscript: ContractExecutable.ContractExecutable.ContractCallPublic['publicTranscript'];
   readonly privateTranscriptOutputs: ContractExecutable.ContractExecutable.ContractCallPrivate['privateTranscriptOutputs'];
   /**
-   * The state the call BOUND to, i.e. `partitionInputs.state`.
-   *
-   * Indistinguishable from {@link TranscriptPojo.postContractState} BY TYPE:
-   * compact-js resolves both to the same declaration, so swapping the two is
-   * not a compile error. Partitioning against the wrong one rejects a state the
-   * transcript's reads do not fit, or silently mis-charges one that merely
-   * differs in value, so the distinction rests on the member name alone.
+   * The state the call BOUND to. Same type as
+   * {@link TranscriptPojo.postContractState}, so swapping them is not a compile
+   * error; partitioning against the wrong one is refused or mis-charged.
    */
   readonly preContractState: ContractExecutable.ContractExecutable.CallPartitionInputs['state'];
   /**
-   * The state the call LEFT, i.e. compact-js's own `contractState`.
-   *
-   * See {@link TranscriptPojo.preContractState}: the two are the same type.
+   * The state the call LEFT. See {@link TranscriptPojo.preContractState}.
    */
   readonly postContractState: ContractExecutable.ContractExecutable.ContractCallPublic['contractState'];
   /**
-   * The post-call state as an {@link EncodedStateValue}: the same value
-   * {@link postContractState} holds, in the form that survives this process.
-   *
-   * `EncodedStateValue` is pinned identical across the ledger 8 and current
-   * runtimes, so this is the member era-agnostic code reads, and the one that
-   * can be persisted, cloned or sent to a worker.
+   * The post-call state as an {@link EncodedStateValue}, which can be
+   * persisted, cloned or sent to a worker, unlike the handle.
    */
   readonly postContractStateEncoded: EncodedStateValue;
   readonly privateStateAfter: unknown;
@@ -220,24 +132,13 @@ export interface ConstructorResultPojo {
   readonly privateState: unknown;
   readonly zswapLocalState: ContractExecutable.ContractExecutable.DeployResultPrivate<unknown>['zswapLocalState'];
   /**
-   * The key the state's maintenance authority was built from: the caller's own
-   * when one was named, otherwise the one compact-js sampled.
-   *
-   * REQUIRED, unlike the request's, and that asymmetry is the point — a sampled
-   * key exists nowhere else, so a result that did not report it would leave the
-   * deployment as unmaintainable as the empty committee the ledger 8
-   * constructor writes on its own.
+   * The key the maintenance authority was built from: the caller's own, or the
+   * one compact-js sampled. Persist it: a sampled key exists nowhere else.
    */
   readonly signingKey: Ledger8SigningKey;
 }
 
-/**
- * Reads verifier keys for the entry points a contract declares.
- *
- * A plain function rather than compact-js's `ZKConfiguration` service, so no
- * Effect type reaches this package's callers; {@link zkConfigurationLayer}
- * adapts it where the service is needed.
- */
+/** Reads verifier keys for the entry points a contract declares; `undefined` when none is served. */
 export type VerifierKeyReader = (provableCircuitId: string) => Promise<Uint8Array | undefined>;
 
 /** Everything {@link runLedger8Circuit} needs to run one circuit. */
@@ -246,36 +147,20 @@ export interface Ledger8CircuitOptions<C extends Ledger8EngineContract, PS> {
   readonly circuitId: string;
   readonly args: readonly unknown[];
   /**
-   * The contract state the call runs against, DECODED — the primary state in
-   * its era-neutral encoded form, with the balances the contract holds beside
-   * it.
+   * The decoded contract state the call runs against, with the contract's
+   * balances on the same value so both come from one read. Either era's reader
+   * produces it, so a contract already migrated after the fork runs the same way.
+   * A contract that holds nothing declares an empty map.
    *
-   * Era-neutral rather than one era's serialized bytes, because a contract that
-   * an earlier post-fork call has already migrated carries a CURRENT-era
-   * envelope while still executing on the ledger 8 runtime. Chain bytes would
-   * have to be decoded by the era that wrote them; this shape is what both
-   * envelopes' readers produce, so one path serves a pre-fork contract and a
-   * migrated one alike.
-   *
-   * The balance travels on the same value, so the two halves cannot come off
-   * different reads. {@link executableStateFrom} writes it onto a whole
-   * `ContractState`, which is the only form the ledger 8 runtime reads a
-   * balance from — handed a bare state value it substitutes an empty map, and a
-   * circuit reading a balance then executes against nothing with every guard
-   * green. That substitution is what #1345 was.
+   * @see {@link Ledger8Execution}
    */
   readonly contractState: ContractStatePojo;
   readonly address: string;
   readonly coinPk: string;
   readonly privateState: PS;
   /**
-   * The execution clock, in SECONDS since the epoch. Omitted, the wall clock is
-   * used.
-   *
-   * Lands on the query context's `block.secondsSinceEpoch`, which
-   * {@link TranscriptPojo.partitionContext} reports — so without pinning it a
-   * recorded fixture differs on every run
-   * (midnightntwrk/midnight-sdk#403).
+   * The execution clock, in SECONDS since the epoch; omitted means the wall
+   * clock. Pin it for a reproducible transcript.
    */
   readonly nowSeconds?: number;
 }
@@ -296,16 +181,7 @@ export interface Ledger8ConstructorOptions<C extends Ledger8EngineContract, PS> 
   readonly verifierKeys: VerifierKeyReader;
 }
 
-/**
- * Serves the coin public key and signing key compact-js reads off
- * `Configuration.Keys`.
- *
- * Built with `Layer.succeed` over the values the caller already holds, rather
- * than through platform-js's own `Configuration.layer`, which sources them from
- * a `ConfigProvider`. The service is a plain `Context.Tag` with two members, so
- * there is nothing a config round trip would add except a second place for the
- * values to disagree.
- */
+// `Layer.succeed`, not `Configuration.layer`; see Ledger8Execution.
 export const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): Layer.Layer<Configuration.Keys> =>
   Layer.succeed(
     Configuration.Keys,
@@ -318,46 +194,21 @@ export const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefi
     })
   );
 
-/**
- * Pins the execution clock, or leaves the ambient one in place.
- *
- * `Effect.withClock`, NOT a `Layer` over `Clock.Clock`. The clock is one of
- * Effect's DEFAULT services: it lives on the fiber rather than in the context,
- * so providing a layer for it type-checks, runs, and is silently ignored — the
- * wall clock still wins. That was measured here, by a test that asserted a
- * pinned second and got `Date.now()`.
- *
- * Only `currentTimeMillis` and its unsafe twin reach an execution — compact-js
- * converts to seconds at the call site — but the whole interface is pinned so a
- * future read cannot quietly fall back to the wall clock.
- */
+// Applied with `Effect.withClock`, never a Layer, which Effect silently ignores (see Ledger8Execution).
+// The whole interface is pinned so no future read falls back to the wall clock.
 export const pinnedClock = (nowSeconds: number): Clock.Clock => {
-  // BEFORE the rounding, because `Math.round` carries `NaN` and both infinities
-  // straight through to `BigInt(millis)`, which refuses them with a bare
-  // `RangeError` naming neither the option nor the era. `nowSeconds` is a plain
-  // `number` on the published option, and `Number(process.env.X)` with the
-  // variable unset is the obvious way to produce one.
+  // Before rounding: `BigInt` refuses NaN and infinities with a bare RangeError.
   if (!Number.isFinite(nowSeconds)) {
     throw new InvalidArgumentError(
       `the ledger 8 runtime cannot pin its execution clock to '${String(nowSeconds)}'. ` +
         '`nowSeconds` must be a finite number of seconds since the epoch.'
     );
   }
-  // ROUNDED, not used raw. `nowSeconds` is a plain `number` on the published
-  // option and `Date.now() / 1000` -- the expression a consumer reaches for --
-  // is fractional, which makes `BigInt(millis)` throw `RangeError: ... not an
-  // integer` from inside the clock builder, naming neither the option nor the
-  // era. The millisecond is the finest unit this interface carries and
-  // compact-js divides it back down to seconds, so rounding loses nothing an
-  // execution can observe.
+  // Rounded: `Date.now() / 1000` is fractional and `BigInt` refuses it; compact-js reads seconds anyway.
   const millis = Math.round(nowSeconds * 1_000);
   const nanos = BigInt(millis) * 1_000_000n;
-  // `Object.assign` onto the real clock, NOT a spread of it. `Clock.make()`
-  // returns a class instance whose `sleep` and `scheduler` live on the
-  // prototype; a spread copies own enumerable properties only and silently
-  // drops both, leaving a `Clock` that throws `clock.sleep is not a function`
-  // the first time anything schedules work. TypeScript cannot see it, because a
-  // spread type keeps the declared members.
+  // `Object.assign`, not a spread: `sleep` and `scheduler` live on the prototype and a spread drops
+  // them, which TypeScript cannot see.
   return Object.assign(Clock.make(), {
     unsafeCurrentTimeMillis: () => millis,
     currentTimeMillis: Effect.succeed(millis),
@@ -369,17 +220,7 @@ export const pinnedClock = (nowSeconds: number): Clock.Clock => {
 const withPinnedClock = <A, E, R>(nowSeconds: number | undefined, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   nowSeconds === undefined ? effect : Effect.withClock(pinnedClock(nowSeconds))(effect);
 
-/**
- * Adapts a {@link VerifierKeyReader} into the service compact-js's
- * `initialize` reads keys through.
- *
- * A key the reader does not answer for becomes `Option.none()`, and compact-js
- * REFUSES it: `initialize` fails with a `ContractConfigurationError` naming the
- * circuit. That is measured, not assumed, and it is stricter than the leg this
- * replaced — a ledger 8 constructor used to leave every slot blank and the
- * deploy composition was the only thing that checked coverage. It now fails
- * before a state is built at all.
- */
+// A key the reader does not serve becomes `Option.none()`, which `initialize` refuses by circuit name.
 export const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfiguration.ZKConfiguration> =>
   Layer.succeed(
     ZKConfiguration.ZKConfiguration,
@@ -413,16 +254,7 @@ export const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKCon
     })
   );
 
-/**
- * The verifier-key reader a CIRCUIT call or a MAINTENANCE update is given.
- *
- * `ContractExecutable` declares `ZKConfiguration` in its context for every
- * method, but only `initialize` reads a key — a circuit call needs none, and a
- * maintenance update is handed the key it inserts, which is measured, not
- * assumed. Providing a reader that refuses keeps that fact enforced: were a
- * future version to read a key there, this fails by name instead of silently
- * serving `Option.none()` and composing a transaction with a blank key slot.
- */
+// Neither a call nor a maintenance update reads a key; refusing keeps that enforced (see Ledger8Execution).
 export const refuseVerifierKeyRead: VerifierKeyReader = (provableCircuitId) =>
   Promise.reject(
     new InvariantViolationError(
@@ -431,19 +263,7 @@ export const refuseVerifierKeyRead: VerifierKeyReader = (provableCircuitId) =>
     )
   );
 
-/**
- * Structural equality over the `EncodedStateValue` algebra -- plain objects,
- * arrays, `Map`s, `Uint8Array`s and primitives.
- *
- * `Map`s are compared pairwise in iteration order, deliberately, and that order
- * is not ascending by key -- do not reason about it as sorted. The
- * order-sensitivity is what makes {@link decodeExecutableStateValue}'s
- * comparison exact; a `get()`-based rewrite would silently drop it.
- *
- * @param a One value in the algebra.
- * @param b The value to compare it against.
- * @returns `true` when the two are structurally equal.
- */
+// Maps compare in iteration order on purpose; do not rewrite with `get()` (see Ledger8Execution).
 export const structurallyEqual = (a: unknown, b: unknown): boolean => {
   if (a === b) {
     return true;
@@ -487,33 +307,8 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
   );
 };
 
-/**
- * Decodes the primary state a circuit executes against, refusing a value that
- * does not re-encode to the bytes it came from.
- *
- * The comparison is CROSS-CODEC in production, which is what it is for. A
- * contract the fork translated carries a current-era envelope,
- * so the pipeline reads it with the HEAD era's reader
- * (`readLedger8Snapshot`) -- the state is then encoded by ledger-v9 and
- * decoded here by the ledger 8 runtime. A ledger 8 envelope is encoded by
- * ledger-v8 and decoded by the same ledger 8 runtime, which is still a
- * different physical copy. Either way a shape one side writes and the other
- * merely tolerates would decode without complaint and execute a circuit
- * against a state that is not the chain's, with every guard green.
- *
- * Reachable with the REAL decoder, not only an injected one: `runLedger8Circuit` takes a
- * bare {@link EncodedStateValue} a caller can assemble by hand, and the
- * ledger 8 runtime canonicalises map order and drops members it does not
- * declare. Both are refused here rather than executed on.
- *
- * @param state The era-neutral encoded primary state.
- * @returns The decoded state value.
- * @throws StateConversionFailedError at stage `'state conversion'` when the
- *   decoded value does not re-encode to its source, with the mismatch on
- *   `cause`.
- * @see {@link Ledger8Execution}
- * @see {@link FailClosedDecoding}
- */
+// Refuses a state that does not re-encode to its source: the round trip crosses codecs. See
+// Ledger8Execution.
 const decodeExecutableStateValue = (state: EncodedStateValue): glue.StateValue => {
   try {
     const decoded = glue.StateValue.decode(state);
@@ -525,44 +320,16 @@ const decodeExecutableStateValue = (state: EncodedStateValue): glue.StateValue =
     }
     return decoded;
   } catch (cause) {
-    // The decoder and the re-encoder both raise BARE vendor errors -- `missing
-    // field \`tag\``, `unknown variant \`x\`` -- carrying neither `code` nor
-    // `stage`. Coding them here is what the retired `downConvertForExecution`
-    // did, and what `fail-closed-decoding.md` still promises a caller.
+    // The vendor decoder raises bare errors; FailClosedDecoding promises a coded one.
     throw cause instanceof StateConversionFailedError ? cause : new StateConversionFailedError('state conversion', cause);
   }
 };
 
-/**
- * Builds the ledger 8 `ContractState` a circuit executes against, from the
- * era-neutral state the envelope's own reader produced.
- *
- * `StateValue` and `ChargedState` come from the ledger 8 glue rather than from
- * compact-js: its `CompactRuntime` binding re-exports neither as a VALUE
- * (midnightntwrk/midnight-sdk, spec finding E9), and building them through
- * ledger-v8's own same-named classes instead would be the dual instantiation
- * this era must not perform. `ContractState` is the glue's as well, so all
- * three come from one module.
- *
- * A WHOLE `ContractState` rather than the bare `ChargedState` its predecessor
- * built: the runtime reads `block.balance` off a contract state and substitutes
- * an empty map for anything less, so writing the balance here is what makes it
- * reach the circuit at all. It used to be injected into the query context after
- * the fact, which is what #1345 was.
- *
- * @param contractState The decoded state and the balances beside it.
- * @returns The state the ledger 8 runtime executes against.
- */
+// A whole `ContractState` from the ledger 8 glue, so the runtime reads the balance; see
+// Ledger8Execution ("The state a circuit executes against").
 const executableStateFrom = (contractState: ContractStatePojo): glue.ContractState => {
-  // Read ONCE, then guarded. Not defaulted and not trusted: `new Map(...)`
-  // turns an absent balance, a `null`, an empty array and an empty `Set` alike
-  // into an EMPTY map, which is indistinguishable from a contract that holds
-  // nothing -- the circuit then reads zero where the chain says otherwise and
-  // the node refuses the resulting transcript, with every guard green. That is
-  // #1345. `tsc` reaches neither an untyped JavaScript caller nor an options
-  // object assembled dynamically, and both `Ledger8CircuitOptions` and
-  // `ContractStatePojo` are on the published surface.
-  // @see FailClosedDecoding
+  // Read once and guarded, never defaulted: an empty map would read as a contract holding nothing.
+  // See FailClosedDecoding.
   const { balance } = contractState;
   if (!isContractBalance(balance)) {
     throw new StateConversionFailedError(
@@ -583,49 +350,24 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
     state.balance = new Map(balance);
     return state;
   } catch (cause) {
-    // Both setters are WASM, and both raise bare errors: `balance` refuses a
-    // colour `isContractBalance` admits by name but the runtime cannot read,
-    // and `data` refuses a `ChargedState` from another physical copy. Neither
-    // carries a `code` a caller can branch on.
+    // Both WASM setters raise bare errors with no `code`.
     throw cause instanceof StateConversionFailedError ? cause : new StateConversionFailedError('state conversion', cause);
   }
 };
 
 export { causeChain } from '../shared/cause-chain';
 
-/**
- * Runs an effect and rethrows its failure without losing the failure's class,
- * message, stack or `cause`.
- *
- * `Effect.runPromise` alone rejects with a `FiberFailure`, which carries neither
- * the failure's class nor its `cause` — so a caller loses both the error it
- * could have discriminated on and the diagnostic it needed. `runPromiseExit`
- * recovers the real failures, which are then rethrown as follows:
- *
- * - A midnight-js coded error raised directly is rethrown unchanged, however
- *   many failures arrived beside it.
- * - A lone failure carrying a coded error within eight links of its `cause`
- *   chain is rethrown as that coded error.
- * - Otherwise a {@link ContractExecutionError} is thrown. Its message spells out
- *   every failure with its whole cause chain, `cause` is the first coded error
- *   found or else the first failure, and `errors` holds every failure as the
- *   original object.
- */
+// Rethrows without losing the failure's class or `cause`; the rules are in Ledger8Execution
+// ("Circuit dispatch").
 export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
   const exit = await Effect.runPromiseExit(effect);
   if (Exit.isSuccess(exit)) {
     return exit.value;
   }
-  // EVERY failure, not just the squashed first one. Verifier keys are read with
-  // `concurrency: 'unbounded'`, so a deploy missing three circuits' artifacts
-  // fails three times at once and `Cause.squash` answers with one -- sending the
-  // caller round the fix-and-rerun loop once per missing key.
+  // Every failure, not only the squashed first one: keys are read concurrently.
   const failures = Array.from(Cause.failures(exit.cause));
   const all = failures.length > 0 ? failures : [Cause.squash(exit.cause)];
-  // A coded error raised directly leaves with its class intact, however many
-  // failures arrived beside it: the `@throws` of the entry points promise it.
-  // One found only on a cause chain leaves alone just when it is the only
-  // failure; otherwise every failure is reported, the first coded one on `cause`.
+  // The entry points' `@throws` promise a directly raised coded error unchanged.
   const direct = all.find((failure) => findCodedCause(failure) === failure);
   if (direct !== undefined) {
     throw direct;
@@ -637,20 +379,7 @@ export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A
   throw ContractExecutionError.fromFailures(all);
 };
 
-/**
- * Reads the ONE contract call a ledger 8 circuit produces.
- *
- * Ledger 8 has no `crossContractCall`, so its execution adapter
- * synthesises a single-entry trace and a one-element list is complete by
- * construction. The list is still typed as a list, so the emptiness this era
- * cannot produce is refused by name rather than read as `undefined` and carried
- * into a composition.
- *
- * @param calls The calls the execution reported.
- * @param circuitId The circuit they were produced for, for the message.
- * @returns The sole call.
- * @throws InvariantViolationError If the list is empty.
- */
+// Ledger 8 has no cross-contract call, so the trace has one entry; an empty one is refused by name.
 export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
   const [only] = calls;
   if (only === undefined) {
@@ -662,22 +391,8 @@ export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
   return only;
 };
 
-/**
- * Refuses a circuit id the contract does not declare, before compact-js
- * dispatches on it.
- *
- * `Object.hasOwn`, NOT a bare truthiness check. A 0.16 artifact assigns
- * `provableCircuits` a plain object literal, so its prototype is live, and
- * compact-js resolves a circuit with `contract.provableCircuits[id]` guarded
- * only by `if (!circuit)`. `'toString'`, `'valueOf'` and `'constructor'` all
- * satisfy that guard: the prototype member is CALLED with the runtime context
- * and its return value fed to `readExecution`. The id reaches here from the
- * caller, so it is refused by name, the way the retired `executeCircuit` did.
- *
- * @param contract The contract the call names.
- * @param circuitId The circuit the caller asked for.
- * @throws InvalidArgumentError If the contract declares no such circuit.
- */
+// `Object.hasOwn`: compact-js guards only with `if (!circuit)`, so `'toString'` would be called as a
+// circuit (see Ledger8Execution).
 const assertDeclaredCircuit = (contract: Ledger8EngineContract, circuitId: string): void => {
   const circuit = Object.hasOwn(contract.provableCircuits, circuitId)
     ? contract.provableCircuits[circuitId]
@@ -690,18 +405,6 @@ const assertDeclaredCircuit = (contract: Ledger8EngineContract, circuitId: strin
   }
 };
 
-/**
- * Runs one circuit on a ledger 8 contract and packages every artifact a
- * v9-native call prototype needs.
- *
- * The balances the contract holds travel on the state it is given — see
- * {@link Ledger8CircuitOptions.contractState}.
- *
- * @param options The ledger 8 contract, circuit id, arguments, decoded state,
- *   address, coin public key, private state and optional pinned clock.
- * @returns Every artifact a v9-native call prototype needs.
- * @see {@link Ledger8Execution}
- */
 export const runLedger8Circuit = async <C extends Ledger8EngineContract, PS>(
   options: Ledger8CircuitOptions<C, PS>
 ): Promise<TranscriptPojo> => {
@@ -717,12 +420,8 @@ export const runLedger8Circuit = async <C extends Ledger8EngineContract, PS>(
         contractState,
         privateState: options.privateState
       },
-      // Asserted for the same reason `createCallTxOptions` asserts it in
-      // `packages/contracts/src/tx-interfaces.ts`: resolved through a GENERIC
-      // `C`, `CircuitParameters` degrades to `unknown[]` because TypeScript
-      // indexes `provableCircuits` against the constraint rather than the
-      // instantiated contract. The tuple is checked where `C` is concrete, at
-      // the caller's own call site.
+      // Through a generic `C`, `CircuitParameters` degrades to `unknown[]`; the tuple is checked at
+      // the caller's call site, where `C` is concrete.
       ...(options.args as readonly never[])
     );
   });
@@ -760,24 +459,8 @@ export const runLedger8Circuit = async <C extends Ledger8EngineContract, PS>(
   };
 };
 
-/**
- * Re-codes compact-js's refusal of a verifier-key blob as this package's own
- * {@link ComposeFailedError}.
- *
- * compact-js writes the keys itself inside `initialize`, so it is the first
- * thing to touch the bytes and the ledger 8 composer -- which raised the coded
- * refusal before this move -- is never reached. Without this the same fault is
- * reported as a coded error on the current era and an uncoded one on the
- * ledger 8.
- *
- * The `cause` is what separates a rejected blob from the other configuration
- * refusals: compact-js attaches the ledger's own error only when a key it was
- * handed was refused, and leaves it absent for a key that was never served.
- *
- * @param error The failure compact-js reported.
- * @returns A {@link ComposeFailedError} for a rejected blob; the error
- *   unchanged for anything else.
- */
+// Both eras report a rejected key blob alike; only a refusal with a `cause` is a rejected blob.
+// See VerifierKeys.
 export const recodeVerifierKeyBlobFailure = (error: unknown): unknown => {
   if (!ContractConfigurationError.isConfigurationError(error) || error.cause === undefined) {
     return error;
@@ -788,33 +471,11 @@ export const recodeVerifierKeyBlobFailure = (error: unknown): unknown => {
     : new ComposeFailedError('v8', 'deploy-verifier-key-blob', circuitId, error.cause);
 };
 
-/**
- * Runs a ledger 8 contract's constructor and packages the result.
- *
- * compact-js's `initialize` also writes the maintenance authority and registers
- * each entry point's verifier key onto the state, both of which this era's
- * deploy leg previously did for itself. The authority matters: the ledger 8
- * constructor leaves an EMPTY committee with a threshold of one — one signature
- * from a set of zero keys, which nothing can satisfy — so a deployment left on
- * it could never have a verifier key inserted, removed or replaced.
- *
- * @param options The compiled contract, constructor arguments, private state,
- *   coin public key, optional signing key and verifier-key reader.
- * @throws ComposeOptionError naming option `'signingKey'` when a supplied key
- *   is not the 32 bytes of hex the ledger 8 runtime reads, raised before the
- *   constructor runs.
- * @returns The freshly built state, the resulting private state, the Zswap
- *   local state the constructor ended on and the signing key the authority was
- *   built from.
- * @see {@link Ledger8Execution}
- */
+// `initialize` also writes the maintenance authority; see Ledger8Execution ("Constructor execution").
 export const runLedger8Constructor = async <C extends Ledger8EngineContract, PS>(
   options: Ledger8ConstructorOptions<C, PS>
 ): Promise<ConstructorResultPojo> => {
-  // BEFORE the constructor runs, so nothing is executed against a key the
-  // maintenance authority could never have been built from, and the refusal
-  // names the option rather than leaving the runtime's own buffer message to
-  // stand for it.
+  // Before the constructor runs, so the refusal names the option, not a runtime buffer error.
   if (options.signingKey !== undefined && !LEDGER8_SIGNING_KEY_PATTERN.test(options.signingKey)) {
     throw new ComposeOptionError('v8', 'signingKey');
   }

@@ -13,15 +13,7 @@
  * limitations under the License.
  */
 
-/**
- * Every message in a failure's cause chain, outermost first.
- *
- * compact-js reports an execution failure as `Error executing circuit 'x'` and
- * hangs the runtime's own diagnostic -- `Block time is <= time`, an out-of-gas,
- * a failed assertion -- on `cause`. Only the outer message reaches a caller who
- * reads `error.message`, so the reason the circuit ACTUALLY failed is lost at
- * exactly the moment someone needs it.
- */
+// compact-js hangs the runtime's real diagnostic on `cause`; see Ledger8Execution.
 export const causeChain = (error: unknown, seen: Set<unknown> = new Set()): readonly string[] => {
   if (typeof error !== 'object' || error === null || seen.has(error)) {
     return typeof error === 'string' ? [error] : [];

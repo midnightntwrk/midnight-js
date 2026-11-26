@@ -170,9 +170,7 @@ export type ProtocolVersionUnknownReason = 'unknown' | 'malformed';
 /**
  * Thrown by `protocolVersionToLedger` (and, transitively, `versionOfRecord` /
  * `latestNetworkLedgerVersion`) when a raw `protocolVersion` integer cannot be
- * resolved to a `LedgerEra`. Those live in `./version`, which imports this
- * module -- the dependency stays one-way, so they are named here rather than
- * linked.
+ * resolved to a `LedgerEra`.
  *
  * `code` is the field to switch on to tell all four cases apart: it splits
  * `reason` by the `path` that produced it.
@@ -219,8 +217,7 @@ export class UnknownProtocolVersionError extends MidnightJsError {
 
 /**
  * Which lazily-loaded subpath export {@link Ledger8RuntimeMissingError} failed
- * to acquire. Each chunk pulls a different set of ledger 8 dependencies, so
- * naming the wrong one sends an operator to an entry point that loaded fine.
+ * to acquire.
  *
  * @see {@link ModuleGraphAndLazyLoading}
  */
@@ -228,9 +225,8 @@ export type Ledger8Subpath = '/v8' | '/v8/engine';
 
 /**
  * Thrown when a lazily-loaded subpath export carrying the pre-fork ledger 8
- * runtime could not be acquired at all. Raised by `loadLedger8Protocol`
- * (`lib/v8/load.ts`) and `loadLedger8Engine` (`lib/v8/load-engine.ts`), and
- * surfaced through `createLedger8Engine` and `loadLedgerEra('v8')`.
+ * runtime could not be acquired at all. Raised by `loadLedger8Protocol` and
+ * `loadLedger8Engine`, and surfaced through `loadLedgerEra('v8')`.
  *
  * A failed acquisition is not memoised: the next call retries the import.
  * Distinct from {@link Ledger8RuntimeInvalidError}, which reports a runtime
@@ -264,9 +260,9 @@ export class Ledger8RuntimeMissingError extends MidnightJsError {
  * Which step a {@link StateConversionFailedError} came from. A closed union,
  * so a consumer can `switch` on `stage` exhaustively.
  *
- * `'state conversion'` is the structural round trip `lib/v8/executable.ts`
- * runs before a circuit executes; the other two decode a serialized contract state
- * written by that ledger era, in `lib/era/envelope.ts`.
+ * `'state conversion'` is the round trip run before a ledger 8 circuit
+ * executes; the other two decode a serialized contract state written by that
+ * ledger era.
  *
  * @see {@link FailClosedDecoding}
  */
@@ -275,12 +271,8 @@ export type StateConversionStage = 'v8 state read' | 'v9 state read' | 'state co
 /**
  * Thrown when a serialized contract state, or an already-extracted
  * `EncodedStateValue`, cannot be turned into a state a circuit can execute
- * against. Raised by `extractLedger9EncodedStateValue` (`lib/era/envelope.ts`)
- * and by `decodeExecutableStateValue` (`lib/v8/executable.ts`), which refuses a
- * state that decodes but does not re-encode to the bytes it came from.
- *
- * Renders no raw hex and no decoded state contents — only the stage name and
- * the wrapped `cause`.
+ * against, including a state that decodes but does not re-encode to the bytes
+ * it came from. Renders no hex and no decoded state, only the stage and `cause`.
  *
  * @param stage Which step failed — see {@link StateConversionStage}.
  * @param cause The runtime's own failure, preserved unchanged. It is what
@@ -306,84 +298,38 @@ export class StateConversionFailedError extends MidnightJsError {
 }
 
 /**
- * What `circuitId` a {@link ComposeFailedError} names when the failure happened
- * before any circuit was looked up — only `'call-empty'` reaches this today.
- *
- * Exported, and one literal rather than a per-module copy, so a consumer
- * reading `circuitId` off a caught error can compare against it instead of
- * matching a string this package could change, and so it can never be mistaken
- * for a real entry point a caller might try to resolve.
+ * The `circuitId` a {@link ComposeFailedError} names when no circuit applies:
+ * `'call-empty'`, and `'maintenance-update'` for an authority replacement.
+ * Compare `circuitId` against this constant rather than against its value.
  *
  * @see {@link ComposeRefusalOrder}
  */
 export const NO_CIRCUIT = '(none)';
 
 /**
- * Which composition step {@link ComposeFailedError} failed at.
+ * Which composition step {@link ComposeFailedError} failed at. Stages marked
+ * "cause" carry the refusing library's own failure on `cause`.
  *
- * Call stages:
- * - `'call-empty'` — a call transaction was requested with no calls in it.
- *   The one stage that names no circuit: it is raised before any circuit is
- *   looked up, so it names {@link NO_CIRCUIT}.
- * - `'call-operation'` — a call leg could not resolve a registered operation
- *   for the call's circuit on the given contract state.
- * - `'call-verifier-key'` — a call leg resolved a registered operation for the
- *   call's circuit, but that operation carries no verifier key, so no ledger
- *   could verify a call against it.
- * - `'call-contract-state'` — the call's pre-call state could not be bridged
- *   into the target era's own state algebra. Carries the decoder's failure on
- *   `cause`.
- * - `'call-transcript-empty'` — a caller-supplied partitioned transcript
- *   carried neither a guaranteed nor a fallible half, so the call would record
- *   no operations at all.
- * - `'call-partition-context'` — the era rejected the query-context state the
- *   call recorded (its block, its starting effects, or one of the commitment
- *   indices it registered for a coin received in-contract) while bridging it
- *   onto the context the transcript is partitioned against. Carries the
- *   runtime's own failure on `cause`.
- * - `'call-partition'` — the ledger rejected the public transcript supplied
- *   for a call while splitting it into its guaranteed and fallible halves.
- *   Carries the runtime's own failure on `cause`.
- * - `'call-prototype'` — the ledger rejected the call's own inputs while
- *   constructing the call prototype. Carries the runtime's failure on `cause`.
- * - `'call-dust-payout'` — a transcript claimed an unshielded spend to a user
- *   address in DUST, which has no raw token type to be paid out in.
- * - `'call-unsupported-payout'` — a transcript claimed an unshielded spend to
- *   a user address in a token type that cannot be paid out as an unshielded
- *   UTXO at all (a shielded token type today).
+ * - `'call-empty'` — no calls were requested; names {@link NO_CIRCUIT}.
+ * - `'call-operation'` — the contract state registers no operation for the circuit.
+ * - `'call-verifier-key'` — the circuit's operation carries no verifier key.
+ * - `'call-contract-state'` — the pre-call state cannot be bridged into the era (cause).
+ * - `'call-transcript-empty'` — a supplied transcript pair has neither half.
+ * - `'call-partition-context'` — the era rejects the call's recorded query context (cause).
+ * - `'call-partition'` — the ledger rejects the transcript while partitioning it (cause).
+ * - `'call-prototype'` — the ledger rejects the call's own inputs (cause).
+ * - `'call-dust-payout'` — an unshielded spend to a user address in DUST.
+ * - `'call-unsupported-payout'` — an unshielded spend in a token type that cannot be paid out.
+ * - `'deploy-verifier-key'` — no verifier key for a circuit the state declares.
+ * - `'deploy-unknown-circuit'` — the key map names a circuit the state does not declare.
+ * - `'deploy-ambiguous-circuit'` — two declared entry points share one name.
+ * - `'deploy-verifier-key-blob'` — the ledger rejects the key bytes for a circuit (cause when it came from the ledger).
+ * - `'maintenance-update'` — the update cannot be built, signed or wrapped; names
+ *   {@link NO_CIRCUIT} for an authority replacement (cause).
+ * - `'wrap-call'` — the keep-state leg finds no operation for the transcript's circuit.
  *
- * Deploy stages:
- * - `'deploy-verifier-key'` — a deploy leg was given no verifier key for a
- *   circuit the contract state declares.
- * - `'deploy-unknown-circuit'` — the verifier-key map handed to a deploy leg
- *   names a circuit the contract state does not declare. Registering it would
- *   add an entry point the compiled contract never had, and silently change
- *   the deployed contract's address.
- * - `'deploy-ambiguous-circuit'` — two entry points the contract state
- *   declares resolve to the same name, so the verifier-key map (keyed by
- *   name) cannot address them apart. Registering under the shared name would
- *   key one slot and leave the other blank.
- * - `'deploy-verifier-key-blob'` — the ledger rejected the verifier-key bytes
- *   supplied for a circuit.
- *
- * Maintenance stage:
- * - `'maintenance-update'` — the maintenance update could not be built,
- *   signed, or wrapped into a transaction: platform-js refused the contract
- *   address, compact-js refused one of its own steps (building the update,
- *   creating it with the address and counter, reading the data to sign,
- *   signing, attaching the signature), or the ledger refused the signed update
- *   when it was wrapped into the transaction. Names the circuit for a
- *   verifier-key update and {@link NO_CIRCUIT} for an authority replacement.
- *   Carries the refusing library's own failure on `cause`.
- *
- * Keep-state stage:
- * - `'wrap-call'` — the keep-state leg could not resolve a registered
- *   operation for the transcript's circuit on the given contract state.
- *
- * Which ledger era the failure happened on is carried separately, on the
- * error's `version` field. Every stage but `'wrap-call'` and
- * `'maintenance-update'` is reachable on both eras; `'wrap-call'` is only ever
- * raised for `'v9'`, and `'maintenance-update'` only for `'v8'`.
+ * The era is on the error's `version` field. `'wrap-call'` is raised only for
+ * `'v9'` and `'maintenance-update'` only for `'v8'`; every other stage on both.
  *
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
@@ -407,28 +353,15 @@ export type ComposeStage =
   | 'maintenance-update';
 
 /**
- * Thrown when a transaction cannot be composed because a circuit's operation
- * is missing, under-registered, or names a circuit the contract does not have.
- * `stage` (see {@link ComposeStage}) names which composition step failed and is
- * a closed union, so a consumer can `switch` on it exhaustively; `version`
- * names the ledger era the composition was running against.
- *
- * Most stages carry no `cause`. The exceptions are the stages where a runtime
- * library rejected what it was handed, enumerated under `cause` below.
- *
- * `circuitId` names the entry point, never its raw contents: this class renders
- * no hex and no byte-array dump.
+ * Thrown when a transaction cannot be composed at one composition step. The
+ * message names the entry point and renders no hex or byte dump.
  *
  * @param version The ledger era the composition was running against.
  * @param stage Which composition step failed — see {@link ComposeStage}. A
  *   closed union, so a consumer can `switch` on it exhaustively.
- * @param circuitId The entry-point name, already decoded. {@link NO_CIRCUIT}
- *   for `'call-empty'`, the one stage raised before any circuit is looked up.
- * @param cause The runtime's own failure, present only for the stages where
- *   the ledger rejected caller-supplied bytes — `'call-contract-state'`,
- *   `'call-partition-context'`, `'call-partition'`, `'call-prototype'`,
- *   `'deploy-verifier-key-blob'` — and for `'maintenance-update'`, where it is
- *   the failure of platform-js, compact-js or the ledger, whichever refused.
+ * @param circuitId The entry-point name, already decoded, or {@link NO_CIRCUIT}.
+ * @param cause The refusing library's own failure, for the stages
+ *   {@link ComposeStage} marks "cause".
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
@@ -555,37 +488,21 @@ export class ComposeFailedError extends MidnightJsError {
 
 /**
  * Which option handed to a composition leg was unusable:
- * - `'contractStateBytes'` — the state could not be bridged into the target
- *   ledger era (the era's decoder rejected its bytes).
- * - `'guaranteedZswapOfferBytes'` — the offer bytes supplied to a deploy were
- *   rejected by the target era's decoder.
- * - `'ledgerParametersBytes'` — the supplied ledger parameters could not be
- *   read by the target era.
- * - `'networkId'` — the network id was empty. The ledger accepts an empty
- *   string and bakes it into the transaction, so a caller that forgot to
- *   resolve one would only find out at submission.
- * - `'ttl'` — the time-to-live was not a valid instant. `new Date('...')` on
- *   an unparseable value yields an Invalid Date, which the ledger silently
- *   records as the Unix epoch: a transaction that is already expired when it
- *   is composed.
- * - `'calls'` — the call list is not one the target era can compose. The
- *   ledger 8 composes exactly one call: a cross-contract call is a
- *   ledger-9-only feature that a pre-fork contract cannot emit, so that era has
- *   no call tree to express.
- * - `'verifierKeys'` — a deploy was requested with no verifier-key map, and the
- *   state it was given needs one. Raised on BOTH eras, for two different
- *   reasons: ledger 8's deploy leg has to register the compiled
- *   contract's keys itself and so always needs the map, while the current era
- *   accepts its omission for a state that already carries its keys and refuses
- *   it only for a state still declaring a blank-keyed entry point.
- * - `'signingKey'` — a signing key is not the 32 bytes of hex the era's runtime
- *   reads: the key a constructor builds the maintenance authority from, or the
- *   key a maintenance update is signed with.
- * - `'newSigningKey'` — the key a maintenance update would make the new
- *   authority is not the 32 bytes of hex the era's runtime reads.
- * - `'zswapOffer'` — the offer bytes a call's offer factory returned were
- *   rejected by the target era's decoder. Raised on BOTH eras, for the same reason and with the same
- *   remediation: pass the bytes that era's own offer serialization produced.
+ * - `'contractStateBytes'` — the era's decoder rejects the state, or (from
+ *   `reexpressOperationsForLedger9`) no entry point carries a verifier key.
+ * - `'guaranteedZswapOfferBytes'` — the era's decoder rejects a deploy's offer bytes.
+ * - `'ledgerParametersBytes'` — the era cannot read the ledger parameters.
+ * - `'networkId'` — the network id is empty; the ledger would bake it in and
+ *   the transaction would fail only at submission.
+ * - `'ttl'` — the time-to-live is an Invalid Date, which the ledger records as
+ *   the Unix epoch: already expired.
+ * - `'calls'` — ledger 8 composes exactly one call (cross-contract calls are ledger 9 only).
+ * - `'verifierKeys'` — no verifier-key map. Ledger 8 deploys always need it;
+ *   ledger 9 needs it only for a state that still declares a blank-keyed entry point.
+ * - `'signingKey'` / `'newSigningKey'` — the key is not the 32 bytes of hex the
+ *   era's runtime reads.
+ * - `'zswapOffer'` — the era's decoder rejects the bytes a call's offer factory
+ *   returned; pass that era's own offer serialization.
  *
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
@@ -722,12 +639,8 @@ const MAINTENANCE_AUTHORITY_MISMATCH_MESSAGES: Readonly<Record<MaintenanceAuthor
  * it with the key held for the contract — see
  * {@link MaintenanceAuthorityMismatchReason} for the three ways.
  *
- * Raised BEFORE anything is signed or proven: the ledger would accept the
- * signature into the transaction and refuse the update only at submission,
- * after a proof has been paid for.
- *
- * Renders the contract address and no key material: neither the signing key
- * nor any verifying key appears in the message.
+ * Raised before anything is signed or proven. Renders the contract address
+ * and no key material.
  *
  * @param version The ledger era the update was being composed on.
  * @param contractAddress The contract whose authority was checked.
@@ -784,8 +697,7 @@ export class StateDecodeFailedError extends MidnightJsError {
 }
 
 /**
- * Thrown by `decodeContractState` (`lib/shared/contract-state.ts`) when the
- * era's decoder read the bytes but the state it produced is internally
+ * Thrown by `decodeContractState` when the era's decoder read the bytes but the state it produced is internally
  * inconsistent: it declares an entry point it resolves no operation for, holds
  * a verifier key that will not hash, or resolves no usable balance.
  *
@@ -819,24 +731,15 @@ export class StateInconsistentError extends MidnightJsError {
 }
 
 /**
- * Thrown by `extractEncodedStateValue` (`lib/era/envelope.ts`) when the
- * injected pre-fork runtime cannot be used — it was not passed at all, or the
- * binding the decoder needs is absent from it.
- *
- * `downConvertForExecution` and the shared-instance guard used to raise it too;
- * both are gone with the hand-maintained execution layer, so the contract-state
- * decoder is now its only source.
- *
- * Nothing is wrong with the caller's input here. Distinct from
- * {@link Ledger8RuntimeMissingError}, which reports the v8 chunk failing to
- * load at all, and from {@link StateConversionFailedError}, which reports a
- * serialized state that could not be turned into an executable pre-fork
- * state.
+ * Thrown by `extractEncodedStateValue` when the injected pre-fork runtime
+ * cannot be used: it was not passed at all, or the binding the decoder needs is
+ * absent from it. The caller's input is fine. Distinct from
+ * {@link Ledger8RuntimeMissingError} (the v8 chunk failed to load) and from
+ * {@link StateConversionFailedError} (a state that cannot be made executable).
  *
  * @param missingMember Which binding was absent. One of this module's own
  *   literals, never caller-supplied text, so it is safe to log.
  * @see {@link FailClosedDecoding}
- * @see {@link DualInstantiationGuard}
  */
 export class Ledger8RuntimeInvalidError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID;
@@ -864,15 +767,9 @@ const describeRequestedVersion = (value: unknown): string | undefined => {
 
 /**
  * Thrown when a ledger era was requested by a value that is not a member of
- * `LEDGER_ERAS`. Raised by `loadLedgerEra` (`lib/era/load-era.ts`) and by
- * `extractEncodedStateValue` (`lib/era/envelope.ts`).
- *
- * Two sources: an untyped JavaScript caller passing a value that is not a
- * `LedgerEra`, and a provider returning a value with no era or an unknown
- * one. The second is named by `context`.
- *
- * Carries no `version` field, unlike every other era-aware error here — there
- * is no valid era to name.
+ * `LEDGER_ERAS`: an untyped JavaScript caller passed one, or a provider
+ * returned a value with no era or an unknown one (named by `context`). Has no
+ * `version` field: there is no valid era to name.
  *
  * @param requestedVersion The offending value. Kept as `undefined` when the
  *   value carried no era, as the kind (`'object'`, `'function'`) for a value
@@ -913,33 +810,19 @@ export class UnknownLedgerEraError extends MidnightJsError {
  * The opening of the tag every serialized ledger transaction carries, on both
  * eras.
  *
- * Stops before the bracketed version deliberately: a `[vN]` is the wire-schema
- * version of the serialized OBJECT and never a ledger era — ledger 8's
- * transactions are tagged `transaction[v9]`.
+ * Stops before the bracketed `[vN]`: that is the object's schema version,
+ * never a ledger era (ledger 8's transactions are tagged `transaction[v9]`).
  *
- * @see packages/contracts/docs/verification-path.md for the same rule stated
- *      about verifier-key tags.
+ * @see ADR 0022
  */
 export const TRANSACTION_TAG_PREFIX = 'midnight:transaction[';
 
-/**
- * The bounds on a constructor name reported by {@link describeType}. It is
- * CALLER DATA — `{ constructor: { name: ... } }` sets it to anything at all —
- * so it is bounded in length and restricted to an identifier alphabet before
- * it can reach an error message and from there a logger provider.
- */
+// A constructor name is caller data, so it is bounded before it reaches a message; see ADR 0017.
 const MAX_TYPE_NAME_LENGTH = 32;
 const TYPE_NAME_PATTERN = /^[A-Za-z0-9_$]+$/;
 
-/**
- * Reads a value's constructor name, or `undefined` where it cannot be read.
- *
- * The read is a property access on caller data, so it can throw: an object may
- * define `constructor` as an accessor that throws, or be an exotic object whose
- * trap does. No operation is being attempted here — only a label chosen for a
- * payload that has ALREADY been refused — so letting the throw propagate would
- * replace the coded refusal with the caller's own error.
- */
+// Reading `constructor` on caller data can throw (an accessor or a proxy trap); a throw here would
+// replace the coded refusal with the caller's own error.
 const readConstructorName = (value: object): unknown => {
   try {
     return value.constructor?.name;
@@ -948,12 +831,7 @@ const readConstructorName = (value: object): unknown => {
   }
 };
 
-/**
- * Names the kind of a value without reproducing any of it verbatim.
- *
- * Validated AFTER truncation, and that order is the point: what is checked has
- * to be exactly what is emitted.
- */
+// Validated after truncation, so what is checked is exactly what is emitted.
 const describeType = (value: unknown): string => {
   if (value === null) {
     return 'null';

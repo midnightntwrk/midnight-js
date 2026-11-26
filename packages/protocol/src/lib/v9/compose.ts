@@ -28,10 +28,7 @@ import type {
 import { aggregateUnshieldedOffers } from '../shared/unshielded';
 import { entryPointName, resolveVerifierKeyRegistrations } from '../shared/verifier-keys';
 
-/**
- * Bridges a raw, serialized contract state into the v9 era, reporting a
- * rejected envelope as {@link ComposeOptionError} -- see ComposeRefusalOrder.
- */
+// A rejected state is an option error; see ComposeRefusalOrder.
 const readContractState = (raw: Uint8Array): ledgerV9.ContractState => {
   try {
     return ledgerV9.ContractState.deserialize(raw);
@@ -40,11 +37,7 @@ const readContractState = (raw: Uint8Array): ledgerV9.ContractState => {
   }
 };
 
-/**
- * Reads a serialized Zswap offer, reporting bytes this era cannot decode as
- * {@link ComposeOptionError}. An absent offer is the normal shape of a call
- * that moved no shielded coins, and stays absent.
- */
+// An absent offer stays absent; unreadable bytes are an option error.
 const readZswapOffer = (
   raw: Uint8Array | undefined,
   option: 'zswapOffer' | 'guaranteedZswapOfferBytes'
@@ -59,22 +52,7 @@ const readZswapOffer = (
   }
 };
 
-/**
- * Composes a v9-native call transaction from one or more contract calls and
- * immediately serializes it.
- *
- * Never proves the transaction: the returned bytes are an UNPROVEN,
- * tag-prefixed serialization, exactly what `Transaction.serialize()` produces
- * before `.prove()` is ever called.
- *
- * @param options The calls to compose and the transaction-wide envelope.
- * @returns The serialized UNPROVEN transaction and each call's partition.
- * @throws ComposeFailedError if the call list is empty (stage `'call-empty'`)
- * or a call cannot be assembled; `stage` names which step refused it.
- * @throws ComposeOptionError if the network id, the ttl, a Zswap offer or a
- * call's contract state is unusable.
- * @see {@link ComposeRefusalOrder}
- */
+// Never proves: returns the UNPROVEN serialization. Refusals: see ComposeRefusalOrder.
 export const composeLedger9CallTx = (options: ComposeCallOptions): ComposeCallResultPojo => {
   const { calls, networkId, ttl, zswapOffer } = options;
   assertComposeEnvelope(options, 'v9');
@@ -122,10 +100,7 @@ export const composeLedger9CallTx = (options: ComposeCallOptions): ComposeCallRe
     intent.fallibleUnshieldedOffer = unshielded.fallible;
   }
 
-  // LAST, after the unshielded payout has been aggregated off the assembled
-  // intent, because both steps refuse and both eras must refuse in one order --
-  // see ComposeRefusalOrder. Built only once every call is split, which is the
-  // whole point of taking a factory.
+  // Last, after the payout, so both eras refuse in one order; see ComposeRefusalOrder.
   const offers = zswapOffer?.(partitions);
   const guaranteedOffer = readZswapOffer(offers?.guaranteedBytes, 'zswapOffer');
   const fallibleOffer = readZswapOffer(offers?.fallibleBytes, 'zswapOffer');
@@ -136,11 +111,7 @@ export const composeLedger9CallTx = (options: ComposeCallOptions): ComposeCallRe
   };
 };
 
-/**
- * Registers a verifier key for every entry point the state declares, against
- * the map validated by {@link resolveVerifierKeyRegistrations} -- see
- * VerifierKeys.
- */
+// Registers against the map resolveVerifierKeyRegistrations validated; see VerifierKeys.
 const registerVerifierKeys = (
   contractState: ledgerV9.ContractState,
   verifierKeys: ReadonlyMap<string, Uint8Array>
@@ -160,10 +131,7 @@ const registerVerifierKeys = (
   }
 };
 
-/**
- * Refuses a state that still declares an entry point with a blank verifier key
- * when no key map was supplied -- see VerifierKeys.
- */
+// Refuses a blank-keyed entry point when no key map was supplied; see VerifierKeys.
 const assertStateCarriesKeys = (contractState: ledgerV9.ContractState): void => {
   for (const entryPoint of contractState.operations()) {
     // `?.` is deliberate here, unlike in `../shared/contract-state.ts`, and so
@@ -175,33 +143,8 @@ const assertStateCarriesKeys = (contractState: ledgerV9.ContractState): void => 
   }
 };
 
-/**
- * Composes a v9-native deploy transaction from a serialized initial contract
- * state and immediately serializes it, returning the transaction together with
- * the address the deployment will have and the initial state that address is
- * derived from.
- *
- * Never proves the transaction: the returned bytes are an UNPROVEN,
- * tag-prefixed serialization, exactly what `Transaction.serialize()` produces
- * before `.prove()` is ever called.
- *
- * With `verifierKeys` supplied, every declared entry point is registered before
- * the address is derived. Without it, the state is deployed exactly as given —
- * which is checked rather than assumed, see {@link assertStateCarriesKeys}.
- *
- * @param options The serialized initial state, its verifier keys, and the
- * transaction-wide envelope.
- * @returns The serialized UNPROVEN transaction, the address the deployment
- * will have, and the initial state that address was derived from.
- * @throws ComposeFailedError if the supplied keys do not match the state's
- * declared entry points, or if the ledger rejects a key blob; `stage` names
- * which check refused it.
- * @throws ComposeOptionError if the network id, the ttl, the Zswap offer or
- * the state bytes are unusable, or if `verifierKeys` was omitted for a state
- * that still declares a blank key.
- * @see {@link VerifierKeys}
- * @see {@link ComposeRefusalOrder}
- */
+// Never proves. Without `verifierKeys` the state is deployed as given, which assertStateCarriesKeys
+// checks. See VerifierKeys.
 export const composeLedger9DeployTx = (options: ComposeDeployOptions): DeployResultPojo => {
   const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOfferBytes } = options;
   assertComposeEnvelope(options, 'v9');

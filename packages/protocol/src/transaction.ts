@@ -16,8 +16,8 @@
 /**
  * The ledger transaction classes of each era and stage, a per-era deserializer,
  * and a synchronous check that a transaction belongs to the ledger copy this
- * framework loaded. Published as a LEAF subpath; importing it does not load
- * the v8 WASM, which is gated by `src/test/dist-laziness.test.ts`.
+ * framework loaded. Published as a leaf subpath; importing it does not load
+ * the v8 WASM.
  */
 
 export * from './lib/shared/ledger-transaction';

@@ -70,7 +70,7 @@ the state is read by the leg it delegates to, and reading it in the path as well
 would deserialize the same bytes twice.
 
 So a deploy that is BOTH unreadable and missing its key map reports
-`'contractState'` on v9 and `'verifierKeys'` on v8. Both name a real defect in
+`'contractStateBytes'` on v9 and `'verifierKeys'` on v8. Both name a real defect in
 the same call, and closing the gap costs a redundant deserialization of every
 deploy in order to reorder a diagnosis for a caller who has two things to fix
 either way.
@@ -103,7 +103,7 @@ call omits the factory, and a factory may answer with either half absent. Bytes
 an era cannot decode are reported as `ComposeOptionError` with option
 `'zswapOffer'` — the same wrapping the other path applies to the
 identical call. The same symmetry holds for the contract state: both paths wrap a
-rejected state as `ComposeOptionError` with option `'contractState'` rather than
+rejected state as `ComposeOptionError` with option `'contractStateBytes'` rather than
 letting a raw decoder failure escape.
 
 That option error is deliberately not the class `extractEncodedStateValue`
@@ -188,6 +188,10 @@ with nothing to compose, and a prototype built from it would claim a circuit ran
 while recording no operations, the same silent no-op `'call-empty'` refuses one
 level up.
 
+The composer returns each call's partition on its result, so a caller that
+reports what a call recorded per segment does not split the same transcript a
+second time, with nothing to notice if the two answers drifted apart.
+
 An unpartitioned source is bridged into the module's own `QueryContext` and
 split there, in two steps: the state crosses as an envelope, then the context
 the call recorded is written onto it. Constructing a `QueryContext` restores the
@@ -207,6 +211,14 @@ modules. That identity is pinned by the compile-time drift gate at the bottom of
 [InjectedVendorSlices](./injected-vendor-slices.md). Every member of
 the recorded context is caller data the runtime validates itself, from inside
 wasm, so the caller wraps the bridge in its own coded stage.
+
+The ledger parameters the split is drawn against are read BEFORE the
+partitioner runs, with this era's reader, and a blob it rejects is refused as
+`ComposeOptionError` with option `'ledgerParametersBytes'`, not as
+`'call-partition'`. A rejected blob is a bad option; reporting it as a failed
+partition would send the reader after the transcript when the fault is in the
+bytes they passed. Why the parameters are required at all is recorded in the
+`VersionTaggedPayloads` document of `@midnightntwrk/midnight-js-types`.
 
 ## Coded failures, and the one that is not
 
@@ -256,11 +268,13 @@ internal invariant of the ledger module, not a caller error, so that one throws
 `ComposeStage` (`packages/protocol/src/errors.ts`) is a single union covering
 both paths rather than one union per era, and the era a failure happened on is
 carried separately, on the error's `version` field. Every stage but
-`'wrap-call'` is reachable on both eras, so folding the era into the stage would
-nearly double the union without adding a distinction any caller wants to
-`switch` on. `'wrap-call'` is the exception because the operation it names is
-itself fork-crossing: it binds a pre-fork transcript onto a v9 state, so it is
-only ever raised for `'v9'`.
+`'wrap-call'` and `'maintenance-update'` is reachable on both eras, so folding
+the era into the stage would nearly double the union without adding a
+distinction any caller wants to `switch` on. `'wrap-call'` is the exception
+because the operation it names is itself fork-crossing: it binds a pre-fork
+transcript onto a v9 state, so it is only ever raised for `'v9'`.
+`'maintenance-update'` is raised only for `'v8'`, because only the ledger 8
+engine composes maintenance updates.
 
 ## Segment ids: fixed for deploys, randomized for calls
 

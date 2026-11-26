@@ -210,6 +210,10 @@ era's callers hold an instance whose witnesses are already bound. `containerFor`
 adapts one to the other here, in one place, so the adaptation does not
 land on every consumer — and it is the single type assertion the module needs.
 
+A circuit is looked up with `Object.hasOwn` before it is called. compact-js
+guards its own lookup only with `if (!circuit)`, so a name such as `'toString'`
+would resolve through the prototype and be called as a circuit.
+
 Ledger 8 has no cross-contract call, so its execution adapter
 synthesises a single-entry trace. `soleCall` reads that one entry by name
 rather than indexing `[0]` and carrying an `undefined` into a composition.
@@ -219,12 +223,23 @@ leaves on the result for the caller to turn into the transaction's Zswap offer.
 
 Failures come back with the runtime's own reason, not just compact-js's
 wrapper. `Effect.runPromise` alone rejects with a `FiberFailure`, which carries
-neither the failure's class nor its `cause`; `runOrRethrow` uses
-`runPromiseExit` plus `Cause.squash` to recover the real error and rethrows it
-with the whole `causeChain` spelled out in the message and the original on
-`cause`. Without that, `Error executing circuit 'x'` is all a caller sees and
-the actual diagnostic — a block-time refusal, an out-of-gas, a failed assertion
-— is lost at exactly the moment someone needs it.
+neither the failure's class nor its `cause`. `runOrRethrow` uses
+`runPromiseExit` and reads EVERY failure with `Cause.failures`, falling back to
+`Cause.squash` only when the cause holds no typed failure. Verifier keys are read
+with unbounded concurrency, so one deploy can fail several times at once, and
+squashing to one failure would send the caller round the fix-and-rerun loop once
+per missing key. It then rethrows:
+
+- a midnight-js coded error raised directly, unchanged, however many failures
+  arrived beside it;
+- a lone failure's coded error found on its `cause` chain, as that coded error;
+- otherwise a `ContractExecutionError` whose message spells out every failure
+  with its cause chain, whose `cause` is the first coded error (or the first
+  failure), and whose `errors` holds every failure as the original object.
+
+Without that, `Error executing circuit 'x'` is all a caller sees and the actual
+diagnostic — a block-time refusal, an out-of-gas, a failed assertion — is lost
+at exactly the moment someone needs it.
 
 ## What a `TranscriptPojo` carries, and why
 
@@ -275,6 +290,12 @@ answers nothing for, before a state is built at all; the hand-written
 constructor left every slot blank and the deploy composition was the only thing
 that ever checked coverage. That is why this entry point takes a
 `VerifierKeyReader` at all, and why it is required rather than optional.
+
+`initialize` also writes the maintenance authority. That matters because the
+ledger 8 constructor alone leaves an EMPTY committee with a threshold of one:
+one signature from a set of zero keys, which nothing can satisfy, so a
+deployment left on it could never have a verifier key inserted, removed or
+replaced.
 
 A malformed signing key is refused BEFORE the constructor runs, as
 `ComposeOptionError` naming option `'signingKey'`. The ledger 8 runtime's own

@@ -108,6 +108,15 @@ own failure on `cause`, so the failure names the entry point it belongs to. The
 setter validates a tagged `midnight:verifier-key[...]` blob, so a truncated,
 empty or wrong-era key fails at composition rather than at submission.
 
+On ledger 8 the constructor registers the keys itself, inside compact-js's
+`initialize`, so compact-js is the first to touch the bytes and refuses a blob
+with its own configuration error. `runLedger8Constructor` re-codes that refusal
+as the same `ComposeFailedError` at `'deploy-verifier-key-blob'`, so both eras
+report the fault alike. Only a refusal that carries the ledger's error on
+`cause` is re-coded: compact-js attaches one only when a key it was handed was
+rejected, and leaves it absent for a key that was never served, which stays
+compact-js's own refusal.
+
 ## Resolving an entry point to a name
 
 `entryPointName` resolves a ledger entry-point key to its name.

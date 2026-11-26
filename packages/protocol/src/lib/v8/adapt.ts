@@ -25,11 +25,7 @@ import { composeLedger8CallTx, readZswapOffer } from './compose';
 import { composeLedger8DeployTx } from './deploy';
 import type { Ledger8Protocol } from './load';
 
-/**
- * Bridges a raw, serialized contract state into the v8 era, reporting a
- * rejected envelope as {@link ComposeOptionError} rather than letting a raw
- * decoder failure escape.
- */
+// A rejected state is an option error, never a raw decoder failure (see ComposeRefusalOrder).
 const readContractState = (raw: Uint8Array, v8: Ledger8Protocol): InstanceType<Ledger8Protocol['ContractState']> => {
   try {
     return v8.ContractState.deserialize(raw);
@@ -38,25 +34,7 @@ const readContractState = (raw: Uint8Array, v8: Ledger8Protocol): InstanceType<L
   }
 };
 
-/**
- * Maps the era-facade's call options onto the v8-native composition leg
- * (`./compose.ts`).
- *
- * This era composes exactly one call: a `calls` tree with more than one entry
- * is refused rather than silently narrowed. A Zswap offer is NOT refused.
- *
- * @param options The era-facade call options.
- * @param v8 The v8 ledger module, as handed over by `loadLedger8Protocol`
- *   (`./load.ts`).
- * @returns The UNPROVEN, serialized call transaction and the call's partition.
- * @throws ComposeOptionError If an option cannot be used: a malformed envelope
- *   option, unreadable offer or contract-state bytes, or more than one entry in
- *   `calls`.
- * @throws ComposeFailedError If `calls` is empty (stage `'call-empty'`), and
- *   for every stage the composition leg this delegates to can raise.
- * @see {@link ComposeRefusalOrder}
- * @see {@link EraBoundary}
- */
+// Exactly one call; a longer `calls` list is refused, not narrowed (see EraBoundary).
 export const composeEraLedger8CallTx = (options: ComposeCallOptions, v8: Ledger8Protocol): ComposeCallResultPojo => {
   const { calls, networkId, ttl, zswapOffer } = options;
   // Checked here, not left to the inner leg, so both eras refuse in the same
@@ -80,9 +58,7 @@ export const composeEraLedger8CallTx = (options: ComposeCallOptions, v8: Ledger8
       input: call.input,
       output: call.output,
       communicationCommitmentRandomness: call.communicationCommitmentRandomness,
-      // Carried across the adapter, not dropped. Without this the ledger 8 native path silently
-      // partitions against this era's INITIAL parameters while the caller believed it had supplied
-      // the chain's -- the same defect this option exists to close, one layer down.
+      // Carried across, never dropped: see LedgerParametersOption.
       ledgerParametersBytes: call.ledgerParametersBytes,
       networkId,
       ttl,
@@ -92,30 +68,7 @@ export const composeEraLedger8CallTx = (options: ComposeCallOptions, v8: Ledger8
   );
 };
 
-/**
- * Maps the era-facade's deploy options onto the v8-native deploy leg
- * (`./deploy.ts`).
- *
- * `verifierKeys` is optional on the facade but required here: this era's deploy
- * leg registers the compiled contract's keys onto the initial state itself, so
- * the omission is reported as {@link ComposeOptionError}.
- *
- * The contract state crosses into the leg by BYTES, which is what that leg
- * takes: it deserializes into its own era rather than accepting a handle.
- *
- * @param options The era-facade deploy options.
- * @param v8 The v8 ledger module, as handed over by `loadLedger8Protocol`
- *   (`./load.ts`).
- * @returns The UNPROVEN, serialized deploy transaction, the address it deploys
- *   at, and the registered initial state.
- * @throws ComposeOptionError If an option cannot be used: a malformed envelope
- *   option, unreadable offer bytes, or an omitted `verifierKeys` map.
- * @throws ComposeFailedError For every stage the deploy leg this delegates to
- *   can raise.
- * @see {@link VerifierKeys}
- * @see {@link ComposeRefusalOrder}
- * @see {@link EraBoundary}
- */
+// `verifierKeys` is required on this era: the deploy leg registers the keys itself (see VerifierKeys).
 export const composeEraLedger8DeployTx = (options: ComposeDeployOptions, v8: Ledger8Protocol): DeployResultPojo => {
   const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOfferBytes } = options;
   // See `composeEraLedger8CallTx` — hoisted so both eras refuse the envelope first.
