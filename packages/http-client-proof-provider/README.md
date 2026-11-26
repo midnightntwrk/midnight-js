@@ -214,6 +214,18 @@ HTTP errors throw with details about the failed request:
 Failed Proof Server response: url="http://localhost:6300/prove", code="500", status="Internal Server Error"
 ```
 
+When the server explains a rejection in the response body, the body is not part of that message: it is
+carried on the error's `cause` instead, so it passes through the contracts layer's redaction like any
+other provider cause (a "bad input" answer can echo parts of the proving request). The body is
+server-controlled text, so at most 1,000 characters of it are carried, with an ellipsis marking the cut.
+
+A request that runs into the configured timeout — while waiting for the answer or while reading it —
+is reported as a timeout, with the original failure on `cause`:
+
+```
+Proof Server request timed out after 300000 ms: url="http://localhost:6300/prove"
+```
+
 ## Exports
 
 ```typescript

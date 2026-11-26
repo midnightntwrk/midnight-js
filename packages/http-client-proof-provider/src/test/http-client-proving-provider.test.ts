@@ -385,9 +385,34 @@ describe('httpClientProvingProvider', () => {
       });
     });
 
-    it('wraps a failure while reading the response body and keeps it on cause', async () => {
+    it('reports a timeout while reading the response body as a timeout and keeps it on cause', async () => {
       // Arrange
       const bodyFailure = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        url: mockUrl,
+        arrayBuffer: vi.fn().mockRejectedValue(bodyFailure)
+      });
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30]));
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      // Act
+      const error = await provider.prove(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+
+      // Assert
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({
+        code: 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE',
+        message: `Proof Server request timed out after 300000 ms: url="${mockUrl}/prove"`
+      });
+      expect(error instanceof ProofServerError && error.cause).toBe(bodyFailure);
+    });
+
+    it('wraps a failure while reading the response body and keeps it on cause', async () => {
+      // Arrange
+      const bodyFailure = new Error('stream failed');
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
@@ -813,7 +838,9 @@ describe('httpClientProvingProvider', () => {
       await vi.advanceTimersByTimeAsync(30_000);
 
       // Assert
-      expect(await result).toMatchObject({ message: `Proof Server response could not be read: url="${mockUrl}/prove"` });
+      expect(await result).toMatchObject({
+        message: `Proof Server request timed out after ${TIMEOUT} ms: url="${mockUrl}/prove"`
+      });
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
@@ -873,6 +900,116 @@ describe('httpClientProvingProvider', () => {
 
       const calledUrl = mockFetch.mock.calls[0][0] as URL;
       expect(calledUrl.pathname).toBe('/api/v1/check');
+    });
+  });
+
+  describe('proof server error details', () => {
+    it('carries the response body on cause when the proof server rejects a request', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        url: mockUrl,
+        headers: new Headers(),
+        text: vi.fn().mockResolvedValue("bad input: `couldn't find built-in key increment`")
+      });
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30]));
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      const error = await provider.prove(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({
+        code: 'MIDNIGHT_JS_PR_PROOF_SERVER_REFUSED',
+        message: `Failed Proof Server response: url="${mockUrl}", code="400", status="Bad Request"`
+      });
+      expect(error instanceof ProofServerError && error.cause).toMatchObject({
+        message: "bad input: `couldn't find built-in key increment`"
+      });
+    });
+
+    it('bounds the response body carried on cause', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        url: mockUrl,
+        headers: new Headers(),
+        text: vi.fn().mockResolvedValue('x'.repeat(5000))
+      });
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30]));
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      const error = await provider.prove(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error instanceof ProofServerError && error.cause).toMatchObject({
+        message: `${'x'.repeat(1000)}…`
+      });
+    });
+
+    it('reports a timeout while reading an error body as a timeout', async () => {
+      const bodyFailure = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        url: mockUrl,
+        headers: new Headers(),
+        text: vi.fn().mockRejectedValue(bodyFailure)
+      });
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30]));
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      const error = await provider.prove(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({
+        code: 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE',
+        message: `Proof Server request timed out after 300000 ms: url="${mockUrl}/prove"`
+      });
+      expect(error instanceof ProofServerError && error.cause).toBe(bodyFailure);
+    });
+
+    it('keeps the status-only message when the error body cannot be read', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        url: mockUrl,
+        headers: new Headers(),
+        text: vi.fn().mockRejectedValue(new Error('stream failed'))
+      });
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30]));
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      const error = await provider.prove(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+
+      expect(error).toMatchObject({
+        message: `Failed Proof Server response: url="${mockUrl}", code="400", status="Bad Request"`
+      });
+    });
+
+    it.each([
+      ['TimeoutError', new DOMException('The operation was aborted due to timeout', 'TimeoutError')],
+      ['AbortError', new DOMException('The user aborted a request.', 'AbortError')]
+    ])('reports a request timeout as a timeout (%s)', async (_name, failure) => {
+      // fetchWithRetry retries a rejected fetch under the same deadline; fake timers carry the
+      // retries through their backoffs (1s + 2s + 4s) to the final rejection.
+      vi.useFakeTimers();
+      mockFetch.mockRejectedValue(failure);
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20]));
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { timeout: 1234 });
+
+      const result = provider.check(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(10_000);
+      const error = await result;
+
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({
+        message: `Proof Server request timed out after 1234 ms: url="${mockUrl}/check"`
+      });
+      expect((error as ProofServerError).cause).toBe(failure);
     });
   });
 

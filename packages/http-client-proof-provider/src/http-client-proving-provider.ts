@@ -131,6 +131,31 @@ const makeKeyMaterialResolver = <K extends string>(
   };
 };
 
+const MAX_ERROR_BODY_LENGTH = 1_000;
+
+const isTimeoutOrAbort = (cause: unknown): boolean =>
+  cause instanceof Error && (cause.name === 'TimeoutError' || cause.name === 'AbortError');
+
+const proofServerTimeout = (url: URL, timeout: number, cause: unknown): ProofServerError =>
+  new ProofServerError(`Proof Server request timed out after ${timeout} ms: url="${url}"`, undefined, { cause });
+
+const readErrorBody = async (response: Response): Promise<string | undefined> => {
+  let raw: string;
+  try {
+    raw = await response.text();
+  } catch (cause) {
+    if (isTimeoutOrAbort(cause)) {
+      throw cause;
+    }
+    return undefined;
+  }
+  const body = raw.trim();
+  if (!body) {
+    return undefined;
+  }
+  return body.length > MAX_ERROR_BODY_LENGTH ? `${body.slice(0, MAX_ERROR_BODY_LENGTH)}…` : body;
+};
+
 const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
   let response: Response;
   try {
@@ -146,6 +171,9 @@ const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, h
       timeout
     );
   } catch (cause) {
+    if (isTimeoutOrAbort(cause)) {
+      throw proofServerTimeout(url, timeout, cause);
+    }
     throw new ProofServerError(`Proof Server request failed: url="${url}"`, undefined, { cause });
   }
 
@@ -154,15 +182,25 @@ const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, h
   }
 
   if (!response.ok) {
+    let body: string | undefined;
+    try {
+      body = await readErrorBody(response);
+    } catch (cause) {
+      throw proofServerTimeout(url, timeout, cause);
+    }
     throw new ProofServerError(
       `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`,
-      response.status
+      response.status,
+      body === undefined ? undefined : { cause: new Error(body) }
     );
   }
 
   try {
     return new Uint8Array(await response.arrayBuffer());
   } catch (cause) {
+    if (isTimeoutOrAbort(cause)) {
+      throw proofServerTimeout(url, timeout, cause);
+    }
     throw new ProofServerError(`Proof Server response could not be read: url="${url}"`, undefined, { cause });
   }
 };
