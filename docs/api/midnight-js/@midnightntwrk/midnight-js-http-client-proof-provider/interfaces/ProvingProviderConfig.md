@@ -1,0 +1,19 @@
+[**Midnight.js API Reference v5.0.3**](../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../packages.md) / [@midnightntwrk/midnight-js-http-client-proof-provider](../README.md) / ProvingProviderConfig
+
+# Interface: ProvingProviderConfig
+
+## Properties
+
+### headers?
+
+> `readonly` `optional` **headers?**: `Record`\<`string`, `string`\>
+
+***
+
+### timeout?
+
+> `readonly` `optional` **timeout?**: `number`

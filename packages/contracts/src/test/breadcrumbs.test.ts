@@ -23,12 +23,12 @@
  * 1. HEAD RESOLUTION -- the head integer read and the era it resolved to.
  * 2. PIPELINE SELECTION -- the artifact's pipeline paired with that head era.
  * 3. ENCODING -- the era the fetched contract state's envelope tag declares.
- * 4. RETAINED SIGNING-KEY ENTRY -- a stored key the retained era could not read
+ * 4. LEDGER 8 SIGNING-KEY ENTRY -- a stored key the ledger 8 era could not read
  *    as its own, and so reported as none held.
  *
  * Several era decisions a reader might expect are REFUSALS rather than
  * choices, and a refusal already carries a registered error code and
- * remediation text, so it is not breadcrumbed a second time: the retained-era
+ * remediation text, so it is not breadcrumbed a second time: the ledger 8
  * deploy path refuses, a ledger 9 scope on a pre-fork head refuses, and a provider that
  * answers on the wrong era's payload variant refuses. The fourth decision is the inverse
  * case, and the reason it needs a breadcrumb: it refuses nothing and returns
@@ -73,7 +73,7 @@ import { handleSubmitRejection } from '../internal/stale-head';
 import { resolveScopeEra } from '../internal/transaction';
 import { contractStateRead, createMockContractAddress, createMockProviders } from './test-mocks';
 
-// The retained ENGINE acquisition is replaced and only it: `loadLedgerEra`
+// The ledger 8 ENGINE acquisition is replaced and only it: `loadLedgerEra`
 // stays the real thing, so every era name a breadcrumb reports here was
 // resolved by the genuine era timeline. Nothing in this file executes a
 // circuit, so a bare stand-in engine is sufficient -- `acquireLedger8Runtime`
@@ -167,7 +167,7 @@ const headSource = (...protocolVersions: readonly number[]): { readonly queryLat
 // plus three transaction providers that declare both eras so the provider check is never what
 // a breadcrumb assertion here fails on. The gap case is covered on its own, in
 // `provider-era-support.test.ts`.
-const retainedRuntime = (...protocolVersions: readonly number[]): Ledger8RuntimeProviders => {
+const ledger8Runtime = (...protocolVersions: readonly number[]): Ledger8RuntimeProviders => {
   const bothEras = { supportedEras: Object.freeze<LedgerEra[]>(['v8', 'v9']) };
   return {
     publicDataProvider: headSource(...protocolVersions),
@@ -323,7 +323,7 @@ describe('the breadcrumb emitters', () => {
   });
 
   it.each(Object.values(ALL_SIGNING_KEY_ENTRY_OUTCOMES))(
-    'reports a stored signing-key entry the retained era could not use, as %s',
+    'reports a stored signing-key entry the ledger 8 era could not use, as %s',
     (outcome) => {
       const sink = createSink();
 
@@ -470,10 +470,10 @@ describe('the scope head read leaves a breadcrumb, and a refused scope leaves on
 });
 
 describe('pipeline selection pairs the artifact pipeline with the head era', () => {
-  it('breadcrumbs the retained pipeline on a pre-fork head, after the era gate accepted it', async () => {
+  it('breadcrumbs the ledger 8 pipeline on a pre-fork head, after the era gate accepted it', async () => {
     const sink = createSink();
 
-    await acquireLedger8Runtime(retainedRuntime(LEDGER8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
+    await acquireLedger8Runtime(ledger8Runtime(LEDGER8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
 
     expect(emitted(sink)).toStrictEqual([
       {
@@ -501,7 +501,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
     // disagree with it: `path: 'v8'` with `version: 'v9'` IS keep-state.
     const sink = createSink();
 
-    await acquireLedger8Runtime(retainedRuntime(LEDGER9_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
+    await acquireLedger8Runtime(ledger8Runtime(LEDGER9_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
 
     expect(emitted(sink).at(-1)).toStrictEqual({
       decision: 'pipeline-selection',
@@ -515,19 +515,19 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
   });
 
   it('selects NO pipeline when the era gate refused the pairing', async () => {
-    // A retained-era deploy on a post-fork head is refused. The head reading
+    // A ledger 8 deploy on a post-fork head is refused. The head reading
     // is still reported, because that is what the refusal rests on, but no
     // selection breadcrumb claims a pipeline ran.
     const sink = createSink();
 
     await expect(
-      acquireLedger8Runtime(retainedRuntime(LEDGER9_HEAD), 'deploy', { logger: sink })
+      acquireLedger8Runtime(ledger8Runtime(LEDGER9_HEAD), 'deploy', { logger: sink })
     ).rejects.toThrow(EraMismatchError);
 
     expect(emitted(sink).map((breadcrumb) => breadcrumb.decision)).toEqual(['network-version-read']);
   });
 
-  it('reports the retained pipeline on the attach path too, naming the contract', async () => {
+  it('reports the ledger 8 pipeline on the attach path too, naming the contract', async () => {
     const sink = createSink();
     const providers = createMockProviders();
     const publicDataProvider = {
@@ -687,7 +687,7 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
 
     // One breadcrumb of every kind, produced by real code paths rather than
     // hand-built, so this gate is over what actually ships.
-    await acquireLedger8Runtime(retainedRuntime(LEDGER8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
+    await acquireLedger8Runtime(ledger8Runtime(LEDGER8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
     await resolveContractStateEra('v8', rawState(ledger8Envelope, LEDGER8_HEAD), headSource(), sink);
     breadcrumbs = emitted(sink);
   });
@@ -861,7 +861,7 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
 describe('a faulty logger cannot fail an operation that otherwise succeeds', () => {
   // `loggerProvider` is a PUBLIC interface a consumer implements, with every
   // level optional, so `debug` is arbitrary third-party code sitting on the
-  // success path of every retained-era operation. A breadcrumb has no bearing
+  // success path of every ledger 8 operation. A breadcrumb has no bearing
   // on the outcome, so a fault in it must not change the outcome.
   const throwingSink = (): { readonly debug: DebugSpy } => ({
     debug: vi.fn<(breadcrumb: DispatchBreadcrumb, message: string) => void>().mockImplementation(() => {
@@ -897,7 +897,7 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
     const sink = throwingSink();
 
     await expect(
-      acquireLedger8Runtime(retainedRuntime(LEDGER9_HEAD), 'deploy', { logger: sink })
+      acquireLedger8Runtime(ledger8Runtime(LEDGER9_HEAD), 'deploy', { logger: sink })
     ).rejects.toThrow(EraMismatchError);
   });
 
@@ -908,7 +908,7 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
     const sink = throwingSink();
 
     await expect(
-      acquireLedger8Runtime(retainedRuntime(LEDGER8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS })
+      acquireLedger8Runtime(ledger8Runtime(LEDGER8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS })
     ).resolves.toBeDefined();
 
     expect(sink.debug).toHaveBeenCalledTimes(2);

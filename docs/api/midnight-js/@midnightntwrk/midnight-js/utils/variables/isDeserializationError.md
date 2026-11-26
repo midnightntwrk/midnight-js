@@ -1,0 +1,21 @@
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [utils](../README.md) / isDeserializationError
+
+# Variable: isDeserializationError
+
+> `const` **isDeserializationError**: (`e`) => `e is DeserializationError`
+
+Type guard for `DeserializationError`.
+
+## Parameters
+
+### e
+
+`unknown`
+
+## Returns
+
+`e is DeserializationError`

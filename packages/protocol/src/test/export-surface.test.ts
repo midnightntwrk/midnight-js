@@ -76,9 +76,9 @@ const entryNamesBySubpath = (): Map<string, string[]> =>
 const LEDGER9_SUBPATHS: readonly (readonly [subpath: string, load: () => Promise<Record<string, unknown>>])[] = [
   ['./v9', () => import('@midnightntwrk/ledger-v9')],
   ['./v9/compact-runtime', () => import('@midnight-ntwrk/compact-runtime')],
-  ['./v9/compact-js', () => import('@midnight-ntwrk/compact-js')],
-  ['./v9/compact-js/effect', () => import('@midnight-ntwrk/compact-js/effect')],
-  ['./v9/compact-js/effect/Contract', () => import('@midnight-ntwrk/compact-js/effect/Contract')],
+  ['./v9/compact-js', () => import('@midnightntwrk/compact-js')],
+  ['./v9/compact-js/effect', () => import('@midnightntwrk/compact-js/effect')],
+  ['./v9/compact-js/effect/Contract', () => import('@midnightntwrk/compact-js/effect/Contract')],
   ['./v9/onchain-runtime', () => import('@midnightntwrk/onchain-runtime-v4')]
 ];
 

@@ -101,7 +101,7 @@ const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(
 
 ### Ledger eras
 
-`httpClientProofProvider` proves transactions for both the current ledger era and the retained one (the era before the last hard fork). `createLedger9WalletProvider` and `createLedger9MidnightProvider` serve the current era only. To handle retained-era transactions too, build the wallet and midnight providers with `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
+`httpClientProofProvider` proves transactions for both ledger 9 (the current era) and ledger 8. `createLedger9WalletProvider` and `createLedger9MidnightProvider` serve the current era only. To handle ledger 8 transactions too, build the wallet and midnight providers with `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ## Examples
 
@@ -163,9 +163,9 @@ These repositories may track the latest stable release of Midnight.js rather tha
 | ZKConfigProvider | @midnightntwrk/midnight-js-fetch-zk-config-provider |
 | DappConnector | @midnightntwrk/dapp-connector-api |
 | Wallet | @midnightntwrk/wallet-sdk |
-| Ledger | @midnightntwrk/ledger-v9 (current era), @midnightntwrk/ledger-v8 (retained era) |
+| Ledger | @midnightntwrk/ledger-v9 (ledger 9, current era), @midnightntwrk/ledger-v8 (ledger 8) |
 | Compact Runtime | @midnight-ntwrk/compact-runtime |
-| Impact VM | @midnightntwrk/onchain-runtime-v4 (current era), @midnight-ntwrk/onchain-runtime-v3 (retained era) |
+| Impact VM | @midnightntwrk/onchain-runtime-v4 (ledger 9), @midnight-ntwrk/onchain-runtime-v3 (ledger 8) |
 
 ### Transaction Flow
 
@@ -304,7 +304,6 @@ New functionality must include unit and integration tests (TDD — tests first).
 | Circuit | Smart contract function that can be executed and proven |
 | ZKIR | Zero-Knowledge Intermediate Representation |
 | Current era | The ledger this build runs live. Today it is ledger 9 (`v9`); at the next hard fork it moves to the new ledger. Names that follow it (`CurrentLedgerEra`) stay correct across forks |
-| Retained era | A ledger before the last hard fork that this build still serves. Today it is ledger 8 (`v8`); at the next hard fork ledger 9 joins it. Names that follow it (`RetainedLedgerEra`) stay correct across forks |
 | `Ledger8*` / `Ledger9*` | Names bound to one ledger. They never change meaning at a fork |
 
 ## Detailed

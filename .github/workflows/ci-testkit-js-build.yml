@@ -5,8 +5,6 @@ name: CI - TestKit.js (build)
 # The wrapper (ci-testkit-js.yml) schedules build → (prerelease || e2e) in
 # parallel via two separate `needs: build` jobs.
 
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
   actions: read
@@ -46,12 +44,6 @@ on:
         description: JSON array of e2e test filenames that must run against the pre-fork (ledger v8) image set.
         value: ${{ jobs.generate-test-matrix.outputs.v8-era-test-files }}
 
-concurrency:
-  group: TK-JS-build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Only cancel superseded PR runs; queue push-to-main runs so a mid-flight
-  # release (gated on this workflow in ci.yml) is never cancelled half-done.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   ci:
     if: inputs.should_run == 'true'
@@ -80,9 +72,6 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          docker-login: 'true'
-          docker-password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           cache-key-prefix: 'turbo-testkit'
           testkit-docker-env: ${{ inputs.testkit_docker_env }}
 
@@ -93,7 +82,7 @@ jobs:
       - name: Run build
         run: yarn build ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"}
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Run linter
         run: |
@@ -112,7 +101,15 @@ jobs:
         run: |
           yarn test --filter="./testkit-js/*"
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # Read by `.github/actions/collect-test-evidence` when a release is published.
+      - name: Upload test evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
+        with:
+          name: evidence-unit-testkit
+          path: testkit-js/testkit-js/reports/test-report.xml
+          if-no-files-found: error
 
       - name: Upload compiled contracts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2

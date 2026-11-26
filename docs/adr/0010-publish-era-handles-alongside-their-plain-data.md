@@ -10,8 +10,8 @@
 ## Context
 
 `@midnightntwrk/midnight-js-protocol` installs two ledger WASM toolchains side by side:
-`@midnightntwrk/ledger-v9` for the current era and `@midnightntwrk/ledger-v8` for the retained
-pre-fork one, plus the retained execution toolchain (`compact-runtime` 0.16, installed as
+`@midnightntwrk/ledger-v9` for the current era and `@midnightntwrk/ledger-v8` for ledger 8, the
+pre-fork one, plus the ledger 8 execution toolchain (`compact-runtime` 0.16, installed as
 `compact-runtime-ledger8`, and `@midnight-ntwrk/onchain-runtime-v3`).
 
 A live WASM handle has three properties that make it risky to pass around:
@@ -54,9 +54,9 @@ Every found or deployed handle, in both eras, has `deployTxData: { era, public, 
 deploy record and `initialContractState` are under `public`; `signingKey` and
 `initialPrivateState` are under `private` (a deployed handle adds `initialZswapState`). A caller
 reads `deployTxData.public.txId` and `deployTxData.private.signingKey` without branching on the
-era. A found retained handle has `signingKey` and `initialPrivateState` present but possibly
-`undefined`. The retained key uses the current era's `SigningKey` type, in its
-`{ tag: 'schnorr', value }` form; the bare hex string the retained runtime signs with stays off the
+era. A found ledger 8 handle has `signingKey` and `initialPrivateState` present but possibly
+`undefined`. The ledger 8 key uses the current era's `SigningKey` type, in its
+`{ tag: 'schnorr', value }` form; the bare hex string the ledger 8 runtime signs with stays off the
 `contracts` surface.
 
 ### `LedgerEraFacade` trades only plain data, in both directions
@@ -70,9 +70,9 @@ pass on. So every value crossing it is encoded: `extractState` returns an `Encod
 handle. `protocol-type-acl.test.ts` pins the member sets of `DeployResultPojo` and
 `ComposeCallResultPojo`.
 
-`Ledger8Engine` may return retained-era handles, because it is bound to the retained era and says
+`Ledger8Engine` may return ledger 8 handles, because it is bound to ledger 8 and says
 so: `TranscriptPojo` and `ConstructorResultPojo` carry compact-js ledger-8 state handles. They stay
-inside the retained pipeline. Where a value leaves it, the engine encodes first:
+inside the ledger 8 pipeline. Where a value leaves it, the engine encodes first:
 `wrapKeepStateCall` (`src/lib/v9/wrap.ts`) passes `transcript.preContractState.encode()` to
 ledger-v9, never the handle.
 
@@ -115,10 +115,10 @@ freezes references, not bytes, and `TranscriptPojo` is `readonly` throughout yet
   throws or stores a meaningless `__wbg_ptr`. Callers that persist results must pick the
   plain-data members.
 - A published handle ties the result to the module instance that made it. A consumer that installs
-  a second copy of the retained runtime can hit the dual-instantiation failure through a result
+  a second copy of the ledger 8 runtime can hit the dual-instantiation failure through a result
   object (see ADR 0004).
 - A new operation on `LedgerEraFacade` must return plain data. A new one on `Ledger8Engine` may
-  return a retained handle only if it stays inside the retained pipeline.
+  return a ledger 8 handle only if it stays inside the ledger 8 pipeline.
 
 ## Alternatives considered
 
@@ -128,7 +128,7 @@ freezes references, not bytes, and `TranscriptPojo` is `readonly` throughout yet
   sends a result to a worker.
 - **Handles on `LedgerEraFacade` too.** Rejected: the caller there does not know the era, so no
   type could name the handle for both eras.
-- **Plain data inside `Ledger8Engine` as well.** Rejected: the retained pipeline runs in one era
+- **Plain data inside `Ledger8Engine` as well.** Rejected: the ledger 8 pipeline runs in one era
   and there is no boundary to protect between its steps.
 - **Deep-freeze results instead of publishing the encoded twin.** Rejected: freezing stops
   mutation; it does nothing for module lifetime, cloneability or cross-era comparison.

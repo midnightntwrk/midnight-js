@@ -14,7 +14,7 @@
  */
 
 /**
- * What the entry points do around the retained-era pipelines: acquire the era
+ * What the entry points do around the ledger 8 pipelines: acquire the era
  * and the engine, refuse the pairings that cannot run, and carry the composed
  * transaction through the provider methods.
  *
@@ -139,7 +139,7 @@ import { atProviderMethod, proveBalanceSubmit } from './submit-payload';
 import { createEncryptionPublicKeyResolver } from './utils';
 
 /**
- * The providers a retained-era operation reaches. A `Pick` of the provider set
+ * The providers a ledger 8 operation reaches. A `Pick` of the provider set
  * the entry points already receive, so nothing at a call site changes while a
  * reader — and a test — sees exactly which members are consulted.
  */
@@ -172,7 +172,7 @@ export interface Ledger8RuntimeProviders extends TransactionProviders {
 }
 
 /**
- * The era facade and the retained engine, acquired once at an operation's
+ * The era facade and the ledger 8 engine, acquired once at an operation's
  * asynchronous start.
  *
  * The engine's own state type is fixed here, at the one place the real engine
@@ -182,20 +182,20 @@ export interface Ledger8Runtime {
   readonly resolved: ResolvedOperationEra;
   readonly engine: Ledger8ExecutionEngine<Ledger8StateValue>;
   /**
-   * The RETAINED era facade, which reads the contract's on-chain state.
+   * The ledger 8 facade, which reads the contract's on-chain state.
    *
    * Separate from `resolved.era` on purpose. `resolved.era` follows the network head and is what a
    * transaction is composed on; this one follows the bytes the chain holds, which the fork does not
    * rewrite. Post-fork the two differ, and that difference IS keep-state.
    *
-   * Acquiring it costs nothing extra here: the engine beside it has already pulled the retained
+   * Acquiring it costs nothing extra here: the engine beside it has already pulled the ledger 8
    * runtime, and the era load is memoised.
    */
-  readonly retainedEra: LedgerEraFacade;
+  readonly ledger8Era: LedgerEraFacade;
 }
 
 /**
- * The gates every acquired retained runtime passes: the era pairing, the provider set and the
+ * The gates every acquired ledger 8 runtime passes: the era pairing, the provider set and the
  * pipeline-selection breadcrumb, in that order.
  */
 const admitLedger8Runtime = (
@@ -219,12 +219,12 @@ const admitLedger8Runtime = (
 };
 
 /**
- * Resolves the head era and acquires the retained engine, then refuses the
- * `(retained artifact, head era)` pairings that cannot run and the provider
- * sets that cannot carry a retained-era transaction.
+ * Resolves the head era and acquires the ledger 8 engine, then refuses the
+ * `(ledger 8 artifact, head era)` pairings that cannot run and the provider
+ * sets that cannot carry a ledger 8 transaction.
  *
  * The two acquisitions are independent and are started together; keep them that
- * way. Every retained-era operation that reads the network funnels through here — the call,
+ * way. Every ledger 8 operation that reads the network funnels through here — the call,
  * deploy and maintenance paths — so the provider check belongs here rather than in each of them.
  * The two builders that read nothing from the network skip it; `submitTx` checks their transaction.
  * The era checked is `resolved.head`, not the artifact's.
@@ -237,10 +237,10 @@ const admitLedger8Runtime = (
  * pipeline-selection breadcrumbs are written to, and the contract this
  * operation names — omitted by a deploy, which has no address yet.
  * @returns The resolved era facts and the acquired engine.
- * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` for a retained-era deploy on a post-fork head.
- * @throws EraMismatchError with reason `'ledger8-maintenance-on-ledger9-network'` for a retained-era maintenance update on a post-fork head.
+ * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` for a ledger 8 deploy on a post-fork head.
+ * @throws EraMismatchError with reason `'ledger8-maintenance-on-ledger9-network'` for a ledger 8 maintenance update on a post-fork head.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
- * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
+ * @throws Ledger8RuntimeMissingError if the ledger 8 runtime cannot be acquired.
  * @throws ProviderEraUnsupportedError if a transaction provider does not serve the era this
  * operation's payloads will carry, which is the head era.
  * @see {@link EraDispatch} for the pairing table, and for why the provider check
@@ -252,12 +252,12 @@ export const acquireLedger8Runtime = async (
   kind: SubmittedOperationKind,
   breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
 ): Promise<Ledger8Runtime> => {
-  const [resolved, engine, retainedEra] = await Promise.all([
+  const [resolved, engine, ledger8Era] = await Promise.all([
     resolveOperationEra(providers.publicDataProvider, breadcrumbs?.logger),
     loadLedger8Engine(),
     loadLedgerEra('v8')
   ]);
-  return admitLedger8Runtime({ resolved, engine, retainedEra }, providers, kind, breadcrumbs);
+  return admitLedger8Runtime({ resolved, engine, ledger8Era }, providers, kind, breadcrumbs);
 };
 
 /**
@@ -272,16 +272,16 @@ export const acquireLedger8RuntimeForReading = async (
   kind: SubmittedOperationKind,
   breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
 ): Promise<Ledger8Runtime> => {
-  const [resolved, engine, retainedEra] = await Promise.all([
+  const [resolved, engine, ledger8Era] = await Promise.all([
     acquireHeadEra(reading),
     loadLedger8Engine(),
     loadLedgerEra('v8')
   ]);
-  return admitLedger8Runtime({ resolved, engine, retainedEra }, providers, kind, breadcrumbs);
+  return admitLedger8Runtime({ resolved, engine, ledger8Era }, providers, kind, breadcrumbs);
 };
 
 /**
- * Refuses a provider set that cannot carry a retained-era operation. The retained-era path reads the
+ * Refuses a provider set that cannot carry a ledger 8 operation. The ledger 8 path reads the
  * head and checks the transaction providers before it builds anything, and a router's ledger 9
  * overloads take a narrower set, so a caller the compiler never checked can reach it without them.
  *
@@ -307,7 +307,7 @@ export function assertLedger8TransactionProviders<P extends object>(
 }
 
 /**
- * Proves, balances and submits a retained-era-executed transaction, and
+ * Proves, balances and submits a ledger-8-executed transaction, and
  * returns the transaction id.
  *
  * The era is NOT the same on both heads: the pipeline composed the transaction
@@ -368,7 +368,7 @@ export const submitLedger8Tx = async (
   );
 };
 
-/** What attaching to an already-deployed retained-era contract arrived with. */
+/** What attaching to an already-deployed ledger 8 contract arrived with. */
 export interface Ledger8FindRequest {
   readonly contract: Ledger8Contract;
   readonly contractAddress: string;
@@ -376,7 +376,7 @@ export interface Ledger8FindRequest {
   readonly circuitIds: readonly string[];
 }
 
-/** The result of attaching to an already-deployed retained-era contract. */
+/** The result of attaching to an already-deployed ledger 8 contract. */
 export interface Ledger8FoundState {
   readonly deployTxData: FinalizedTxRead;
   /** The deploy-time state of the contract, as `queryDeployContractState` serves it. */
@@ -384,7 +384,7 @@ export interface Ledger8FoundState {
 }
 
 /**
- * Attaches to an already-deployed retained-era contract: a READ path, so no
+ * Attaches to an already-deployed ledger 8 contract: a READ path, so no
  * composition and no submission.
  *
  * It still resolves the head era, dates the fetched state's envelope against
@@ -418,7 +418,7 @@ export const findLedger8Contract = async (
 ): Promise<Ledger8FoundState> => {
   assertIsContractAddress(request.contractAddress);
 
-  const [resolved, retainedEra] = await Promise.all([
+  const [resolved, ledger8Era] = await Promise.all([
     resolveOperationEra(providers.publicDataProvider, providers.loggerProvider),
     loadLedgerEra('v8')
   ]);
@@ -443,7 +443,7 @@ export const findLedger8Contract = async (
   // could answer differently and leave half the keys checked against one state
   // and half against another.
   const snapshot = await readLedger8Snapshot(
-    retainedEra,
+    ledger8Era,
     // `resolved.era`, not a second `loadLedgerEra`: the facade bound to this head was acquired at
     // the operation's start, and acquiring one is a lazy WASM load.
     resolved.era,
@@ -477,7 +477,7 @@ export const findLedger8Contract = async (
 };
 
 /**
- * Refuses a retained-era transaction the node recorded with a non-success
+ * Refuses a ledger 8 transaction the node recorded with a non-success
  * status.
  *
  * Raises {@link TxFailedError} with the era-tagged record.
@@ -496,7 +496,7 @@ export const assertLedger8TxSucceeded = (record: FinalizedTxRead, circuitId: str
 };
 
 /**
- * Refuses a retained-era DEPLOYMENT the node recorded with a non-success
+ * Refuses a ledger 8 DEPLOYMENT the node recorded with a non-success
  * status.
  *
  * Its own refusal rather than {@link assertLedger8TxSucceeded} because the
@@ -566,7 +566,7 @@ export const assertLedger8RecordEra = (
 };
 
 /**
- * Reads back a record that only the ledger 8 era can have made, narrowing it to that era: the
+ * Reads back a record that only ledger 8 can have made, narrowing it to that era: the
  * record of an operation the era gate admits only on a pre-fork head.
  *
  * @throws UnknownLedgerEraError if the record carries no era tag.
@@ -579,17 +579,18 @@ const requireLedger8Record = (
   method: ReadMethod
 ): Ledger8FinalizedTxData => {
   const tagged = requireTaggedRecord(record, method, circuitId);
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 8 path refuses every other era
   if (tagged.era !== 'v8') {
     throw new EraInvariantViolationError(method, circuitId, head, tagged.era);
   }
   return tagged;
 };
 
-/** The private-state members a retained-era call reads and writes. */
+/** The private-state members a ledger 8 call reads and writes. */
 export type Ledger8PrivateStateSurface = Pick<PrivateStateProvider, 'forContract'>;
 
 /**
- * The private-state members a retained-era DEPLOY reads and writes: the call
+ * The private-state members a ledger 8 DEPLOY reads and writes: the call
  * path's, plus the signing-key write only a deployer ever makes.
  *
  * Widened here rather than on {@link Ledger8PrivateStateSurface} so a reader —
@@ -599,10 +600,10 @@ export type Ledger8DeployPrivateStateSurface = Ledger8PrivateStateSurface &
   Pick<PrivateStateProvider, 'setSigningKey'>;
 
 /**
- * Reads the private state a retained-era call runs against, or `undefined`
+ * Reads the private state a ledger 8 call runs against, or `undefined`
  * when the caller named no private-state id.
  *
- * NO ID is not an error — a retained-era contract may carry no private state.
+ * NO ID is not an error — a ledger 8 contract may carry no private state.
  * AN ID WITH NOTHING STORED UNDER IT is an error, and must stay one: passing
  * `undefined` down produces a valid proof against a default state and then
  * writes the result back under the caller's id. Nothing errors at any stage.
@@ -641,7 +642,7 @@ const readLedger8PrivateState = async (
   return privateState;
 };
 
-/** The options a retained-era call entry point received, in the shape this layer reads them. */
+/** The options a ledger 8 call entry point received, in the shape this layer reads them. */
 export interface Ledger8CallEntryOptions {
   readonly compiledContract: Ledger8Contract;
   readonly contractAddress: string;
@@ -652,7 +653,7 @@ export interface Ledger8CallEntryOptions {
 }
 
 /**
- * The providers a retained-era call entry point needs.
+ * The providers a ledger 8 call entry point needs.
  *
  * `privateStateProvider` is OPTIONAL, mirroring the current era: an entry
  * point may legitimately be called with a provider set that omits it, for a
@@ -664,7 +665,7 @@ export interface Ledger8CallEntryProviders extends Ledger8EntryProviders {
 }
 
 /**
- * Reshapes the options a retained-era call entry point received into the
+ * Reshapes the options a ledger 8 call entry point received into the
  * uniform shape this layer reads.
  *
  * `args` is a CONDITIONAL member on the caller's type — a circuit that takes
@@ -672,7 +673,7 @@ export interface Ledger8CallEntryProviders extends Ledger8EntryProviders {
  * to satisfy with an empty array — so it is read with an `in` check and
  * defaulted here, in one place, rather than at each entry point.
  *
- * @param options The options a retained-era call entry point received.
+ * @param options The options a ledger 8 call entry point received.
  * @returns The same call in the shape this layer reads.
  */
 export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Ledger8CallEntryOptions => ({
@@ -685,7 +686,7 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
 });
 
 /**
- * The retained era's execution data, built in ONE place: the async entry point
+ * The ledger 8 execution data, built in ONE place: the async entry point
  * publishes it as it stands, and the finalizing entry point merges the record onto its
  * public half. Two construction sites could report different executions of the
  * same call.
@@ -714,7 +715,7 @@ const toLedger8CallTxData = (
 });
 
 /**
- * A retained-era call built and not submitted: the execution data the public builder hands back,
+ * A ledger 8 call built and not submitted: the execution data the public builder hands back,
  * and the era the network head was on.
  *
  * The head is here rather than on `Ledger8UnsubmittedCallTxData`: that type names the era of the
@@ -755,7 +756,7 @@ export interface Ledger8CallScope {
 }
 
 /**
- * Builds one retained-era call and submits nothing: the local refusals, the private-state read,
+ * Builds one ledger 8 call and submits nothing: the local refusals, the private-state read,
  * the era acquisition, the verifier-key fetch and the pipeline, in that order. Persists nothing.
  *
  * Does NOT read the artifact era. Its callers have already resolved it, and a second read would
@@ -831,7 +832,7 @@ export const buildLedger8CallTx = async (
 
   const { networkId } = providers.config;
   const ttl = intentTtl(providers.config);
-  const { resolved, engine, retainedEra } =
+  const { resolved, engine, ledger8Era } =
     scope?.runtime ??
     (await acquireLedger8Runtime(providers, 'call', {
       logger: providers.loggerProvider,
@@ -845,7 +846,7 @@ export const buildLedger8CallTx = async (
   // the circuit executed under is exactly the mismatch that mis-encrypts.
   //
   // NORMALIZED, exactly as every current-era call site normalizes it. A real
-  // wallet hands this over Bech32m-encoded; the retained runtime's
+  // wallet hands this over Bech32m-encoded; the ledger 8 runtime's
   // `encodeCoinPublicKey` accepts hex only and throws `Invalid character 'm' at
   // position 0` from inside the WASM on anything else. `parseCoinPublicKeyToHex`
   // passes hex through unchanged, so this is free for a wallet that already
@@ -856,7 +857,7 @@ export const buildLedger8CallTx = async (
   const snapshot =
     scopeStates?.snapshot ??
     (await readLedger8Snapshot(
-      retainedEra,
+      ledger8Era,
       resolved.era,
       resolved.head,
       providers.publicDataProvider,
@@ -889,7 +890,7 @@ export const buildLedger8CallTx = async (
 };
 
 /**
- * Builds one retained-era call on states the caller read itself, and submits nothing. Reads
+ * Builds one ledger 8 call on states the caller read itself, and submits nothing. Reads
  * neither the head nor the contract state: both come from `options`, with their eras.
  *
  * Runs the same checks, execution and composition as {@link buildLedger8CallTx} through
@@ -941,7 +942,7 @@ export const buildLedger8CallTxFromStates = async (
 
   const state: Ledger8SnapshotBytes = { raw: initialContractState.serialize(), ledgerParameters };
   const { networkId } = options.config;
-  const [era, engine, retainedEra] = await Promise.all([loadLedgerEra(head), loadLedger8Engine(), loadLedgerEra('v8')]);
+  const [era, engine, ledger8Era] = await Promise.all([loadLedgerEra(head), loadLedger8Engine(), loadLedgerEra('v8')]);
   const localVerifierKey = await zkConfigProvider.getVerifierKey(options.circuitId);
   const coinPublicKey = parseCoinPublicKeyToHex(options.coinPublicKey, networkId);
 
@@ -966,14 +967,14 @@ export const buildLedger8CallTxFromStates = async (
         options.additionalCoinEncPublicKeyMappings
       )
     },
-    decodeLedger8Snapshot(retainedEra, era, initialContractState.era, state)
+    decodeLedger8Snapshot(ledger8Era, era, initialContractState.era, state)
   );
 
   return toLedger8CallTxData(call);
 };
 
 /**
- * Builds one retained-era call and proves, balances and submits it -- what both high-level entry
+ * Builds one ledger 8 call and proves, balances and submits it -- what both high-level entry
  * points share.
  *
  * @param providers The provider set.
@@ -1001,7 +1002,7 @@ const submitBuiltLedger8Call = async (
 };
 
 /**
- * Runs a retained-era call and returns immediately after submission.
+ * Runs a ledger 8 call and returns immediately after submission.
  *
  * Stores nothing: without waiting for finalization there is no evidence the
  * chain accepted the call, and writing the next private state on the strength
@@ -1026,11 +1027,11 @@ export const submitLedger8CallTxAsync = async (
 };
 
 /**
- * Runs a retained-era call and waits for the chain to record it, storing the
+ * Runs a ledger 8 call and waits for the chain to record it, storing the
  * next private state only once it has.
  *
  * The finalized record is returned VERSION-TAGGED rather than narrowed: a
- * retained-era call is recorded by whichever era the network head is on, and
+ * ledger 8 call is recorded by whichever era the network head is on, and
  * narrowing to one variant here would refuse the very records this pipeline exists
  * to produce.
  *
@@ -1071,7 +1072,7 @@ export const submitLedger8CallTx = async (
   };
 };
 
-/** The options a retained-era deploy entry point received, in the shape this layer reads them. */
+/** The options a ledger 8 deploy entry point received, in the shape this layer reads them. */
 export interface Ledger8DeployEntryOptions {
   readonly compiledContract: Ledger8Contract;
   readonly args?: readonly unknown[];
@@ -1081,7 +1082,7 @@ export interface Ledger8DeployEntryOptions {
 }
 
 /**
- * The providers a retained-era deploy entry point needs.
+ * The providers a ledger 8 deploy entry point needs.
  *
  * `privateStateProvider` is REQUIRED here where the call path's is optional, and
  * that follows the provider set a caller actually holds: `MidnightProviders`
@@ -1093,11 +1094,11 @@ export interface Ledger8DeployEntryProviders extends Ledger8EntryProviders {
 }
 
 /**
- * Reshapes the options a retained-era deploy entry point received into the uniform shape this
+ * Reshapes the options a ledger 8 deploy entry point received into the uniform shape this
  * layer reads. `args`, `privateStateId` and `initialPrivateState` are CONDITIONAL members on the
  * caller's types, so each is read with an `in` check rather than accessed.
  *
- * @param options The options a retained-era deploy entry point received.
+ * @param options The options a ledger 8 deploy entry point received.
  * @returns The same deployment in the shape this layer reads.
  */
 export const toLedger8DeployEntryOptions = (
@@ -1145,7 +1146,7 @@ const composeLedger8Deploy = async (
     encryptionPublicKey: createEncryptionPublicKeyResolver(config.networkId, coinPublicKey, walletEncryptionPublicKey)
   });
 
-/** A retained-era deploy built and not submitted, with the head era it was built on. */
+/** A ledger 8 deploy built and not submitted, with the head era it was built on. */
 export interface Ledger8BuiltDeploy {
   readonly deploy: Ledger8DeployPipelineResult;
   /**
@@ -1157,7 +1158,7 @@ export interface Ledger8BuiltDeploy {
 }
 
 /**
- * Builds one retained-era deploy and submits nothing: the signing-key check, the era acquisition,
+ * Builds one ledger 8 deploy and submits nothing: the signing-key check, the era acquisition,
  * the verifier-key fetch, the constructor and the composition, in that order. Stores nothing.
  *
  * Reachable only on a pre-fork head; {@link acquireLedger8Runtime} refuses the post-fork case
@@ -1166,8 +1167,8 @@ export interface Ledger8BuiltDeploy {
  * @param providers The provider set.
  * @param options The deployment, in the shape this layer reads.
  * @returns The composed deploy and the head era.
- * @throws Ledger8SigningKeyError with reason `'unusable'` if a supplied key is not one the retained
- * era can sign with. Raised before the head is read.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` if a supplied key is not one ledger 8
+ * can sign with. Raised before the head is read.
  * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` on a post-fork head.
  * @throws ComposeFailedError with stage `'deploy-verifier-key'` if the keys do not name every entry
  * point.
@@ -1206,7 +1207,7 @@ export const buildLedger8DeployTx = async (
 };
 
 /**
- * Builds one retained-era deploy from what the caller holds, reading nothing from the network. The
+ * Builds one ledger 8 deploy from what the caller holds, reading nothing from the network. The
  * transaction is always a ledger 8 one: no head is read, so a post-fork network is refused when the
  * transaction is submitted, before it is proved.
  *
@@ -1216,8 +1217,8 @@ export const buildLedger8DeployTx = async (
  * @param walletEncryptionPublicKey The deploying wallet's encryption key.
  * @param config Network and transaction settings.
  * @returns The composed deploy.
- * @throws Ledger8SigningKeyError with reason `'unusable'` if a supplied key is not one the retained
- * era can sign with.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` if a supplied key is not one ledger 8
+ * can sign with.
  * @throws Every composition error {@link buildLedger8DeployTx} raises.
  */
 export const buildLedger8DeployTxFromVerifierKeys = async (
@@ -1244,7 +1245,7 @@ export const buildLedger8DeployTxFromVerifierKeys = async (
 };
 
 /**
- * The public shape of a built retained-era deploy, with the signing key in the `{ tag, value }`
+ * The public shape of a built ledger 8 deploy, with the signing key in the `{ tag, value }`
  * form both eras share.
  */
 export const toLedger8UnsubmittedDeployTxData = (deploy: Ledger8DeployPipelineResult): AnyLedger8UnsubmittedDeployTxData => ({
@@ -1269,7 +1270,7 @@ const mayHaveLanded = (error: unknown): boolean =>
   error instanceof ForkCrossedDuringOperationError || error instanceof SubmitRejectionUndiagnosedError;
 
 /**
- * Deploys a retained-era contract and waits for the chain to record it, storing
+ * Deploys a ledger 8 contract and waits for the chain to record it, storing
  * the private state and the signing key only once it has: {@link buildLedger8DeployTx},
  * {@link submitLedger8Tx}, then watch, attribute the record against the head, refuse a
  * non-success status, and only then store. A deploy that the chain refused must leave no local
@@ -1301,7 +1302,7 @@ export const deployLedger8Contract = async (
   const signingKey = toStoredLedger8SigningKey(deploy.signingKey);
   try {
     await submitLedger8Tx(providers, deploy.unprovenTx, {
-      // Only ever a pre-fork head here -- a retained-era deploy against a
+      // Only ever a pre-fork head here -- a ledger 8 deploy against a
       // network after the fork was refused while building.
       networkVersion: head,
       kind: 'deploy',
@@ -1382,14 +1383,14 @@ export const deployLedger8Contract = async (
 };
 
 /**
- * One maintenance update as a retained-era entry point receives it: the replacement key in the
- * public `SigningKey` shape both eras share, rather than the bare string the retained runtime takes.
+ * One maintenance update as a ledger 8 entry point receives it: the replacement key in the
+ * public `SigningKey` shape both eras share, rather than the bare string the ledger 8 runtime takes.
  */
 export type Ledger8MaintenanceEntryUpdate =
   | Exclude<Ledger8MaintenanceUpdate, { readonly kind: 'replace-authority' }>
   | { readonly kind: 'replace-authority'; readonly newSigningKey: SigningKey };
 
-/** What a retained-era maintenance entry point received. */
+/** What a ledger 8 maintenance entry point received. */
 export interface Ledger8MaintenanceEntryRequest {
   readonly contract: Ledger8Contract;
   readonly contractAddress: string;
@@ -1397,7 +1398,7 @@ export interface Ledger8MaintenanceEntryRequest {
 }
 
 /**
- * The providers a retained-era maintenance update needs: the transaction providers, plus the
+ * The providers a ledger 8 maintenance update needs: the transaction providers, plus the
  * signing-key half of the private-state provider, which it reads and, for a replacement, writes.
  */
 export interface Ledger8MaintenanceEntryProviders extends Ledger8EntryProviders {
@@ -1405,7 +1406,7 @@ export interface Ledger8MaintenanceEntryProviders extends Ledger8EntryProviders 
 }
 
 /**
- * Reads the key a retained-era maintenance update is signed with.
+ * Reads the key a ledger 8 maintenance update is signed with.
  *
  * Every way of not having one is a refusal here, where the attach path reports the same entries
  * as absent: an attach can call circuits without the key, and a maintenance update cannot do
@@ -1414,7 +1415,7 @@ export interface Ledger8MaintenanceEntryProviders extends Ledger8EntryProviders 
  * @param privateStateProvider The signing-key half of the private-state provider.
  * @param contractAddress The contract being maintained.
  * @param sink The configured logger, or `undefined`.
- * @returns The retained-era key held for the address.
+ * @returns The ledger 8 key held for the address.
  * @throws Ledger8SigningKeyError with reason `'unavailable'` if nothing usable is stored, or the store cannot be read.
  */
 const readLedger8MaintenanceSigningKey = async (
@@ -1440,7 +1441,7 @@ const readLedger8MaintenanceSigningKey = async (
  * The update in the shape the engine takes, with the replacement key checked and unwrapped.
  *
  * @throws InvalidArgumentError if the artifact declares no circuit of that name.
- * @throws Ledger8SigningKeyError with reason `'unusable'` if the replacement key is not one the retained era can sign with.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` if the replacement key is not one ledger 8 can sign with.
  */
 const toLedger8MaintenanceUpdate = (
   contract: Ledger8Contract,
@@ -1457,7 +1458,7 @@ const toLedger8MaintenanceUpdate = (
 };
 
 /**
- * Refuses a retained-era maintenance update the node recorded with a non-success status, with the
+ * Refuses a ledger 8 maintenance update the node recorded with a non-success status, with the
  * class that names the update.
  *
  * @throws TxFailedError if the recorded status is not `SucceedEntirely`.
@@ -1483,7 +1484,7 @@ const assertLedger8MaintenanceSucceeded = (
 };
 
 /**
- * Runs one retained-era maintenance update end to end and waits for the chain to record it: check
+ * Runs one ledger 8 maintenance update end to end and waits for the chain to record it: check
  * the request, acquire the era, read the signing key, compose through the pipeline, prove, balance,
  * submit, and attribute the record. A successful replacement then stores the new key.
  *
@@ -1495,7 +1496,7 @@ const assertLedger8MaintenanceSucceeded = (
  * @param request The contract, its address and the update.
  * @returns The finalized ledger 8 record.
  * @throws InvalidArgumentError if the address is malformed, or the artifact declares no such circuit.
- * @throws Ledger8SigningKeyError with reason `'unusable'` if a replacement key is not one the retained era can sign with.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` if a replacement key is not one ledger 8 can sign with.
  * Raised before the head is read.
  * @throws EraMismatchError with reason `'ledger8-maintenance-on-ledger9-network'` on a post-fork head.
  * @throws Ledger8SigningKeyError with reason `'unavailable'` if no usable key is held for the address.
@@ -1518,7 +1519,7 @@ export const submitLedger8MaintenanceTx = async (
   const { networkId } = providers.config;
   const ttl = intentTtl(providers.config);
 
-  const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers, 'maintenance', {
+  const { resolved, engine, ledger8Era } = await acquireLedger8Runtime(providers, 'maintenance', {
     logger: providers.loggerProvider,
     contractAddress
   });
@@ -1529,7 +1530,7 @@ export const submitLedger8MaintenanceTx = async (
   );
 
   const unprovenTx = await runLedger8MaintenancePipeline({
-    retainedEra,
+    ledger8Era,
     era: resolved.era,
     head: resolved.head,
     engine,
@@ -1537,7 +1538,7 @@ export const submitLedger8MaintenanceTx = async (
     logger: providers.loggerProvider,
     contract,
     contractAddress,
-    // Normalized as on the call path: the retained runtime reads hex only.
+    // Normalized as on the call path: the ledger 8 runtime reads hex only.
     coinPublicKey: parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkId),
     signingKey,
     networkId,

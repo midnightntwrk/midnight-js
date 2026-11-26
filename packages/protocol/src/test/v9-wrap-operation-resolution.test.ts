@@ -15,8 +15,8 @@
 
 import { readFileSync } from 'node:fs';
 
-import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import { encodeContractKeyLocation, hashVerifierKey } from '@midnightntwrk/compact-js';
 import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

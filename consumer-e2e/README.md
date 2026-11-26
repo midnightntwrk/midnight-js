@@ -22,7 +22,7 @@ that runs correctly inside the monorepo belongs under `packages/` or
 yarn build
 node consumer-e2e/pack-framework.mjs
 node consumer-e2e/linker-smoke.mjs            # every persona x linker
-node consumer-e2e/linker-smoke.mjs pnp retained
+node consumer-e2e/linker-smoke.mjs pnp ledger8
 node consumer-e2e/fork-matrix-smoke.mjs pnp           # needs Docker
 ```
 
@@ -45,21 +45,21 @@ an `args` member on a nullary circuit's options.
 **The gate catches the first of those, and only that one is verified by mutation
 rather than assumed.** Reverting `compiledContract` to `contract` turns the lane
 red, as does reading a finalized record off the top level instead of `public`.
-The `args` defect it does NOT catch: a retained wrapper's `Contract` is declared
+The `args` defect it does NOT catch: a ledger 8 wrapper's `Contract` is declared
 `any` — necessarily, see `generated-personas.d.ts` — so `args: [1]` on a nullary
-retained circuit still typechecks. What rules that one out is the convention
+ledger 8 circuit still typechecks. What rules that one out is the convention
 below, written at the call sites, not the type system. Do not read the check as
 covering it.
 
 **What it does and does not cover.** The framework's types are real, so result
 shapes are fully checked in both eras, and so is every member of a current-era
-options object. A retained options object is checked for its own members —
+options object. A ledger 8 options object is checked for its own members —
 `compiledContract` against `contract` is exactly that — but not for `circuitId`
 or `args`, which its `any` instance leaves open. The wrapped contracts cannot be
 resolved from here at all: they are generated into the persona tree at run time,
 so [`generated-personas.d.ts`](./generated-personas.d.ts) declares the shape they
 all share. That file carries what each declaration is allowed to assume, why the
-retained side is looser than the current one, and why nothing checks the file
+ledger 8 side is looser than the current one, and why nothing checks the file
 itself — read it before widening either.
 
 Two conventions follow from the check, both recorded at their call sites:
@@ -72,21 +72,21 @@ Two conventions follow from the check, both recorded at their call sites:
   `CompiledContract` come off the `@midnightntwrk/midnight-js` barrel, not
   `protocol`'s root. The single remaining non-consumer import is
   `loadLedgerEra`, and it is a gap in `contracts` rather than a shortcut taken
-  here — `readRetainedLedger` explains it.
+  here — `readLedger8Ledger` explains it.
 
 ## The personas
 
-`retained` and `current` each pin one Compact runtime and prove the framework
+`ledger8` and `current` each pin one Compact runtime and prove the framework
 installs and resolves correctly beside it. `fork-crossing` is the dApp the fork crossing
 describes: it pins **no** runtime of its own, and instead depends on two little
 generated packages that each wrap one contract and declare the runtime its
-codegen demands. That is what a consumer's tree looks like once a retained
+codegen demands. That is what a consumer's tree looks like once a ledger 8
 contract is packaged rather than pasted in, and it is the only arrangement in
 which one process can execute a pre-fork contract and a current one.
 
 ## What the fork crossing asks of each contract
 
-Per retained twin, in order: deploy below the boundary, call, cross, call again
+Per ledger 8 twin, in order: deploy below the boundary, call, cross, call again
 through the same call site (keep-state), call a second time, then **find the
 contract again** and call through the handle that returns. The last one is what a
 restarted dApp does — it holds an address and a store, not the handle its deploy
@@ -97,7 +97,7 @@ returned — and it asserts three things the other legs cannot:
   does not match, so a successful find is the chain and the pre-fork artifact
   still agreeing after migration re-versioned the state;
 - `signingKey` comes back from the private-state store rather than from the
-  chain, so it is the assertion that the maintenance key the retained deploy
+  chain, so it is the assertion that the maintenance key the ledger 8 deploy
   persisted **before** the fork survived it. That key is not on chain and not
   derivable from anything that is: losing it silently leaves a contract nobody
   can ever rotate a verifier key on;
@@ -108,23 +108,23 @@ returned — and it asserts three things the other legs cannot:
   through a provider built after the boundary.
 
 For that to mean anything the private-state store must not be re-keyed at the
-boundary, which is why `retainedProvidersFor` names it `fork-retained-${key}`
+boundary, which is why `ledger8ProvidersFor` names it `fork-ledger8-${key}`
 with **no era in it**. It used to carry one, which gave every twin two stores
 and made the signing key and any private state unmeasurable across the fork. A
 real dApp has one store and does not re-key it when the chain forks.
 
 ### Maintenance across the fork (`simple` shard)
 
-The shard that installs both `simple` artifacts also maintains the retained
+The shard that installs both `simple` artifacts also maintains the ledger 8
 `simple` contract on both sides of the boundary. All three legs replace the
 maintenance authority, because that leaves every circuit the other legs call
 untouched:
 
-- **before the fork**, with the retained artifact, through the v8 overload of
+- **before the fork**, with the ledger 8 artifact, through the v8 overload of
   `submitReplaceAuthorityTx`. The leg asserts a `v8` result on a `v8` record and
   that the store now holds the new key. (c3) then asserts that this key, not the
   deploy's, survived the fork;
-- **after the fork, retained artifact**: refused with
+- **after the fork, ledger 8 artifact**: refused with
   `EraMismatchError` with reason `'ledger8-maintenance-on-ledger9-network'`. The proof and submission providers in this
   leg refuse to be reached, and the stored key must be unchanged;
 - **after the fork, recompiled artifact**: through the v9 path, from the same
@@ -137,7 +137,7 @@ Other shards record a `skipped:` row for these legs rather than none.
 
 ### `private-counter`: the only twin with private state
 
-No other contract in either matrix declares a witness — the retained twins are
+No other contract in either matrix declares a witness — the ledger 8 twins are
 constructed with an empty witness object, the current-era ones with
 `withVacantWitnesses` — so nothing in the run could show private state crossing
 the boundary; the round trip would be `{}` in, `{}` out. Continuity was asserted only at unit tier, against a frozen
@@ -154,7 +154,7 @@ calls in all, the last through the re-attached handle. `step` is chosen **per
 run** rather than fixed, so the ledger figures are reachable only by reading back
 what that run wrote: a store answering with a constant, a default or a replayed
 initial value would satisfy a hardcoded number and fails here. The expectations
-are derived from it in `RETAINED_MATRIX` in `fork-matrix-entry.mjs` and are
+are derived from it in `LEDGER8_MATRIX` in `fork-matrix-entry.mjs` and are
 deliberately not repeated here; two copies of numbers that must move together is
 one copy too many.
 
@@ -166,7 +166,7 @@ failure so the row says which it got. A layer that stopped preserving `bigint`
 would satisfy the ledger assertion and fail that one, which is the failure mode
 private-state storage actually has.
 
-It is **retained-only**, the mirror of `events` being current-only: a current-era
+It is **ledger 8 only**, the mirror of `events` being current-only: a current-era
 deploy happens after the fork and has no pre-fork state to carry.
 
 Its assertions have a negative control, for the same reason the surviving-balance
@@ -178,7 +178,7 @@ wrote. The answer has to be nothing.
 
 ### The in-flight probe
 
-One more thing runs in the fork window itself: retained calls driven from the
+One more thing runs in the fork window itself: ledger 8 calls driven from the
 moment enactment starts until the head flips, recording whether any met the
 boundary and was refused with `ForkCrossedDuringOperationError`.
 
@@ -200,7 +200,7 @@ healthy miss, and this probe is the only place in the run that can see
 reaching a release unobserved. A run where at least one call was admitted is
 healthy whether or not it met the fork.
 
-Each attempt is bounded on its own. A retained `submitCallTx` waits on
+Each attempt is bounded on its own. A ledger 8 `submitCallTx` waits on
 `watchForTxData`, which polls for finalization without a timeout, so a
 transaction the chain *drops* rather than rejects never returns — and that is
 precisely the case the probe is trying to provoke. Without a per-call ceiling it
@@ -251,7 +251,7 @@ what they spend -- which is worth knowing, because it also rules out the reading
 where a coin conflict, and not the boundary, is what refused them.
 
 **The other two legs inject the refusal**, and keep everything else real: a real
-post-fork head resolved at the operation's start, a real retained contract, a
+post-fork head resolved at the operation's start, a real ledger 8 contract, a
 real composition through the keep-state pipeline, a real proof, a real
 balancing. They ask what the diagnosis DECIDES on the strength of one head
 reading, which is not a question about the network -- and the leg above is what
@@ -261,7 +261,7 @@ wallet, and another slice of the fork window, to assert nothing new.
 
 | Leg | Real | Injected |
 |---|---|---|
-| a retained call parked across the fork is refused as STALE | the operation, the refusal, the re-read | when the submission leaves |
+| a ledger 8 call parked across the fork is refused as STALE | the operation, the refusal, the re-read | when the submission leaves |
 | a rejection whose head RE-READ FAILS is reported undiagnosed | the operation, the era it starts on | the refusal; the re-read throws |
 | a rejection under a head that moved BACKWARDS | the operation, the post-fork era it starts on, the payload variant it took | the refusal, and the re-read's answer |
 
@@ -295,7 +295,7 @@ already forked.** Measured: a composition that has resolved a `v8` head after th
 boundary refuses the v9-tagged ledger parameters the block serves, with
 `ComposeOptionError`, before anything is proven -- so that mechanism never
 reaches `submitTx` at all, and a leg built on it would be asserting on the
-composer. (A retained contract composes perfectly well after the fork; the two
+composer. (A ledger 8 contract composes perfectly well after the fork; the two
 injected legs do it. The refusal is specific to a composition that believes the
 head is still pre-fork.)
 
@@ -354,14 +354,14 @@ Six of seven legs pass. Latest run:
 | Leg | Result |
 |---|---|
 | pre-fork head era | **v8** |
-| retained deploy (construct, compose, prove, balance, submit, indexed) | **succeeds** |
-| retained call through the unified entry | **succeeds** |
+| ledger 8 deploy (construct, compose, prove, balance, submit, indexed) | **succeeds** |
+| ledger 8 call through the unified entry | **succeeds** |
 | fork enactment | **ok** |
 | post-fork head era | **v9** |
 | post-fork keep-state call through the same call site | **refused** |
 | reads its own pre-fork history | **v9 / 2001000** |
 
-A retained-era contract really is deployed and called on a ledger-v8 chain, the
+A ledger 8 contract really is deployed and called on a ledger-v8 chain, the
 chain really crosses the fork mid-session, and the same dApp reads its own
 pre-fork history afterwards.
 
@@ -419,7 +419,7 @@ Each was hiding the next, which is why they are worth naming.
    at +27s, shielded at +30s. `syncWallet` now also requires
    `state.protocol._tag === 'Settled'`, which is the reading the SDK documents
    for exactly this hazard.
-3. **`submitCallTx` was called with the wrong option names.** The retained-era
+3. **`submitCallTx` was called with the wrong option names.** The ledger 8
    overload wants `compiledContract`, not `contract`, and a nullary circuit's options
    carry no `args` at all. `.mjs` meant `tsc` never looked — which it now does,
    see [These scripts are typechecked](#these-scripts-are-typechecked). This is
@@ -430,7 +430,7 @@ Each was hiding the next, which is why they are worth naming.
    served the new contract, which reads as `No contract deployed at ...` rather
    than as a race.
 
-### Retained artifacts cannot satisfy ZK integrity verification
+### Ledger 8 artifacts cannot satisfy ZK integrity verification
 
 `compactc` 0.31.1 emits `compiler/contract-info.json` and **no**
 `compiler/contract-manifest.json`; the manifest is what integrity verification
@@ -438,7 +438,7 @@ reads, and the framework requires it fail-closed. So `require` is unsatisfiable
 for any pre-fork artifact however intact it is. The harness drops to
 `{ verify: 'warn' }`, and `ContractConfiguration.zkConfigIntegrity` now exists to
 pass that through. **This is a consumer-facing question, not a harness one**: a
-retained-era dApp has no way to satisfy the default, and the migration guide
+ledger 8 dApp has no way to satisfy the default, and the migration guide
 should say what it should do instead.
 
 ### The wallet-sdk pin was the first blocker, and it is gone
@@ -461,7 +461,7 @@ starts is not an era control (a wallet syncs from genesis, so the pre-fork block
 stay on its path whatever the head is), and `SIDECHAIN_BLOCK_BENEFICIARY`, missing
 from the fork node relative to `compose.yml`, changed nothing.
 
-### Pinning the retained runtime is a consumer requirement, not a harness detail
+### Pinning the ledger 8 runtime is a consumer requirement, not a harness detail
 
 The personas pin `@midnight-ntwrk/onchain-runtime-v3` explicitly. Without it the
 deploy failed with an instance-mismatch error (since removed, together with the
@@ -471,17 +471,17 @@ and a resolver satisfies both with two different copies. Note that the error's o
 remediation text blames the two npm scopes; here both copies were on the *same*
 scope at **3.1.0 and 3.1.1**, so that advice would have sent a reader the wrong
 way. This repository pins it in root `resolutions`; a consumer installing the
-framework beside a retained contract has to do the same, and the migration guide
+framework beside a ledger 8 contract has to do the same, and the migration guide
 should say so.
 
 **Superseded, and recorded because the reasoning was cited elsewhere.** This
 paragraph used to say that two fork-crossing legs were out of reach at this
-tier: `deployContract`'s retained-era path refused unconditionally before any head
-was read, so the retained contract had to be deployed through protocol's era
+tier: `deployContract`'s ledger 8 path refused unconditionally before any head
+was read, so the ledger 8 contract had to be deployed through protocol's era
 facade, and the stale-head remediation could not be provoked from an entry point
 at all.
 
-The first no longer holds: the retained-era deploy path was wired, and every retained
+The first no longer holds: the ledger 8 deploy path was wired, and every ledger 8
 twin is now deployed through `deployContract` — the surface a consumer has — so a
 regression in that path is visible to the matrix instead of being measured around.
 

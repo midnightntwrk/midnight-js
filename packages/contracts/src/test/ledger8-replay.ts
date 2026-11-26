@@ -14,18 +14,18 @@
  */
 
 /**
- * The retained-era test rig both pipeline suites share: the committed
+ * The ledger 8 test rig both pipeline suites share: the committed
  * recording, the engine that REPLAYS it, and the two measured transaction
  * tags.
  *
  * ## The engine here replays committed data. It never invents any.
  *
- * This package holds no retained-runtime dependency — not even a development
+ * This package holds no ledger 8 runtime dependency — not even a development
  * one — because the real engine runs a construction guard whose whole purpose
  * is to detect a SECOND acquisition path for that runtime, and a dependency
  * here would create one. So the engine is doubled. A double built from guessed
  * shapes would test the orchestration against a fiction, so this one replays a
- * transcript recorded by REAL retained-era execution and committed as a
+ * transcript recorded by REAL ledger 8 execution and committed as a
  * fixture — minted, and continuously re-verified against a live execution, by
  * `packages/protocol/src/test/era-record-coin-receiver.test.ts`.
  *
@@ -94,10 +94,10 @@ export const readHfHexFixture = (...segments: readonly string[]): Uint8Array => 
 // ---------------------------------------------------------------------------
 
 /**
- * The exact tag the RETAINED ledger's `Transaction.serialize()` emits for an
+ * The exact tag LEDGER 8's `Transaction.serialize()` emits for an
  * unproven transaction.
  *
- * Measured by serializing one against the pinned retained ledger, not guessed —
+ * Measured by serializing one against the pinned ledger 8, not guessed —
  * the same literal, and the same discipline, as
  * `packages/protocol/src/test/v8-compose.test.ts`.
  *
@@ -167,7 +167,7 @@ const decodeRecorded = (value: unknown): unknown => {
     return new Map(
       record.__map.map((entry) => {
         if (!Array.isArray(entry) || entry.length !== 2) {
-          throw new Error('malformed __map entry in the retained-era recording');
+          throw new Error('malformed __map entry in the ledger 8 recording');
         }
         return [decodeRecorded(entry[0]), decodeRecorded(entry[1])] as const;
       })
@@ -191,7 +191,7 @@ export interface CoinReceiverRecording {
   readonly contractAddress: string;
   /** The coin the recorded execution received, in the shape the artifact takes. */
   readonly receivedCoin: CoinReceiver016Coin;
-  /** The state the recorded execution ran against, as the retained runtime encoded it. */
+  /** The state the recorded execution ran against, as the ledger 8 runtime encoded it. */
   readonly preState: unknown;
   readonly transcript: Ledger8Transcript;
 }
@@ -222,7 +222,7 @@ const TRANSCRIPT_MEMBERS = [
 /**
  * The transcript members the DOUBLE mints rather than replays.
  *
- * `postContractState` is a live retained-runtime handle. A recording is JSON,
+ * `postContractState` is a live ledger 8 runtime handle. A recording is JSON,
  * and no JSON encoding of a WASM pointer means anything, so this member cannot
  * come from the fixture — the double answers with its own marker instead, and
  * the pipeline is generic in exactly that type so nothing is cast to make it
@@ -255,7 +255,7 @@ type _NoMemberInvented = Assert<
  * have every call store nothing over a real private state, with a green suite.
  *
  * TRUSTED: the member VALUES. They are not re-validated shape by shape, because
- * this fixture is not caller input — it is minted from a real retained-era
+ * this fixture is not caller input — it is minted from a real ledger 8
  * execution and re-verified against a live one on every run of
  * `packages/protocol/src/test/era-record-coin-receiver.test.ts`, which is a
  * stronger guarantee than any structural check here could give.
@@ -270,24 +270,24 @@ export const loadCoinReceiverRecording = (): CoinReceiverRecording => {
   );
   const decoded = decodeRecorded(raw);
   if (typeof decoded !== 'object' || decoded === null) {
-    throw new Error('the retained-era recording did not decode to an object');
+    throw new Error('the ledger 8 recording did not decode to an object');
   }
 
   const envelope: Record<string, unknown> = { ...decoded };
   for (const member of ['circuitId', 'coinPublicKey', 'contractAddress', 'receivedCoin', 'preState', 'transcript']) {
     if (!(member in envelope)) {
-      throw new Error(`the retained-era recording omits '${member}'`);
+      throw new Error(`the ledger 8 recording omits '${member}'`);
     }
   }
   const transcript = envelope.transcript;
   if (typeof transcript !== 'object' || transcript === null) {
-    throw new Error("the retained-era recording's 'transcript' did not decode to an object");
+    throw new Error("the ledger 8 recording's 'transcript' did not decode to an object");
   }
   const transcriptMembers: Record<string, unknown> = { ...transcript };
   for (const member of TRANSCRIPT_MEMBERS) {
     if (!(member in transcriptMembers)) {
       throw new Error(
-        `the retained-era recording's transcript omits '${member}', which the pipeline reads. Re-mint it ` +
+        `the ledger 8 recording's transcript omits '${member}', which the pipeline reads. Re-mint it ` +
           'with MINT_HF_FIXTURES=1 against packages/protocol/src/test/era-record-coin-receiver.test.ts.'
       );
     }
@@ -307,7 +307,7 @@ export const loadCoinReceiverRecording = (): CoinReceiverRecording => {
 export const SAMPLED_SIGNING_KEY = 'replay-sampled-signing-key';
 
 /**
- * The opaque marker the doubled engine hands back as a retained-era state.
+ * The opaque marker the doubled engine hands back as a ledger 8 state.
  *
  * The pipeline is generic in that state and never looks inside it, so a marker
  * is all a replay needs — and the pipeline handing this exact object back is
@@ -339,7 +339,7 @@ export interface ReplayExpectations {
    * The BALANCE the pipeline must have handed the engine, on the state itself.
    *
    * Balances live on the contract state, not in the primary state, and the
-   * retained runtime reads them only from a whole contract state. An engine
+   * ledger 8 runtime reads them only from a whole contract state. An engine
    * handed anything less executes every circuit against an empty balance, so a
    * circuit reading one back sees zero and the chain refuses the transcript it
    * produced.
@@ -399,7 +399,7 @@ export interface ReplayExpectations {
  * @param recording The committed recording to replay.
  * @param log The orchestration log to append each call to.
  * @param constructedState The serialized state the constructor path replays —
- * the committed retained-era envelope for this same contract.
+ * the committed ledger 8 envelope for this same contract.
  * @param expectations What else the pipeline must have handed the engine.
  * @returns An engine satisfying the pipeline's slice at {@link ReplayState}.
  */
@@ -453,7 +453,7 @@ export const createReplayEngine = (
   },
   // Reimplemented rather than delegated, deliberately: these suites test the
   // ORDER an operation touches the era and the engine in, and this package
-  // holds no retained-runtime dependency to delegate through. The real
+  // holds no ledger 8 runtime dependency to delegate through. The real
   // conversion is tested where it lives, in
   // `packages/protocol/src/test/v9-operations.test.ts`.
   reexpressOperationsForLedger9: (entryPoints): Uint8Array => {
@@ -485,7 +485,7 @@ export const createReplayEngine = (
     // hex, by name and before anything runs. A double that took any string
     // would let a pipeline forward a `0x`-prefixed or bech32 key and stay green.
     if (options.signingKey !== undefined && !/^[0-9a-fA-F]{64}$/.test(options.signingKey)) {
-      throw new Error(`the signing key '${options.signingKey}' is not the 32 bytes of hex the retained era reads`);
+      throw new Error(`the signing key '${options.signingKey}' is not the 32 bytes of hex the ledger 8 era reads`);
     }
     const registered = await options.verifierKeys(recording.circuitId);
     // AS STRICT AS THE REAL ENGINE, and unconditionally so. compact-js's
@@ -511,8 +511,8 @@ export const createReplayEngine = (
     return Promise.resolve({
       // Sampled when the caller named none, exactly as the real engine does.
       signingKey: options.signingKey ?? SAMPLED_SIGNING_KEY,
-      // The committed retained-era envelope for this same contract, which is a
-      // real serialized retained `ContractState` built from the real
+      // The committed ledger 8 envelope for this same contract, which is a
+      // real serialized ledger 8 `ContractState` built from the real
       // constructor's own primary state. It already DECLARES `receive_coin`, so
       // a deploy composed from it must be given a key map naming exactly that
       // entry point — which is the validation the deploy composition performs.

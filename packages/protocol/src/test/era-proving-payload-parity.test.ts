@@ -19,12 +19,12 @@
  * `httpClientProvingProvider` builds every `/check` and `/prove` payload with
  * the CURRENT era's builders and drives both eras' transactions through them:
  * the proving protocol is per-circuit, so `proveLedger8Transaction` hands the
- * retained runtime the same provider a v9 transaction would get. The retained
- * ledger ships its own `createCheckPayload`, `createProvingPayload` and
+ * ledger 8 runtime the same provider a v9 transaction would get. Ledger 8
+ * ships its own `createCheckPayload`, `createProvingPayload` and
  * `parseCheckResult`, and nothing else in the repo checks that the two agree.
  *
  * This is the strongest assertion available without a live proof server. If a
- * vendor bump changes either era's framing, a retained-era preimage would
+ * vendor bump changes either era's framing, a ledger 8 preimage would
  * otherwise go out in the other era's envelope and fail as a 4xx, a garbage
  * proof, or a proof that serializes cleanly and fails on-chain well-formedness.
  * That silent divergence becomes a red test here.
@@ -140,10 +140,10 @@ describe('proof-server wire builders are byte-identical across eras', () => {
   });
 
   // Both directions, because substitutability has to hold both ways: the
-  // retained-era path sends a v8 preimage through v9 builders today, and a future
+  // ledger 8 path sends a v8 preimage through v9 builders today, and a future
   // change could just as easily route the other way.
   const preimages = (): readonly { readonly label: string; readonly preimage: Uint8Array }[] => [
-    { label: 'a preimage produced by the retained runtime', preimage: ledger8Preimage },
+    { label: 'a preimage produced by the ledger 8 runtime', preimage: ledger8Preimage },
     { label: 'a preimage produced by the current runtime', preimage: ledger9Preimage }
   ];
 

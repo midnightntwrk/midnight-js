@@ -1,0 +1,560 @@
+[**Midnight.js API Reference v5.0.3**](../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../packages.md) / [@midnightntwrk/midnight-js](../README.md) / EraDispatch
+
+# Deciding which pipeline an operation takes
+
+Across the ledger hard fork the same entry point can run one of three ways, and
+which one it takes is decided by two independent facts: the ERA THE ARTIFACT
+BELONGS TO, read from what the artifact DECLARES, and the ERA THE NETWORK HEAD
+IS ON, read from the public data provider. This document records how each is
+established, why neither may be guessed, and the rules that pair them.
+
+The code lives in `packages/contracts/src/internal/era.ts`. The verifier-key
+half of the same admission path is a separate thread — see
+[VerificationPath](VerificationPath.md).
+
+How the public functions are laid out around this decision — one `LedgerN*`
+function per era and one unprefixed router per role that switches on the era —
+is recorded in
+[ADR 0021](../../../_media/0021-mirror-per-era-functions-and-route-each-role-once.md).
+
+## The pipeline is named by the ledger era, not the toolchain
+
+A pipeline is named by a `LedgerEra`, `'v8'` or `'v9'` — the same values a
+payload's `era` and a provider's `supportedEras` use. Each member names the
+LEDGER ERA the pipeline executes against, never a toolchain version, because the toolchain
+moves independently of the ledger and a name pinned to it goes stale on the next
+compiler bump.
+
+A member names its era and nothing else — not which era is native, current, or
+newest. Those are all relative to a fork that moves: the moment ledger 10 lands,
+a name like `'v9native'` describes the era before last. A further era ADDS a
+member (`'v10'`) and leaves every existing member meaning exactly what it
+meant before.
+
+A pipeline era is not a statement about the network. It says only which era's
+artifact the caller handed over; whether that artifact can run at all is the
+pairing rule below.
+
+## Reading the artifact's era: never from the generated code
+
+The era is a consensus-level fact, so it is never inferred from the shape of the
+code the compiler generated: a consumer's build is free to rewrite that shape,
+and this framework never sees the setting that did.
+
+Both eras are answered the same way: by the `runtime-version` the artifact set
+declares, read through `ZKConfigProvider.getArtifactRuntimeVersion()`. It is
+data on disk, not code, so no build step changes it. The shape of the caller's
+object only says which era the declaration must name, and refuses a
+declaration that names another:
+
+| shape | the declaration must name | otherwise |
+| ----- | ------------------------- | --------- |
+| `CompiledContract` container (own string `tag`) | `'v9'` | `ledger8-artifacts-in-ledger9-container` |
+| ledger 8 candidate (own `impureCircuits`, plain `initialState`) | `'v8'` | `unwrapped-ledger9-contract` |
+
+The container is still recognised by its own `tag`. The `tag`'s value is chosen
+by the caller — `CompiledContract.make(tag, ctor)` — and carries no era
+information. What identifies the object is that nothing else has this shape,
+and that the property survives both a bundler and the object spread the
+container's own combinators perform.
+
+The container reads the declaration too, so the answer never depends on which
+era `CURRENT_LEDGER_ERA` names. If the next ledger keeps the container
+shape, a ledger 9 container stays on the ledger 9 pipeline the day that
+constant moves. The cost is one read per provider instance: both shipped
+providers cache the answer. `resolveArtifactEra` in
+`packages/contracts/src/internal/era.ts` holds the decision.
+
+### Which file the answer comes from
+
+The provider prefers the INTEGRITY MANIFEST (`compiler/contract-manifest.json`),
+which already records `runtime-version`. That file is the only one in a bundle
+an application can anchor to a digest it controls, via `expectedManifestHash`;
+everything else is served from the same place as the artifacts it describes.
+Since this value selects which ledger pipeline executes a call, whoever serves
+the artifacts must not be the one who decides it.
+
+`compiler/contract-info.json` is the fallback, because `compactc` only began
+emitting a manifest in 0.33 and the ledger 8 toolchain (0.31) never did. When a
+manifest IS present it vouches for that file too, so the fallback passes through
+the same integrity gate as every key and ZKIR — under the default `require` an
+unvouched-for description is refused rather than trusted.
+
+`@midnightntwrk/compact-js` also brands its `CompiledContract` with the
+registered symbol `Symbol.for('compact-js/CompiledContract')`, which looks like
+the obvious discriminator for the current era and is not usable as one.
+
+`CompiledContract.make` installs the brand on a PROTOTYPE
+(`Object.create(CompiledContractProto)`), and every combinator that makes a
+container usable — `withWitnesses`, `withVacantWitnesses`,
+`withCompiledFileAssets` — returns `{ ...self, ... }`, an own-enumerable-only
+spread that drops the prototype. A container only becomes usable once witnesses
+are attached, so by the time any real container reaches an entry point the brand
+is gone, and a brand test would report `false` for EVERY current-era caller.
+(`pipe` is lost to the same spread.)
+`packages/contracts/src/test/era-dispatch.test.ts` pins that fact so this
+reasoning stays checkable.
+
+The internal `TypeId` symbol that DOES survive is a bare `Symbol()`, whose value
+differs between two copies of the package, so it is not duplicate-install safe
+and is not used either.
+
+The `tag` survives precisely because it is an OWN property — the distinction the
+brand loss turns on: a value rebuilt by an object spread keeps its own
+properties and loses everything it only inherited.
+
+### What the shape is still read for
+
+The shape decides no era. It decides which era the declaration must name, or
+refuses outright.
+
+| shape | own `tag` | own `impureCircuits` | `initialState` | verdict |
+| ----- | --------- | -------------------- | -------------- | ------- |
+| current-era container | string | absent | absent | ask the bundle; must declare `'v9'` |
+| ledger 8 candidate | absent | present | `Function` | ask the bundle; must declare `'v8'` |
+| raw current-era instance | absent | present | `AsyncFunction` | refused, by name |
+| anything else | — | — | — | refused as neither era |
+
+Requiring the `tag` as well as the ABSENCE of `impureCircuits` is what stops an
+arbitrary object — `{}` included — from being routed into the current-era
+pipeline by default.
+
+`tag` and `impureCircuits` are checked with `Object.hasOwn`, because both are
+assigned as own properties — `tag` by the container's constructor,
+`impureCircuits` by the generated contract's.
+
+`initialState` is NOT an own property and must not be checked as one. It is a
+class method, so it lives on the generated contract's PROTOTYPE — measured:
+`Object.hasOwn(contract, 'initialState')` is `false` on both eras' real
+artifacts, while `'initialState' in contract` is `true`. Requiring it to be own
+would refuse every real contract. That is not the same hazard as the brand: a
+class instance's prototype is fixed at construction and nothing here rebuilds
+it.
+
+### Why `constructor.name` may refuse and may not route
+
+The two `constructor.name` values on the eras' generated code — `'Function'` and
+`'AsyncFunction'` — are asymmetric, and the asymmetry is the whole rule.
+
+A build step can ERASE an `AsyncFunction`: targeting below ES2017 lowers `async`
+to a generator-driven plain function, and the name then reads `'Function'`. No
+build step can FABRICATE one. So:
+
+- `'AsyncFunction'` is conclusive proof of the current era and is allowed to
+  REFUSE a raw instance on its own, before the bundle is consulted;
+- `'Function'` proves nothing. It is what a real ledger 8 artifact reads AND
+  what a transpiled current-era contract reads, so it only earns the artifact
+  the right to have its bundle asked;
+- anything else — a generator, an async generator, a future codegen shape — is
+  refused rather than routed anywhere by default.
+
+This replaces a rule that matched `'Function'` POSITIVELY as ledger 8.
+That rule was fail-closed against every shape it could name and fail-OPEN
+against the one it could not: a current-era contract whose `async` a consumer's
+bundler had erased was routed into the ledger 8 pipeline instead of being
+refused. The `class`-as-`initialState` hole closed with it, because a class's
+own constructor is `Function` and that reading no longer decides anything.
+`docs/adr/0012-read-the-artifact-era-from-what-the-artifact-declares.md` records
+the decision.
+
+### Placing a declared runtime version
+
+`RUNTIME_VERSION_TO_ERA` maps `major.minor` to a pipeline era, frozen, in one
+place. A patch release never moves a toolchain across the fork, so the patch
+component is not read. A compile-time gate refuses to build if a pipeline era
+exists that no declared version reaches.
+
+Three refusals have no default between them, deliberately:
+
+- `artifact-era-undeclared` — the artifacts do not declare a version. The
+  provider's failure is kept on `cause`.
+- `provider-cannot-declare-era` — the provider does not implement
+  `getArtifactRuntimeVersion()`. Its failure is kept on `cause`.
+- `unknown-artifact-runtime-version` — a toolchain this framework cannot place,
+  named in the message.
+
+A ledger 8 SHAPE whose bundle declares the CURRENT toolchain is reported as
+`unwrapped-ledger9-contract`: it is a current-era contract passed raw, with
+its `async` erased by the caller's build. That is the case the old check let
+through.
+
+A container whose bundle declares the ledger 8 toolchain is reported as
+`ledger8-artifacts-in-ledger9-container`: the provider serves another
+contract's artifacts, and the message names the declared version.
+
+### One decision, routed by an exhaustive switch
+
+`resolveArtifactEra` makes the decision. A router never reads that answer
+directly: it calls `resolveEraRequest` (or `resolveContractEraRequest` for the
+governance functions, which take the contract as their own argument). Both
+return the router's input tagged with its era — `{ era: 'v8'; … } | { era: 'v9'; … }`
+— so switching on `request.era` narrows the input to that era's type without a
+cast. The two resolvers build that tag with the type predicates
+`isLedger8Request` and `isLedger8Contract`; these are not a second decision.
+
+Every router switches on the tagged request. In schematic form:
+
+```ts
+const request = await resolveEraRequest<Ledger8Options, Ledger9Options>(options, providers.zkConfigProvider);
+switch (request.era) {
+  case 'v8':
+    return ledger8XFlow(providers, request.options);
+  case 'v9':
+    return ledger9XFlow(providers, request.options);
+  default:
+    return assertNever(request, 'functionName');
+}
+```
+
+The seven public routers hand each era to a module-private `ledger8*Flow` /
+`ledger9*Flow` function next to the router; the low-level ones handle each era
+inline in the `switch`. The checks a router ran before the era was read (config,
+private-state pairing) stay in the router, ahead of the read. The router reads
+no head: a flow that needs one reads it itself.
+
+A new ledger era fails the build in two steps. Adding it to `LedgerEra`
+fails the `Assert<>` gates beside `EraRequest` and `ContractEraRequest`, and
+`assertNever(era)` in both resolvers; adding
+the missing variant then fails `assertNever` in every router — the seven public
+functions (`deployContract`, `findDeployedContract`, `submitCallTx`,
+`submitCallTxAsync` and the three governance `submit*` functions) and the
+low-level ones (`submitDeployTx`, `createUnprovenCallTx`,
+`createUnprovenCallTxFromInitialStates`, `createUnprovenDeployTx`,
+`createUnprovenDeployTxFromVerifierKeys`).
+
+`resolveArtifactEra` replaces the provisional structural check that tested for `impureCircuits`
+alone and so answered `true` for a raw CURRENT-era contract instance, which
+carries that member too. That was the blind spot the provisional check
+documented and could not close; see [OverloadTyping](OverloadTyping.md) for
+the shape of the family it was serving.
+
+The failure mode changed with it, deliberately. Where the provisional check
+returned `false` for an object belonging to neither era and let it fall into the
+current-era pipeline to fail somewhere unrelated, `resolveArtifactEra` raises
+`EraMismatchError` with remediation text at the entry point.
+
+## Reading the network's era: exactly one head read per operation
+
+`resolveOperationEra` makes EXACTLY ONE head read, and that is the whole point.
+Asking `latestNetworkLedgerVersion` for the era and then asking the provider again for
+the raw integer is two network round trips, and during the fork window the
+second one can answer differently from the first — leaving one operation built
+half against each era. The era, the integer it was resolved from, and the era
+facade all come from the same reading.
+
+The facade is acquired at the operation's asynchronous start so every era
+operation downstream is synchronous and nothing deeper in the pipeline has to
+await a runtime; see `packages/protocol/docs/era-boundary.md`.
+
+Nothing is cached across calls. Two operations read the head twice,
+deliberately, because an era reading that has fallen behind cannot be recognised
+as stale from the integer itself. That is the rule recorded in
+`docs/adr/0007-never-latch-the-network-head-version.md`, and it is why
+`ResolvedOperationEra` is threaded down as a plain value resolved once per
+operation rather than held anywhere.
+
+The raw integer is retained alongside the era because it distinguishes node
+minor versions that the era deliberately collapses, and an operation that has to
+report or log what it saw needs the value it actually read rather than a second
+reading of it.
+
+`HeadVersionSource` is declared as a `Pick` of the real provider rather than as
+the whole interface: a full `PublicDataProvider` satisfies it, so nothing at a
+call site changes, while a test — and a reader — sees exactly which member is
+consulted, and the head read is not confused with the many other reads the
+provider offers.
+
+## Pairing the two: which combinations may run
+
+`assertEraCompatible` holds the whole dispatch table, and every cell is ruled
+rather than left to fall through — in the FUNCTION. Read the note below the
+table before relying on that for the system as a whole:
+
+| artifact | head | `'call'` | `'deploy'` | `'maintenance'` |
+| -------- | ---- | -------- | ---------- | --------------- |
+| current-era | `v9` | `v9` pipeline | `v9` pipeline | `v9` pipeline |
+| ledger 8 | `v9` | keep-state | refused | refused |
+| ledger 8 | `v8` | `v8` pipeline | `v8` pipeline | `v8` pipeline |
+| current-era | `v8` | refused | refused | refused |
+
+A ledger 8 DEPLOY or MAINTENANCE update on a post-fork head is the one cell
+where the kinds differ: keeping calls against contracts already on chain
+working is why the framework still supports ledger 8, and a new deployment has no such history to
+preserve. A maintenance update has a working path after the fork already: the
+same function with the artifact recompiled by the current toolchain maintains the
+migrated contract with the signing key stored for its address. So the ledger 8
+artifact is refused there with `EraMismatchError` with reason `'ledger8-maintenance-on-ledger9-network'`, which names
+that path, rather than routed anywhere.
+
+That path depends on one fact this package does not control: the fork
+translation keeps the contract's maintenance authority, its committee and its
+counter. The Hard fork lane asserts it on the `simple` shard. It replaces the
+authority before the fork with the ledger 8 artifact, checks that the ledger 8
+artifact is refused after it with nothing proven or submitted, and replaces the
+authority again with the recompiled artifact and the key the first replacement
+stored. See `consumer-e2e/README.md`.
+
+The two ledger 8 rows and the current-era DEPLOY cell are enforced in
+production. A current-era deploy (`deployContract`, `submitDeployTx`) reads the
+network's ledger version once, before the constructor runs, and a pre-fork head
+is refused there with `EraMismatchError`, reason
+`'ledger9-artifact-on-ledger8-network'`, before anything is proven. A fork
+between that read and the submit is not diagnosed. The current-era CALL and
+MAINTENANCE cells on a `v8` head are reachable from tests alone.
+
+That is a deliberate consequence of a cost decision, not an oversight: the
+current era's single-call path buys no head read, so it has nothing to compare
+an artifact against. A deploy pays for the read because it is rare and the
+proof it saves is not. The scoped path does pay for one: a scope on a pre-fork head
+is a ledger 8 scope, and a current-era call made in it is refused with
+`EraMismatchError`, reason `'ledger9-artifact-on-ledger8-network'`, while a single
+call on the same head is not. A current-era single call against a pre-fork head
+therefore fails LATE — at a provider method or at the node — rather than at this table.
+
+The generic `submitTx` / `submitTxAsync` is the exception. It is handed a
+transaction handle rather than an artifact. It reads the handle's `era`, pays for
+one read of the network's ledger version, and accepts only a transaction of that
+era. The other era is refused there, before proving, as `EraMismatchError`:
+a v9 handle before the fork with reason `'ledger9-transaction-on-ledger8-network'`,
+a v8 handle after the fork with reason `'ledger8-transaction-on-ledger9-network'`.
+The v9 ledger cannot read a v8 transaction, so there is nothing to route the
+second case to. The call and deploy pipelines do
+not go through that read: they submit through an internal current-era path, and
+the deploy pipeline reads the head itself, as above.
+
+Do not read the table as a guarantee that every cell fails fast. Lifting that
+for calls means buying a head read on the current era's single-call path, and
+the cost is the reason it has not been.
+
+The function returns nothing. Which pipeline runs is the `(pipeline, head)` pair
+the caller already holds; this decides only whether that pair may run, so it does
+not restate the pair as a third value that could disagree with it.
+
+The rulings live in a DATA table, `ERA_PAIRING`, rather than in a chain of
+switches: one row per artifact era, one column per head era, both `LedgerEra`. Each cell
+holds one `EraPairing` verdict, `'run'`, `'call-only'` or
+`'artifact-newer-than-head'`, and `assertEraCompatible` turns that verdict and
+the operation kind into the refusal. `'call-only'` is where the deploy and
+maintenance asymmetry above lives, and it refuses anything that is not positively a call — the one
+asymmetric cell in the fork window must not admit a `kind` nobody anticipated.
+
+### Where the build-time gate actually is
+
+The table is built through two one-line constructors whose PARAMETER types are
+`EraPairingTable` and `EraRulings`. That is deliberate and it is the whole gate:
+a literal handed to one is checked against a total `Record`, so a missing cell,
+an excess cell and a verdict outside the set are all build failures — reported
+at the literal, where the mistake is.
+
+Annotating `ERA_PAIRING` itself cannot carry that. The table is re-homed onto a
+null prototype, and `Object.create(null) as T` asserts the rows into existence
+before the annotation is ever checked; an empty table would satisfy it. So the
+constructors are not ceremony to be simplified away — delete them and the gate
+goes with them, silently, while every test stays green.
+
+What the gate does and does not say: every pair of eras has to be ruled, so a
+member added to `LedgerEra` is a build failure here until its row and its
+column are both written. What cannot happen is an era arriving unruled.
+
+### Two fields, one set of values
+
+A result's `era` and its record's `public.era` take the same values but name
+different facts. `era` says which era built the caller's artifact; `public.era`
+says which era recorded the transaction. After the fork they DISAGREE: a
+ledger 8 call is recorded as a keep-state transaction tagged `'v9'` while
+`era` on its result says `'v8'`
+(`docs/adr/0011-tag-every-result-with-the-pipeline-that-produced-it.md`). The
+field name carries the difference, not the spelling of the value.
+
+### Why the lookups are still checked at run time
+
+Both arguments are checked before and after the lookup, and neither check is
+redundant with the build-time gate.
+
+The `typeof` check is the load-bearing one. A member access coerces its key —
+`ToPropertyKey` runs `toString` — so an object with a `toString`, a `String`
+wrapper, or anything carrying `Symbol.toPrimitive` selects a REAL row and gets
+ruled on. The nested switches this table replaced compared with `===` and
+refused all of those. Reading a ruling for a key that merely stringifies to an
+era is the one way a table is weaker than the switch it replaces, and it is why
+the guard is not optional.
+
+The `undefined` check is the ordinary one, and the null prototype is what makes
+it sufficient: on a plain object literal `constructor`, `toString`, `valueOf`
+and `__proto__` all come back as truthy non-cells. Note what that would and
+would not cost. No prototype member is a valid verdict, so no such key reaches a
+wrong RULING; the refusal simply moves to the other axis and blames a value that
+was never at fault, or falls to the closing case and reports a function where an
+era should be. The null prototype buys a correct diagnosis, not a correct
+verdict — which is why the test that pins it asserts which era gets blamed
+rather than asserting the prototype.
+
+Neither guard is a live boundary today: both call sites pass literals, and this
+module is not reachable from outside the package. They are here so a future call
+site threading a value through cannot quietly widen what the table admits.
+
+`packages/protocol/docs/shared-table-discipline.md` prescribes the null
+prototype and the freeze for a table indexed by a value, which this one is.
+Not every era-keyed table in the tree qualifies — `NODE_MAJOR_TO_LEDGER` is
+keyed by `number`, an open domain, so it is a `Partial` lookup and is neither
+frozen nor null-prototyped.
+
+## Pairing the head against the fetched state
+
+`resolveContractStateEra` refuses an operation whose network head and
+fetched contract state belong to different ledger eras.
+
+The envelope is `contractState.era` on the read record. Only
+`SerializedContractState.fromBytes` makes a `SerializedContractState`, and it refuses
+bytes whose tag does not match `era`, so the decoder is still chosen for these exact
+bytes. `SerializedContractState.isSerializedContractState` is not the gate: it answers
+`false` for a state made by a second installed copy of the types package. Instead
+every state is rebuilt from its `era` and `serialize()` with the `fromBytes` of the
+class of its kind, which checks the tag again (`InvalidSerializedStateError`,
+`tag-mismatch`, for forged bytes or a state of another kind). A record
+whose contract state has none of those, such as one a provider outside this
+framework built by hand in the pre-5.0.0 shape, is refused as
+`UnknownLedgerEraError`.
+
+The order is load-bearing:
+
+1. The envelope tag is read BEFORE any decode, on both pipelines, so a state that
+   cannot be decoded at all is still dated and a decoder is never handed bytes
+   from the wrong era. The tag-to-era mapping is NOT declared here: it decides
+   which era's decoder is handed attacker-supplied bytes, so it lives in exactly
+   one place, `LEDGER_STATE_TAGS` in `@midnightntwrk/midnight-js-protocol/version`,
+   read here through `ledgerVersionOfContractState` from
+   `@midnightntwrk/midnight-js-utils`
+   (`packages/protocol/docs/shared-table-discipline.md`).
+2. ERAS are compared, never raw `protocolVersion` integers — a same-era node
+   minor bump (2_000_000 to 2_001_000) is not a disagreement and must not be
+   reported as one.
+3. On a disagreement the head is re-read, FRESH. The provider issues an uncached
+   request per call, so a re-read really is a second reading of the network
+   (`docs/adr/0007-never-latch-the-network-head-version.md`).
+4. If the fresh head now agrees with the state, the first reading was merely
+   stale: the caller can fix it by re-running, so `NetworkVersionStateMismatchError`
+   says how.
+5. If the fresh head still disagrees, the head was not stale and the two served
+   answers cannot both describe one chain: `IndexerInconsistencyError`, with
+   retry-later text and never a claim that a fork is under way.
+
+A transport failure on the step-3 re-read is not swallowed — it propagates on
+`cause` — but on its own it arrives with no trace that an era disagreement was
+under investigation, which is the most diagnostic fact available in the fork
+window. So it is rethrown wrapped, naming both eras that disagreed.
+
+## Refusing an answer in the other era
+
+The provider method types do not tie a provider's output era to its input era: a
+third-party provider can answer a v9 handle with a v8 one. So every flow in this
+package checks the answer of each provider method with `requireProviderResult`.
+It refuses:
+
+- a value that is not a handle of this package, with
+  `InvalidTransactionHandleError` (reason `not-a-handle`);
+- a handle at the wrong stage, with `InvalidTransactionHandleError` (reason
+  `wrong-stage`);
+- a handle in the other era, with `EraInvariantViolationError`. An answer in the
+  other era is a broken provider, not an unsupported request.
+
+On the read side, `requireLedger9Record` narrows a finalized record to its v9
+variant on the flows that only ever send v9 transactions. `PublicDataProvider`
+reports both eras, and the v9-only flows reject a v8-era record here rather
+than widening their own public return types. Both record checks, it and
+`requireTaggedRecord`, also refuse a record whose `tx` is not a handle
+(`InvalidTransactionHandleError`) or is a handle of another era than `era`
+(`EraInvariantViolationError`), naming the read method, so a third-party
+provider's mistake surfaces at the read and not in the caller's own `deserialize`.
+
+## Refusing a provider set before it costs anything
+
+The table above pairs the ARTIFACT's era with the NETWORK's. A third pairing
+exists and is checked separately: the era an operation runs on against the eras
+the three transaction providers say they serve.
+
+`assertProvidersSupportEra(era, providers)` from `@midnightntwrk/midnight-js-types`
+reads `supportedEras` off `proofProvider`, `walletProvider` and
+`midnightProvider`, in that order, and refuses with `ProviderEraUnsupportedError`
+naming the first that does not list `era`.
+
+This package calls it in three places:
+
+| path | call site | era checked |
+| ---- | --------- | ----------- |
+| ledger 8 | `acquireLedger8Runtime`, immediately after `assertEraCompatible` | `resolved.head` |
+| current | `submitLedger9PayloadAsync`, before the first provider call; used by `submitCallTx`, `submitDeployTx` and the maintenance transactions | `'v9'` |
+| generic | `submitOnHead` (behind `submitTx` / `submitTxAsync`), before the head is read | the era of the `unprovenTx` handle |
+
+Two things about that table are easy to get wrong.
+
+The era checked on the ledger 8 pipeline is the HEAD era, not the artifact's.
+That is not a shortcut — it is the era the transaction handle is sealed in. A
+pre-fork head composes a v8 handle; a post-fork head is keep-state, which
+composes on the CURRENT era and seals a v9 handle, because the handle's era
+names the runtime that produced the transaction and never the toolchain that
+produced the contract. Checking the artifact's
+era — `'v8'` — would refuse every keep-state operation whose
+wallet serves only the current era, which is the ordinary post-fork wallet.
+`provider-era-support.test.ts` pins both directions of that: keep-state with
+current-era-only providers is ADMITTED, and the same head with a provider serving
+neither is refused naming `'v9'`.
+
+One call site per funnel, not one per entry point. `acquireLedger8Runtime` is
+the funnel every ledger 8 operation that reads the network passes through —
+`buildLedger8CallTx`, `buildLedger8DeployTx` and `submitLedger8MaintenanceTx` —
+so the check sits there rather than being spread across its callers, where a
+fourth caller would eventually forget it. The two builders that read nothing from
+the network, `buildLedger8CallTxFromStates` and `buildLedger8DeployTxFromVerifierKeys`,
+skip it: they have no head to check against and no providers to check, so their
+transaction is checked when `submitTx` reads the head and the providers' eras
+before proving. That is also
+why acquisition takes the provider set (`Ledger8RuntimeProviders`) rather than
+just the read surface. That type is deliberately narrow: the head source plus the
+three declarations, and nothing else, so a reader can see that acquisition reads
+no more than it says.
+
+### Why the pre-flight check does not replace the per-method check
+
+`supportedEras` is a CLAIM by an implementation, and nothing verifies it. A
+provider built from handlers checks again when a handle arrives, and refuses an
+era it has no handler for with the same `ProviderEraUnsupportedError` — this
+time from inside the method, possibly after proving. That check is what actually
+upholds the claim; a provider that implements the interface directly does its
+own.
+
+What the check buys is WHERE the refusal lands. Proving is the expensive step
+and the first of the three transaction methods, so a wallet that cannot balance a ledger 8
+transaction otherwise costs a full proving cycle before anything notices. Read up
+front, the same gap costs one comparison. `v8-native.test.ts` pins that
+directly: the wallet-gap and submitter-gap cases assert `proveTx` was never
+called.
+
+## Dating a finalized record against the head
+
+`era` on a finalized record names the era of the `tx` handle beside it:
+`record.tx.era === record.era`. The framework's providers build both from
+one decision, so they agree. A record whose `era` is wrong for the block it
+came from still misleads a caller that narrows on it, so the era is checked
+against the head.
+
+The current era refuses the mirror of this on its call paths, through
+`requireLedger9Record`. Its attach accepts either tag, because a contract it finds may
+have been deployed before the fork. `assertLedger8RecordEra` is the ledger 8 path's half, and it
+compares the record against the HEAD rather than against a fixed era, because a
+ledger 8 call is legitimately recorded by EITHER era — which is why the
+result type keeps `public.era` a union in the first place.
+
+What it does NOT assert is that the result's `era` and the record's `public.era`
+agree. They legitimately disagree: `era: 'v8'` with `public.era: 'v9'` IS a
+keep-state transaction. The agreement that has to hold is between the record and
+the head the operation started on.
+
+It is checked BEFORE the status, because `status` is a field of the very record
+whose provenance is in doubt. A call that both failed and came back mislabelled
+therefore reports the era fault, which is the one naming a cause a caller can act
+on.

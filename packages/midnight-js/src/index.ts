@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+/**
+ * @module index
+ */
+
 export * as ledger9Protocol from './protocol/v9';
 export * as contracts from '@midnightntwrk/midnight-js-contracts';
 export * as types from '@midnightntwrk/midnight-js-types';
@@ -73,7 +77,7 @@ export {
   type VersionResolutionPath
 } from '@midnightntwrk/midnight-js-protocol/errors';
 
-// No `protocol/v8` re-export in any form, in either block above: the retained
-// pre-fork runtime is reachable only through the loaders that dynamically
+// No `protocol/v8` re-export in any form, in either block above: the ledger 8
+// runtime is reachable only through the loaders that dynamically
 // import it -- see docs/adr/0004-lazy-v8-era-access-via-protocol-subpath.md.
 // `src/test/dist-laziness.test.ts` is what holds that in place.

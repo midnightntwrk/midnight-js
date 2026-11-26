@@ -122,7 +122,7 @@ export interface EncodingBreadcrumb {
 }
 
 /**
- * A stored signing-key entry was read for the RETAINED era and could not be
+ * A stored signing-key entry was read for ledger 8 and could not be
  * read as one, so the attach reported no key.
  *
  * Carries no head integer and no reading provenance — judging a stored entry
@@ -138,11 +138,11 @@ export interface EncodingBreadcrumb {
 export interface Ledger8SigningKeyEntryBreadcrumb {
   readonly decision: 'ledger8-signing-key-entry';
   readonly source: 'private-state-provider';
-  /** Why the entry could not be read as a retained-era key. */
+  /** Why the entry could not be read as a ledger 8 key. */
   readonly outcome:
     /** It names the other signature kind, which the current era legitimately stores. */
     | 'other-signature-kind'
-    /** Its value is not the shape a retained-era key has. */
+    /** Its value is not the shape a ledger 8 key has. */
     | 'malformed-value'
     /**
      * The entry could not be READ at all -- `getSigningKey` rejected. A wrong
@@ -192,7 +192,7 @@ const emit = (sink: BreadcrumbSink | undefined, breadcrumb: DispatchBreadcrumb):
   } catch {
     // SWALLOWS: a fault thrown by the CONFIGURED LOGGER, and nothing else.
     // `debug` is arbitrary third-party code sitting on the success path of every
-    // retained-era operation, and observability must never break execution.
+    // ledger 8 operation, and observability must never break execution.
     //
     // DO NOT WIDEN. The guard wraps the emission and nothing else -- nothing
     // that computes a value, reads the network or decides an era may move
@@ -259,7 +259,7 @@ export const emitEncoding = (sink: BreadcrumbSink | undefined, envelopeEra: Ledg
   emit(sink, { decision: 'encoding', version: envelopeEra, source: 'contract-state-version-tag' });
 
 /**
- * Reports a stored signing-key entry the retained era could not read as its
+ * Reports a stored signing-key entry ledger 8 could not read as its
  * own.
  *
  * @param sink The configured logger, or `undefined`.

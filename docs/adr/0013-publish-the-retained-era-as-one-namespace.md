@@ -1,4 +1,4 @@
-# 0013. Publish the retained era as one namespace
+# 0013. Publish ledger 8 as one namespace
 
 - Status: Superseded by ADR-0018
 - Date: 2026-09-11

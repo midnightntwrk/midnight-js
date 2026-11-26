@@ -54,7 +54,7 @@ const FIXTURES_DIR = resolve(fileURLToPath(new URL('../../../../', import.meta.u
 const readHexFixture = (name: string): Uint8Array =>
   Uint8Array.from(Buffer.from(readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim(), 'hex'));
 
-// The registered symbol `@midnight-ntwrk/compact-js` brands its `CompiledContract` prototype
+// The registered symbol `@midnightntwrk/compact-js` brands its `CompiledContract` prototype
 // with. Spelled out rather than imported, so the assertion below is about the literal key and
 // keeps holding if the vendor moves where the constant is exported from.
 const COMPILED_CONTRACT_BRAND = Symbol.for('compact-js/CompiledContract');
@@ -105,23 +105,23 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     await expect(resolveArtifactEra(container, LEDGER9_BUNDLE)).resolves.toBe('v9' satisfies LedgerEra);
   });
 
-  it('refuses a current-era container served with a retained bundle', async () => {
+  it('refuses a current-era container served with a ledger 8 bundle', async () => {
     await expect(resolveArtifactEra(createMockCompiledContract(), LEDGER8_BUNDLE)).rejects.toMatchObject({
       reason: 'ledger8-artifacts-in-ledger9-container'
     });
   });
 
-  it('routes an object with the retained-era shape to the retained-era pipeline', async () => {
-    // The real retained (`compact-runtime@0.16`) artifact is asserted against this resolver in
+  it('routes an object with the ledger 8 shape to the ledger 8 pipeline', async () => {
+    // The real ledger 8 (`compact-runtime@0.16`) artifact is asserted against this resolver in
     // `era-dispatch-ledger8.test.ts`, which needs a module-scoped runtime stub this file must not
     // install: the current-era artifact below needs the REAL runtime. The shape asserted there and
     // the shape built here are the same one -- `impureCircuits` with a SYNCHRONOUS `initialState`.
-    const retained = {
+    const ledger8Artifact = {
       impureCircuits: { increment: (): void => undefined },
       initialState: (): Record<string, never> => ({})
     };
 
-    await expect(resolveArtifactEra(retained, LEDGER8_BUNDLE)).resolves.toBe('v8' satisfies LedgerEra);
+    await expect(resolveArtifactEra(ledger8Artifact, LEDGER8_BUNDLE)).resolves.toBe('v8' satisfies LedgerEra);
   });
 
   describe('the near-miss a JavaScript caller actually hits', () => {
@@ -139,7 +139,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     it('refuses a raw current-era Contract instance passed instead of its container', async () => {
       // This is the blind spot the superseded provisional predicate documented and could not close:
       // a raw current-era contract carries `impureCircuits` too, so a structural test for that
-      // member alone misclassifies it as retained-era. An `AsyncFunction` `initialState` refuses it
+      // member alone misclassifies it as ledger 8. An `AsyncFunction` `initialState` refuses it
       // outright -- a build step can erase that name but never fabricate it, so reading it is sound
       // in the refusing direction and unsound in the accepting one.
       expect(rawCurrentEraContract.initialState.constructor.name).toBe('AsyncFunction');
@@ -235,17 +235,20 @@ const cellKey = ({ pipeline, head, kind }: DispatchCell): string => `${pipeline}
 const ACCEPTED_CELLS: readonly (DispatchCell & { readonly route: string })[] = [
   { artifact: 'current-era (0.18)', pipeline: 'v9', head: 'v9', kind: 'call', route: 'v9' },
   { artifact: 'current-era (0.18)', pipeline: 'v9', head: 'v9', kind: 'deploy', route: 'v9' },
-  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v9', kind: 'call', route: 'keep-state' },
-  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'call', route: 'v8' },
-  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'deploy', route: 'v8' },
+  { artifact: 'ledger 8 (0.16)', pipeline: 'v8', head: 'v9', kind: 'call', route: 'keep-state' },
+  { artifact: 'ledger 8 (0.16)', pipeline: 'v8', head: 'v8', kind: 'call', route: 'v8' },
+  { artifact: 'ledger 8 (0.16)', pipeline: 'v8', head: 'v8', kind: 'deploy', route: 'v8' },
   { artifact: 'current-era (0.18)', pipeline: 'v9', head: 'v9', kind: 'maintenance', route: 'v9' },
-  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'maintenance', route: 'v8' }
+  { artifact: 'ledger 8 (0.16)', pipeline: 'v8', head: 'v8', kind: 'maintenance', route: 'v8' }
 ];
 
 // Every cell it refuses, with the class and the registered code each refusal must carry.
 const REFUSED_CELLS: readonly (DispatchCell & {
   readonly reason: EraMismatchReason;
 })[] = [
+  // Of the current-era rows on a `v8` head, only `deploy` is enforced in production. `call` and
+  // `maintenance` are reachable from tests alone: the current-era single-call path reads no head.
+  // See "Pairing the two" in packages/contracts/docs/era-dispatch.md.
   {
     artifact: 'current-era (0.18)',
     pipeline: 'v9',
@@ -261,7 +264,7 @@ const REFUSED_CELLS: readonly (DispatchCell & {
     reason: 'ledger9-artifact-on-ledger8-network'
   },
   {
-    artifact: 'retained-era (0.16)',
+    artifact: 'ledger 8 (0.16)',
     pipeline: 'v8',
     head: 'v9',
     kind: 'deploy',
@@ -275,7 +278,7 @@ const REFUSED_CELLS: readonly (DispatchCell & {
     reason: 'ledger9-artifact-on-ledger8-network'
   },
   {
-    artifact: 'retained-era (0.16)',
+    artifact: 'ledger 8 (0.16)',
     pipeline: 'v8',
     head: 'v9',
     kind: 'maintenance',
@@ -353,6 +356,9 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   });
 
   it('names the reason on a current-era artifact refused by a pre-fork head', () => {
+    // Exercises the table, not a shipped path: a current-era single call reads no head, so on a
+    // pre-fork head it fails late, at a provider or the node. If that path ever reads the head,
+    // this cell becomes live. See "Pairing the two" in packages/contracts/docs/era-dispatch.md.
     try {
       assertEraCompatible('v9', 'v8', 'call');
       expect.unreachable('a current-era artifact was accepted on a pre-fork head');
@@ -362,10 +368,10 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     }
   });
 
-  it('gives the retained-era deploy refusal actionable remediation', () => {
+  it('gives the ledger 8 deploy refusal actionable remediation', () => {
     try {
       assertEraCompatible('v8', 'v9', 'deploy');
-      expect.unreachable('a retained-era deploy was accepted on a post-fork head');
+      expect.unreachable('a ledger 8 deploy was accepted on a post-fork head');
     } catch (error) {
       expect(error).toBeInstanceOf(EraMismatchError);
       expect((error as EraMismatchError).reason).toBe('ledger8-deploy-on-ledger9-network');
@@ -374,10 +380,10 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     }
   });
 
-  it('points a retained-era maintenance update on a post-fork head at the recompiled artifact', () => {
+  it('points a ledger 8 maintenance update on a post-fork head at the recompiled artifact', () => {
     try {
       assertEraCompatible('v8', 'v9', 'maintenance');
-      expect.unreachable('a retained-era maintenance update was accepted on a post-fork head');
+      expect.unreachable('a ledger 8 maintenance update was accepted on a post-fork head');
     } catch (error) {
       expect(error).toBeInstanceOf(EraMismatchError);
       expect((error as EraMismatchError).reason).toBe('ledger8-maintenance-on-ledger9-network');
@@ -436,7 +442,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     }
   });
 
-  it('refuses a retained-era operation on a post-fork head unless it is positively a call', () => {
+  it('refuses a ledger 8 operation on a post-fork head unless it is positively a call', () => {
     // The `'call-only'` cell is the one asymmetric ruling in the fork window, so it refuses
     // anything that is not a call rather than admitting anything that is not a deploy. Asserting
     // only the two declared literals would leave that direction untested -- and every value here
@@ -474,9 +480,9 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     }
   });
 
-  it('refuses a retained-era deploy but NOT a retained-era call on the same head', () => {
+  it('refuses a ledger 8 deploy but NOT a ledger 8 call on the same head', () => {
     // The two differ only in `kind`; without this pairing, a refusal that rejected every
-    // retained-era operation on a v9 head would satisfy the deploy assertion just as well.
+    // ledger 8 operation on a v9 head would satisfy the deploy assertion just as well.
     expect(() => assertEraCompatible('v8', 'v9', 'deploy')).toThrow(EraMismatchError);
     expect(() => assertEraCompatible('v8', 'v9', 'call')).not.toThrow();
   });
@@ -548,27 +554,27 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
   // made observable rather than asserted.
   const ledger9EnvelopeCorruptBody = readHexFixture('state-tampered-bytes.hex');
 
-  // THE RULE: the envelope decides, the block bounds. A retained envelope is answered for under
+  // THE RULE: the envelope decides, the block bounds. A ledger 8 envelope is answered for under
   // EITHER head, because a read pinned to a pre-fork block, a record, or an indexer older than
-  // 4.4.0-rc.6 can still serve retained bytes under a post-fork head. Only an envelope NEWER than
+  // 4.4.0-rc.6 can still serve ledger 8 bytes under a post-fork head. Only an envelope NEWER than
   // the block dating it is impossible, and only that is investigated.
   //
   // What this function does NOT decide is whether the caller's artifacts fit the contract. It names
   // a decoder; `assertSnapshotVerifierKey` judges the artifacts.
   it.each([
-    ['a pre-fork head, which is a native retained call', 'v8' as LedgerEra, LEDGER8_HEAD],
+    ['a pre-fork head, which is a native ledger 8 call', 'v8' as LedgerEra, LEDGER8_HEAD],
     ['a post-fork head, which is keep-state', 'v9' as LedgerEra, LEDGER9_HEAD]
-  ])('answers the retained era for a retained envelope under %s, without re-reading the head', async (_name, head, headInt) => {
+  ])('answers the ledger 8 era for a ledger 8 envelope under %s, without re-reading the head', async (_name, head, headInt) => {
     const pdp = headSource();
 
     await expect(resolveContractStateEra(head, rawState(ledger8Envelope, headInt), pdp)).resolves.toBe('v8');
 
-    // No re-read at all: the head plays no part in accepting a retained envelope, so there is
+    // No re-read at all: the head plays no part in accepting a ledger 8 envelope, so there is
     // nothing to disambiguate.
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
 
-  it('answers the retained era whatever the head INTEGER is, since the head is not compared', async () => {
+  it('answers the ledger 8 era whatever the head INTEGER is, since the head is not compared', async () => {
     const pdp = headSource();
 
     // A same-era minor node bump, and a different era entirely, reach the same answer.
@@ -591,7 +597,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
   });
 
   it('answers the CURRENT era for a migrated state under a post-fork head, rather than refusing it', async () => {
-    // The fixture is a real ledger-8-to-9 migrated state: current-era envelope, retained verifier
+    // The fixture is a real ledger-8-to-9 migrated state: current-era envelope, ledger 8 verifier
     // keys. Refusing it here is what made a pre-fork contract callable exactly once after the fork.
     // Whether the caller's artifacts fit it is a question about the KEYS, and it is asked elsewhere.
     const pdp = headSource();

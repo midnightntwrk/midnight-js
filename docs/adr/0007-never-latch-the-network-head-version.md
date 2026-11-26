@@ -51,7 +51,7 @@ operation, nothing cached across calls):
   reach, reads the head after the artifact and config checks and before the constructor runs. A
   pre-fork head is refused with `EraMismatchError`, reason `'ledger9-artifact-on-ledger8-network'`,
   before anything is proven.
-- **Retained-era operations.** `resolveOperationEra` reads the head and acquires the era facade
+- **Ledger 8 operations.** `resolveOperationEra` reads the head and acquires the era facade
   (`acquireHeadEra`); `assertEraCompatible` rules the `(artifact era, head era)` pair against
   `ERA_PAIRING`.
 - **`submitTx` with a handle.** It reads the head once and refuses a handle whose era is not the

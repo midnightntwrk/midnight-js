@@ -775,12 +775,12 @@ describe('Fetch ZK config Provider', () => {
   });
 
   describe('getArtifactRuntimeVersion', () => {
-    // Serves only what this member reads. The retained toolchain emits no integrity manifest, so the
+    // Serves only what this member reads. The ledger 8 toolchain emits no integrity manifest, so the
     // era has to come from contract-info.json, which every compactc emits.
-    // A location serving no integrity manifest is the retained (pre-compactc-0.33) case, so these
+    // A location serving no integrity manifest is the ledger 8 (pre-compactc-0.33) case, so these
     // providers use the mode the manifest documentation names for it. Under the default `require`
     // the absence is itself a refusal, asserted separately below.
-    const RETAINED_BUNDLE_OPTIONS = { verify: 'require-if-present' } as const;
+    const LEDGER8_BUNDLE_OPTIONS = { verify: 'require-if-present' } as const;
 
     const serveContractInfo = async (body?: string): Promise<{ url: string; close: () => void }> => {
       const app = express();
@@ -801,7 +801,7 @@ describe('Fetch ZK config Provider', () => {
       // Arrange
       const served = await serveContractInfo(JSON.stringify({ 'runtime-version': '0.16.0' }));
       try {
-        const provider = new FetchZkConfigProvider(served.url, RETAINED_BUNDLE_OPTIONS);
+        const provider = new FetchZkConfigProvider(served.url, LEDGER8_BUNDLE_OPTIONS);
 
         // Act
         const runtimeVersion = await provider.getArtifactRuntimeVersion();
@@ -816,7 +816,7 @@ describe('Fetch ZK config Provider', () => {
     it('refuses a location that serves no compiler description', async () => {
       const served = await serveContractInfo();
       try {
-        const provider = new FetchZkConfigProvider(served.url, RETAINED_BUNDLE_OPTIONS);
+        const provider = new FetchZkConfigProvider(served.url, LEDGER8_BUNDLE_OPTIONS);
 
         await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
       } finally {
@@ -837,7 +837,7 @@ describe('Fetch ZK config Provider', () => {
         throw new Error('express did not report a usable address');
       }
       try {
-        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, RETAINED_BUNDLE_OPTIONS);
+        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, LEDGER8_BUNDLE_OPTIONS);
 
         await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
       } finally {
@@ -862,7 +862,7 @@ describe('Fetch ZK config Provider', () => {
         throw new Error('express did not report a usable address');
       }
       try {
-        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, RETAINED_BUNDLE_OPTIONS);
+        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, LEDGER8_BUNDLE_OPTIONS);
 
         await expect(provider.getArtifactRuntimeVersion()).resolves.toBe('0.19.0');
       } finally {
@@ -935,7 +935,7 @@ describe('Fetch ZK config Provider', () => {
         throw new Error('express did not report a usable address');
       }
       try {
-        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, RETAINED_BUNDLE_OPTIONS);
+        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, LEDGER8_BUNDLE_OPTIONS);
 
         await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactFetchError);
 
@@ -959,7 +959,7 @@ describe('Fetch ZK config Provider', () => {
         throw new Error('express did not report a usable address');
       }
       try {
-        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, RETAINED_BUNDLE_OPTIONS);
+        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, LEDGER8_BUNDLE_OPTIONS);
 
         await provider.getArtifactRuntimeVersion();
         await provider.getArtifactRuntimeVersion();

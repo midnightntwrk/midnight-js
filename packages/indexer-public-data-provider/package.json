@@ -1,6 +1,6 @@
 {
   "name": "@midnightntwrk/midnight-js-indexer-public-data-provider",
-  "version": "5.0.1",
+  "version": "5.0.3",
   "type": "module",
   "description": "Implementation of public data provider based on the Midnight Pub-sub indexer",
   "types": "dist/index.d.ts",
@@ -29,18 +29,18 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@apollo/client": "^4.2.12",
+    "@apollo/client": "^4.3.8",
     "@graphql-typed-document-node/core": "^3.2.0",
     "@midnightntwrk/midnight-js-protocol": "workspace:*",
     "@midnightntwrk/midnight-js-types": "workspace:*",
     "@midnightntwrk/midnight-js-utils": "workspace:*",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",
-    "graphql": "^17.0.1",
-    "graphql-ws": "^6.4.1",
+    "graphql": "^17.1.0",
+    "graphql-ws": "^6.4.2",
     "isomorphic-ws": "^5.0.0",
     "rxjs": "^7.8.2",
-    "ws": "^8.20.0"
+    "ws": "^8.23.0"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^7.4.6",
@@ -48,9 +48,9 @@
     "@graphql-codegen/typescript": "^6.1.2",
     "@graphql-codegen/typescript-operations": "^6.1.10",
     "@types/ws": "^8.18.2",
-    "rollup": "^4.60.4",
-    "vite": "^8.3.4",
-    "vitest": "^5.0.4"
+    "rollup": "^4.68.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   },
   "files": [
     "dist/"

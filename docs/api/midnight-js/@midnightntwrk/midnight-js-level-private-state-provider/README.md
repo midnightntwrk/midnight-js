@@ -1,0 +1,38 @@
+[**Midnight.js API Reference v5.0.3**](../../README.md)
+
+***
+
+[Midnight.js API Reference](../../packages.md) / @midnightntwrk/midnight-js-level-private-state-provider
+
+# @midnightntwrk/midnight-js-level-private-state-provider
+
+## Classes
+
+- [StorageEncryption](classes/StorageEncryption.md)
+- [StoredSigningKeyFormatError](classes/StoredSigningKeyFormatError.md)
+
+## Interfaces
+
+- [CryptoBackend](interfaces/CryptoBackend.md)
+- [LevelPrivateStateProviderConfig](interfaces/LevelPrivateStateProviderConfig.md)
+- [MigrationResult](interfaces/MigrationResult.md)
+- [PasswordRotationOptions](interfaces/PasswordRotationOptions.md)
+- [PasswordRotationResult](interfaces/PasswordRotationResult.md)
+- [StorageEncryptionOptions](interfaces/StorageEncryptionOptions.md)
+
+## Type Aliases
+
+- [CryptoBackendType](type-aliases/CryptoBackendType.md)
+- [DatabaseLevel](type-aliases/DatabaseLevel.md)
+- [LevelFactory](type-aliases/LevelFactory.md)
+- [PrivateStoragePasswordProvider](type-aliases/PrivateStoragePasswordProvider.md)
+
+## Variables
+
+- [DEFAULT\_CONFIG](variables/DEFAULT_CONFIG.md)
+
+## Functions
+
+- [decryptValue](functions/decryptValue.md)
+- [levelPrivateStateProvider](functions/levelPrivateStateProvider.md)
+- [migrateToAccountScoped](functions/migrateToAccountScoped.md)

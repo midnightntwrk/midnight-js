@@ -1,0 +1,79 @@
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [types](../README.md) / ZkArtifactFetchError
+
+# Class: ZkArtifactFetchError
+
+A ZK artifact could not be fetched. `status` is the HTTP status, absent when the request itself failed.
+A network failure, HTTP 408, 429 or 5xx is TRANSIENT; any other status is ENVIRONMENT.
+
+## Extends
+
+- [`MidnightJsError`](../../index/classes/MidnightJsError.md)
+
+## Constructors
+
+### Constructor
+
+> **new ZkArtifactFetchError**(`message`, `status?`, `options?`): `ZkArtifactFetchError`
+
+#### Parameters
+
+##### message
+
+`string`
+
+##### status?
+
+`number`
+
+The HTTP status, absent when the request itself failed.
+
+##### options?
+
+`notServed` marks an answer that is not the artifact although its status is 2xx
+  (an HTML fallback page).
+
+###### cause?
+
+`unknown`
+
+###### notServed?
+
+`boolean`
+
+#### Returns
+
+`ZkArtifactFetchError`
+
+#### Overrides
+
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`constructor`](../../index/classes/MidnightJsError.md#constructor)
+
+## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`category`](../../index/classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED"` \| `"MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED"`
+
+#### Overrides
+
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`code`](../../index/classes/MidnightJsError.md#code)
+
+***
+
+### status?
+
+> `readonly` `optional` **status?**: `number`

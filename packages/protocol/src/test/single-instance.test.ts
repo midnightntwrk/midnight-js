@@ -161,7 +161,7 @@ describe('installed ledger and runtime instances', () => {
   // what compact-js's own pin would add if it differed from the root
   // `resolutions` pin and that pin stopped holding.
   // The package the retired construction-time guard watched. `lib/v8/executable.ts` still imports the
-  // retained glue directly and compact-js resolves the same specifier for
+  // ledger 8 glue directly and compact-js resolves the same specifier for
   // itself, so the two acquisition paths this guard compared are both still
   // live -- only the runtime check is gone. A second copy here is exactly the
   // dual instantiation that made a handle from one path unreadable by the
@@ -174,10 +174,10 @@ describe('installed ledger and runtime instances', () => {
 
   it('resolves exactly one copy of each compact-runtime era line', () => {
     const currentEra = versionOf(manifestEntry('package.json', 'resolutions', '@midnight-ntwrk/compact-runtime'));
-    const retainedEra = versionOf(
+    const ledger8Version = versionOf(
       manifestEntry('packages/protocol/package.json', 'dependencies', 'compact-runtime-ledger8')
     );
 
-    expect(resolvedVersionsOf('@midnight-ntwrk/compact-runtime')).toEqual([retainedEra, currentEra].sort(byVersion));
+    expect(resolvedVersionsOf('@midnight-ntwrk/compact-runtime')).toEqual([ledger8Version, currentEra].sort(byVersion));
   });
 });

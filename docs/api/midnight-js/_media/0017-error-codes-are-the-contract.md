@@ -14,10 +14,10 @@ the other.
 ## Decision
 
 Every error thrown through a public API extends the abstract `MidnightJsError` from
-`@midnight-ntwrk/midnight-js-protocol/errors`. It carries a registered `code` and a `category`.
+`@midnightntwrk/midnight-js-protocol/errors`. It carries a registered `code` and a `category`.
 
 **The code is the contract.** Consumers recognise errors with `hasErrorCode`, `isMidnightJsError`
-and `errorCategory` from `@midnight-ntwrk/midnight-js-utils`. They read `e.code`, so they work
+and `errorCategory` from `@midnightntwrk/midnight-js-utils`. They read `e.code`, so they work
 across package copies. `instanceof` is a convenience, not a guarantee.
 
 **Categories** say what the caller should do:
@@ -162,6 +162,7 @@ in both directions. Every registered code appears here exactly once, with its ca
 | PR | `EXPORT_DECRYPTION_FAILED` | INTEGRITY | `ExportDecryptionError` |
 | PR | `INVALID_EXPORT_FORMAT` | INTEGRITY | `InvalidExportFormatError` |
 | PR | `IMPORT_CONFLICT` | USAGE | `ImportConflictError` |
+| PR | `IMPORT_PASSWORD_INVALID` | USAGE | `ImportPasswordValidationError` |
 | PR | `PRIVATE_STATE_DECRYPTION_FAILED` | INTEGRITY | `PrivateStateDecryptionError` |
 | PR | `PRIVATE_STATE_STORAGE_FAILED` | ENVIRONMENT | `PrivateStateStorageError` |
 | PR | `PRIVATE_STATE_LIMIT_EXCEEDED` | USAGE | `PrivateStateLimitExceededError` |

@@ -80,7 +80,7 @@ declarations in pipeline order and throws `ProviderEraUnsupportedError`
 `submit-tx.ts`. The builders that take initial states or verifier keys read nothing from the
 network and skip admission; `submitTx` checks their transaction.
 
-The era checked is the one the transaction will carry. On the retained pipeline that is the
+The era checked is the one the transaction will carry. On the ledger 8 pipeline that is the
 network head's era, not the artifact's: a keep-state call runs a v8 artifact against a post-fork
 head and composes a v9 transaction. Checking the artifact's era would refuse every keep-state call
 made with an ordinary v9-only wallet.
@@ -93,7 +93,7 @@ The read side keeps its own error, `DecoderEraUnsupportedError`
 (`MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED`), meaning "this record cannot be decoded". Its remedy is
 different (upgrade, or check the indexer), so the two codes stay apart (ADR 0017).
 
-### Retained-era proving
+### Ledger 8 proving
 
 - `proveLedger8Transaction` lives in `protocol` on the leaf subpath
   `@midnightntwrk/midnight-js-protocol/prove`, so a proof provider that needs only this function
@@ -101,7 +101,7 @@ different (upgrade, or check the indexer), so the two codes stay apart (ADR 0017
   import, so importing the subpath does not load the v8 WASM.
 - The cost model comes from the same era's runtime as the transaction:
   `v8.CostModel.initialCostModel()` from the same `loadLedger8Protocol()` result. It is not a
-  caller parameter. The retained ledger checks the cost model's class across the WASM boundary and
+  caller parameter. Ledger 8 checks the cost model's class across the WASM boundary and
   rejects the current era's.
 - The proof-server envelope is shared across eras. `httpClientProvingProvider` builds every
   `/check` and `/prove` payload with the current era's builders for both eras.

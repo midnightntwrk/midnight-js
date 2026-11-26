@@ -1,0 +1,12 @@
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [types](../README.md) / MAX\_EXPORT\_SIGNING\_KEYS
+
+# Variable: MAX\_EXPORT\_SIGNING\_KEYS
+
+> `const` **MAX\_EXPORT\_SIGNING\_KEYS**: `10000` = `10000`
+
+Maximum number of signing keys that can be exported/imported.
+This limit prevents memory exhaustion attacks.

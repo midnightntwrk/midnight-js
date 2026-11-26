@@ -1,0 +1,25 @@
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js-types](../../README.md) / [index](../README.md) / BlockHashConfig
+
+# Type Alias: BlockHashConfig
+
+> **BlockHashConfig** = `object`
+
+Starts a contract state stream at the given block hash.
+
+## Properties
+
+### blockHash
+
+> `readonly` **blockHash**: [`BlockHash`](BlockHash.md)
+
+The block hash indicating where to begin the state stream.
+
+***
+
+### type
+
+> `readonly` **type**: `"blockHash"`
