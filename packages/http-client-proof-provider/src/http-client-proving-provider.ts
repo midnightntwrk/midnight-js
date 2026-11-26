@@ -131,23 +131,29 @@ const makeKeyMaterialResolver = <K extends string>(
   };
 };
 
-/**
- * Upper bound on how much of a proof-server error body is copied into the thrown
- * error. The body is the only place the server explains a rejection, but it is
- * server-controlled text, so it is never echoed unbounded.
- */
 const MAX_ERROR_BODY_LENGTH = 1_000;
 
+const isTimeoutOrAbort = (cause: unknown): boolean =>
+  cause instanceof Error && (cause.name === 'TimeoutError' || cause.name === 'AbortError');
+
+const proofServerTimeout = (url: URL, timeout: number, cause: unknown): ProofServerError =>
+  new ProofServerError(`Proof Server request timed out after ${timeout} ms: url="${url}"`, undefined, { cause });
+
 const readErrorBody = async (response: Response): Promise<string | undefined> => {
+  let raw: string;
   try {
-    const body = (await response.text()).trim();
-    if (!body) {
-      return undefined;
+    raw = await response.text();
+  } catch (cause) {
+    if (isTimeoutOrAbort(cause)) {
+      throw cause;
     }
-    return body.length > MAX_ERROR_BODY_LENGTH ? `${body.slice(0, MAX_ERROR_BODY_LENGTH)}…` : body;
-  } catch {
     return undefined;
   }
+  const body = raw.trim();
+  if (!body) {
+    return undefined;
+  }
+  return body.length > MAX_ERROR_BODY_LENGTH ? `${body.slice(0, MAX_ERROR_BODY_LENGTH)}…` : body;
 };
 
 const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
@@ -165,12 +171,8 @@ const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, h
       timeout
     );
   } catch (cause) {
-    // The timeout signal fetchWithRetry creates is the only abort source for this request
-    // (no caller signal is threaded in), so an abort here means the timeout fired:
-    // name it, instead of surfacing the fetch layer's "The user aborted a request."
-    const causeName = (cause as { name?: unknown } | null | undefined)?.name;
-    if (causeName === 'TimeoutError' || causeName === 'AbortError') {
-      throw new ProofServerError(`Proof Server request timed out after ${timeout} ms: url="${url}"`, undefined, { cause });
+    if (isTimeoutOrAbort(cause)) {
+      throw proofServerTimeout(url, timeout, cause);
     }
     throw new ProofServerError(`Proof Server request failed: url="${url}"`, undefined, { cause });
   }
@@ -180,16 +182,25 @@ const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, h
   }
 
   if (!response.ok) {
-    const body = await readErrorBody(response);
+    let body: string | undefined;
+    try {
+      body = await readErrorBody(response);
+    } catch (cause) {
+      throw proofServerTimeout(url, timeout, cause);
+    }
     throw new ProofServerError(
-      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"${body === undefined ? '' : `, body="${body}"`}`,
-      response.status
+      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`,
+      response.status,
+      body === undefined ? undefined : { cause: new Error(body) }
     );
   }
 
   try {
     return new Uint8Array(await response.arrayBuffer());
   } catch (cause) {
+    if (isTimeoutOrAbort(cause)) {
+      throw proofServerTimeout(url, timeout, cause);
+    }
     throw new ProofServerError(`Proof Server response could not be read: url="${url}"`, undefined, { cause });
   }
 };

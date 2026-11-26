@@ -21,15 +21,16 @@ import {
   createWalletProviderFromHandlers,
   InvalidTransactionHandleError,
   type ProofProvider,
+  ProofServerError,
   type UnprovenTx,
   type WalletProvider
 } from '@midnightntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { EraInvariantViolationError } from '../errors';
+import { EraInvariantViolationError, ProviderFailedError } from '../errors';
 import { submitLedger8Tx } from '../internal/ledger8-entry';
-import { type PayloadSubmitProviders, proveBalanceSubmit } from '../internal/submit-payload';
+import { atProviderMethod, type PayloadSubmitProviders, proveBalanceSubmit } from '../internal/submit-payload';
 import { handles } from './ledger-transaction-fixtures';
 import { createMockCoinPublicKey, createMockEncryptionPublicKey, createMockProviders, MOCK_CONFIG } from './test-mocks';
 
@@ -203,6 +204,27 @@ describe('proveBalanceSubmit', () => {
       expect(rejection).toMatchObject({ method: 'balanceTx', reason: 'wrong-stage' });
       expect(seen.submitTx).toEqual([]);
     });
+  });
+});
+
+describe('atProviderMethod', () => {
+  it('redacts a payload-shaped proof server body carried on cause, and keeps the proof server code', async () => {
+    const preimage = '0123456789abcdef'.repeat(8);
+    const failure = new ProofServerError(
+      'Failed Proof Server response: url="http://localhost:6300/prove", code="400", status="Bad Request"',
+      400,
+      { cause: new Error(`bad input: \`couldn't find built-in key ${preimage}\``) }
+    );
+
+    const rejection = await rejectionOf(atProviderMethod('proveTx', 'testCircuit', () => Promise.reject(failure)));
+
+    expect(rejection).toBeInstanceOf(ProviderFailedError);
+    const sanitized = (rejection as ProviderFailedError).cause as Error;
+    expect(hasErrorCode(sanitized, PROVIDER_ERROR_CODES.PROOF_SERVER_REFUSED)).toBe(true);
+    const body = (sanitized.cause as Error).message;
+    expect(body).toContain('[redacted]');
+    expect(body).toContain('bad input');
+    expect(body).not.toContain(preimage);
   });
 });
 
