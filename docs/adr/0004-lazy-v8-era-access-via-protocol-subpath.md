@@ -37,7 +37,7 @@ package root re-exports it.
   *not* memoised: the rejection is wrapped in `Ledger8RuntimeMissingError` (code
   `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`, original error on `cause`) and the next call tries
   again. Callers fail fast, and one transient WASM failure does not poison the process.
-- **The retained execution engine follows the same pattern.** Its `./v8/engine` subpath is
+- **The ledger 8 execution engine follows the same pattern.** Its `./v8/engine` subpath is
   reached at run time only through `loadLedger8Engine()` in `src/lib/v8/load-engine.ts`.
 - **One sanctioned path, enforced three ways.**
   1. ESLint (`eslint.config.mjs`) blocks runtime imports of the `/v8` and `/v8/engine` subpaths

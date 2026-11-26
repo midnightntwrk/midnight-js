@@ -6,7 +6,7 @@
 
 # Interface: Ledger8DeployedContract\<C\>
 
-A retained-era contract deployed by the caller.
+A ledger 8 contract deployed by the caller.
 
 It differs from [Ledger8FoundContract](Ledger8FoundContract.md) only in its
 [Ledger8DeployedContract.deployTxData](#deploytxdata), which carries what the
@@ -14,7 +14,7 @@ constructor produced and a signing key that is always present.
 
 Exported flat so a caller that receives one by inference can also NAME it, and
 a dApp's declaration emit can write it. This is what `deployContract`'s
-retained-era overload answers with.
+ledger 8 overload answers with.
 
 ## Extends
 
@@ -107,7 +107,7 @@ See [Ledger8FinalizedDeployTxData](Ledger8FinalizedDeployTxData.md).
 
 > `readonly` **era**: `"v8"`
 
-The pipeline that produced this result: always the retained era here, even
+The pipeline that produced this result: always ledger 8 here, even
 when the transaction that recorded it is a keep-state transaction tagged
 `'v9'`. Those are different facts, and only this one says which module
 produced the objects below.

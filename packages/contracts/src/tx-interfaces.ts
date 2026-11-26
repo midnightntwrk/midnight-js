@@ -147,7 +147,7 @@ const isLedger9ContextOf = <C extends Contract.Any>(
   Internal.readScopeEra(u) !== undefined && Internal.ledger9ScopeOf(u, circuitId, 'callTx') !== undefined;
 
 /**
- * Creates a circuit call transaction interface for a RETAINED-ERA contract.
+ * Creates a circuit call transaction interface for a LEDGER 8 contract.
  *
  * `privateStateId` is carried on every call this interface makes, exactly as
  * the ledger 9 path of {@link createCircuitCallTxInterface} carries it. A handle
@@ -156,7 +156,7 @@ const isLedger9ContextOf = <C extends Contract.Any>(
  * stage — see the private-state section of `docs/keep-state-pipeline.md`.
  *
  * @param providers The providers to use to build transactions.
- * @param compiledContract The retained-era contract instance to execute circuits on.
+ * @param compiledContract The ledger 8 contract instance to execute circuits on.
  * @param contractAddress The ledger address of the contract.
  * @param privateStateId Where to read and store the contract's private state,
  * or `undefined` for a contract that carries none.
@@ -190,8 +190,8 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
 };
 
 /**
- * Creates a {@link Ledger9CircuitCallTxInterface}, or the retained era's `Ledger8CircuitCallTxInterface`
- * for a contract the retained Compact toolchain produced.
+ * Creates a {@link Ledger9CircuitCallTxInterface}, or the ledger 8 `Ledger8CircuitCallTxInterface`
+ * for a contract the ledger 8 Compact toolchain produced.
  *
  * @param providers The providers to use to build transactions.
  * @param compiledContract The contract to use to execute circuits.

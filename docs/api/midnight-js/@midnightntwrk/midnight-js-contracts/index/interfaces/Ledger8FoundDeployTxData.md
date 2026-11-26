@@ -6,7 +6,7 @@
 
 # Interface: Ledger8FoundDeployTxData\<C\>
 
-The deploy data of a retained-era contract found on chain: the same
+The deploy data of a ledger 8 contract found on chain: the same
 `{ era, public, private }` structure `Ledger9FoundDeployTxData`
 has, so a caller reads `deployTxData.public.txId` and
 `deployTxData.private.signingKey` identically in both eras.
@@ -32,7 +32,7 @@ private state. Read only `public` when logging or transmitting.
 
 > `readonly` **era**: `"v8"`
 
-The pipeline this handle runs on: always the retained era here. The era
+The pipeline this handle runs on: always ledger 8 here. The era
 that recorded the deploy transaction is `public.era`.
 
 ***
@@ -74,7 +74,7 @@ apart has to look at the logger rather than at this field:
 2. something is stored that this framework did not write -- an entry naming
    the other signature kind, which the CURRENT era legitimately stores
    under the same address in the same provider, or one whose value is not
-   the shape a retained-era key has;
+   the shape a ledger 8 key has;
 3. the entry could not be READ at all, because `getSigningKey` rejected: a
    wrong store password, a rotation-lock timeout, store I/O, or an entry the
    provider refuses as not a signing key.
@@ -84,7 +84,7 @@ as a DEBUG-level dispatch breadcrumb, which is the only place the three
 cases are distinguishable.
 
 The remedy for case 2, and for a refused entry in case 3, is the caller's
-either way: pass the retained-era key on
+either way: pass the ledger 8 key on
 [Ledger8FindDeployedContractOptions.signingKey](Ledger8FindDeployedContractOptions.md#signingkey), which replaces the
 entry, or remove the entry with
 `privateStateProvider.removeSigningKey(address)` first.
@@ -109,7 +109,7 @@ an unreadable entry does not fail the attach.
 > `readonly` **public**: [`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md) & `object`
 
 The record of the transaction that DEPLOYED the contract, and the address
-it created. Version-tagged because a retained-era contract was deployed in
+it created. Version-tagged because a ledger 8 contract was deployed in
 whichever era was current at the time — narrow it with
 `switch (deployTxData.public.era)`.
 

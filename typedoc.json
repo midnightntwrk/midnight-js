@@ -21,7 +21,7 @@
     "@midnightntwrk/ledger-v9": {
       "*": "https://github.com/midnightntwrk/midnight-ledger"
     },
-    "@midnight-ntwrk/compact-js": {
+    "@midnightntwrk/compact-js": {
       "*": "https://github.com/midnightntwrk/midnight-sdk"
     },
     "@midnight-ntwrk/compact-runtime": {

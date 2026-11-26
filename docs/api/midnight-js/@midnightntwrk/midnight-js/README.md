@@ -112,15 +112,15 @@ if (utils.hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ
 }
 ```
 
-### Errors from the retained era
+### Errors from ledger 8
 
-Deploying to or calling a `v8` contract runs through the retained pre-fork
+Deploying to or calling a `v8` contract runs through the pre-fork ledger 8
 pipeline, which raises errors of its own. The barrel publishes those classes
 too, so you can catch them and read their payload without a cast:
 
 | Class | Payload | Means |
 | ----- | ------- | ----- |
-| `Ledger8RuntimeMissingError` | `subpath` | the retained runtime chunk could not be loaded at all |
+| `Ledger8RuntimeMissingError` | `subpath` | the ledger 8 runtime chunk could not be loaded at all |
 | `ComposeFailedError` | `version`, `stage`, `circuitId` | a circuit operation is missing or under-registered |
 | `ComposeOptionError` | `version`, `option` | one composition option cannot be used |
 | `StateDecodeFailedError` | `version` | contract-state bytes could not be read as that era |
@@ -130,7 +130,7 @@ too, so you can catch them and read their payload without a cast:
 
 ### What importing the barrel loads
 
-The retained pre-fork (`v8`) ledger runtime is **not** re-exported here, and it
+The pre-fork ledger 8 runtime is **not** re-exported here, and it
 is absent from the barrel's static import graph. It is loaded on demand, only
 once you actually touch a `v8` contract.
 

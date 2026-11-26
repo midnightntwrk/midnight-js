@@ -14,10 +14,10 @@
  */
 
 /**
- * Re-expressing a retained-era contract's operations for the CURRENT ledger.
+ * Re-expressing a ledger 8 contract's operations for the CURRENT ledger.
  *
  * This is the step that makes keep-state composable at all. A contract deployed before the fork can
- * still be served after it carrying a retained envelope — by a pinned read, a record, or an indexer
+ * still be served after it carrying a ledger 8 envelope — by a pinned read, a record, or an indexer
  * older than 4.4.0-rc.6 — and the current composer cannot deserialize those bytes. What has to
  * cross the boundary is not the state but the OPERATION REGISTRY the composer looks the circuit's
  * verifier key up in.
@@ -25,30 +25,38 @@
 
 import { readFileSync } from 'node:fs';
 
+import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeOptionError } from '../errors';
+import { decodeContractStateWith } from '../lib/shared/contract-state';
 import { reexpressOperationsForLedger9 } from '../lib/v9/operations';
 import { fixturePath } from './fixtures';
 
 /**
- * A real RETAINED-era verifier key — the one a pre-fork contract has registered on chain and keeps
- * across the fork. Its own envelope names the retained key version, which is the fact that makes
+ * A real ledger 8 verifier key — the one a pre-fork contract has registered on chain and keeps
+ * across the fork. Its own envelope names the ledger 8 key version, which is the fact that makes
  * this fixture the right one: the assertions below turn on the current ledger accepting it.
  */
 const LEDGER8_VERIFIER_KEY = Uint8Array.from(
   readFileSync(fixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'))
 );
 
-/** The envelope the CURRENT ledger writes contract states in. Retained states carry `[v6]`. */
+/** The envelope the CURRENT ledger writes contract states in. Ledger 8 states carry `[v6]`. */
 const LEDGER9_STATE_TAG = 'midnight:contract-state[v8]:';
+
+const ledger8Operation = (): LedgerV8.ContractOperation => {
+  const operation = new LedgerV8.ContractOperation();
+  operation.verifierKey = LEDGER8_VERIFIER_KEY;
+  return operation;
+};
 
 const tagOf = (bytes: Uint8Array): string => Buffer.from(bytes.subarray(0, 64)).toString('ascii');
 
 describe('reexpressOperationsForLedger9', () => {
-  it('is handed a genuinely RETAINED-era verifier key, which is the premise of the rest', () => {
-    // Arrange / Act / Assert: if this fixture ever stopped being a retained-era key, every
+  it('is handed a genuinely ledger 8 verifier key, which is the premise of the rest', () => {
+    // Arrange / Act / Assert: if this fixture ever stopped being a ledger 8 key, every
     // assertion below would still pass while testing nothing about the fork.
     expect(tagOf(LEDGER8_VERIFIER_KEY)).toContain('midnight:verifier-key[v6]:');
   });
@@ -65,7 +73,7 @@ describe('reexpressOperationsForLedger9', () => {
     expect(() => LedgerV9.ContractState.deserialize(serialized)).not.toThrow();
   });
 
-  it('carries the retained key through unchanged, so the chain and the prototype agree', () => {
+  it('carries the ledger 8 key through unchanged, so the chain and the prototype agree', () => {
     // Arrange.
     const entryPoints = [{ circuitId: 'increment', verifierKey: LEDGER8_VERIFIER_KEY, verifierKeyHash: undefined }];
 
@@ -128,5 +136,38 @@ describe('reexpressOperationsForLedger9', () => {
     expect(() =>
       reexpressOperationsForLedger9([{ circuitId: 'increment', verifierKey: notAKey, verifierKeyHash: undefined }])
     ).toThrow();
+  });
+
+  it('registers a byte-declared entry point under its text, because ledger-v8 decodes it to a string', () => {
+    // Arrange: the registry is keyed by name, which is safe only because ledger-v8 reads a
+    // UTF-8 byte-set entry point back as a string. See "Resolving an entry point to a name" in
+    // docs/verifier-keys.md and the `entryPointName` suite in v8-deploy.test.ts.
+    const ledger8State = new LedgerV8.ContractState();
+    ledger8State.setOperation(new TextEncoder().encode('increment'), ledger8Operation());
+    const { entryPoints } = decodeContractStateWith(ledger8State.serialize(), 'v8', LedgerV8);
+
+    // Act.
+    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForLedger9(entryPoints));
+
+    // Assert.
+    expect([...state.operations()].map(String)).toEqual(['increment']);
+    expect(state.operation('increment')?.verifierKey).toEqual(LEDGER8_VERIFIER_KEY);
+  });
+
+  it('collapses two entry points whose bytes decode to one name into a single operation', () => {
+    // Arrange: invalid UTF-8 is where the string decoding above stops. ledger-v8 hands both back as
+    // bytes and both resolve to U+FFFD. A deploy refuses such a pair as 'deploy-ambiguous-circuit';
+    // keep-state does not. Pinned as observed, not as intended.
+    const ledger8State = new LedgerV8.ContractState();
+    ledger8State.setOperation(Uint8Array.of(0xff), ledger8Operation());
+    ledger8State.setOperation(Uint8Array.of(0xfe), ledger8Operation());
+    const { entryPoints } = decodeContractStateWith(ledger8State.serialize(), 'v8', LedgerV8);
+
+    // Act.
+    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForLedger9(entryPoints));
+
+    // Assert.
+    expect(entryPoints.map(({ circuitId }) => circuitId)).toEqual(['\uFFFD', '\uFFFD']);
+    expect([...state.operations()].map(String)).toEqual(['\uFFFD']);
   });
 });

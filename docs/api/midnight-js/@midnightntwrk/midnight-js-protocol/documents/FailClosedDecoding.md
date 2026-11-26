@@ -78,7 +78,7 @@ decodes the primary state a circuit runs against, re-encodes it, and refuses a
 value that did not come back — `StateConversionFailedError` at stage
 `'state conversion'`. The comparison is cross-codec by construction: a contract the
 fork translated carries a current-era version tag, so its state is
-encoded by ledger-v9 and decoded by the retained runtime, and state with a retained
+encoded by ledger-v9 and decoded by the ledger 8 runtime, and state with a ledger 8
 version tag crosses between two physical copies of that runtime either way. A
 shape one side writes and the other merely tolerates would decode without
 complaint and execute against a state that is not the chain's.
@@ -263,10 +263,10 @@ rather than throws for a proxied map or a prototype-only object, both of which
 make `Map.prototype`'s members reject the receiver.
 
 **`balance` is read, and was not always.** It was excluded on the same reasoning
-until the retained-era execution path turned out to need it: the balances a
+until the ledger 8 execution path turned out to need it: the balances a
 circuit reads arrive through `CallContext.balance`, which the caller has to
 carry, and the converted state carries only `.data`. With the field absent
-there was nothing for a caller to carry, so every retained-era circuit executed
+there was nothing for a caller to carry, so every ledger 8 circuit executed
 against an empty balance and read every balance back as zero — silently, until
 the node refused the transcript that produced it (#1345). It is plain data, so it
 crosses an era boundary like every other member.

@@ -41,8 +41,8 @@ in the call tree.
 
 Cost model applied during transaction proving on the CURRENT ledger era.
 
-**Not consulted on the retained (`v8`) era**, which uses that era's own cost model instead. This
-is not an oversight and not a silent fallback: the retained ledger ships its own `CostModel`
+**Not consulted on ledger 8 (`v8`)**, which uses that era's own cost model instead. This
+is not an oversight and not a silent fallback: ledger 8 ships its own `CostModel`
 class and type-checks `prove()`'s argument against it across the WASM boundary, so the value
 passed here would be rejected outright. Pairing the transaction with its own era's model is the
 only correct pairing, so an override is not offered at all rather than offered and quietly

@@ -2,10 +2,10 @@
 title: CrossEraOperationRegistry
 ---
 
-# Carrying a retained contract's operations into the current era
+# Carrying a ledger 8 contract's operations into the current era
 
 A contract deployed before the fork can still be served after it carrying its
-retained-era envelope: by a read pinned to a pre-fork block, by a record of one
+ledger 8 envelope: by a read pinned to a pre-fork block, by a record of one
 action's own state, and by an indexer older than `4.4.0-rc.6`, which serves a
 contract untouched since the fork that way for good (midnight-indexer #1605).
 The current ledger's composer cannot deserialize those bytes — it accepts only
@@ -19,7 +19,7 @@ and what it deliberately leaves behind.
 
 The composition this feeds is [ComposeRefusalOrder](./compose-refusal-order.md);
 the execution half of the same keep-state path is
-[RetainedEraExecution](./retained-era-execution.md).
+[Ledger8Execution](./ledger8-execution.md).
 
 ## What the composer actually wants
 
@@ -38,10 +38,10 @@ conversion is the misunderstanding worth guarding against.
 Nothing is minted here. Every verifier key written out is one the chain already
 holds:
 
-- The keys come from the chain's own state, read through the retained decoder.
+- The keys come from the chain's own state, read through the ledger 8 decoder.
 - The caller has already checked its local artifact against them — see
   [VerifierKeys](./verifier-keys.md).
-- The current ledger models retained-era operations NATIVELY.
+- The current ledger models ledger 8 operations NATIVELY.
   `ContractOperationVersion` carries a `'v3'` variant precisely for them, so a key
   preserved across the fork is a value this ledger is built to hold.
 
@@ -72,4 +72,4 @@ the state carried no keys at all.
 
 `packages/contracts/docs/keep-state-pipeline.md` covers the pipeline this sits
 in, and `docs/adr/0004-lazy-v8-era-access-via-protocol-subpath.md` covers why the
-retained decoder is reached through a subpath import.
+ledger 8 decoder is reached through a subpath import.

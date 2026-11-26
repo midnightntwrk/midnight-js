@@ -32,5 +32,5 @@ A [MidnightProvider](../interfaces/MidnightProvider.md) serving v9.
 ## Example
 
 ```typescript
-const midnightProvider = createLedger9MidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
+const midnightProvider = createLedger9MidnightProvider((tx) => myWallet.submitTx(tx));
 ```

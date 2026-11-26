@@ -6,7 +6,7 @@
 
 # Interface: Ledger8SubmittedCallTx\<C, PCK\>
 
-What a retained-era call transaction resolves with when submitted without
+What a ledger 8 call transaction resolves with when submitted without
 waiting for finalization.
 
 Carries the execution data on `callTxData`, as the current era's
@@ -56,7 +56,7 @@ The execution data of the call that was submitted.
 
 > `readonly` **era**: `"v8"`
 
-The pipeline that produced this result: always the retained era here, even
+The pipeline that produced this result: always ledger 8 here, even
 when the transaction that recorded it is a keep-state transaction tagged
 `'v9'`. Those are different facts, and only this one says which module
 produced the objects below.

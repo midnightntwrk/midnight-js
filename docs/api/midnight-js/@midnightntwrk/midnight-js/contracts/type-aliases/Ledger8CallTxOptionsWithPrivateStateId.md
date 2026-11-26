@@ -8,7 +8,7 @@
 
 > **Ledger8CallTxOptionsWithPrivateStateId**\<`C`, `PCK`\> = [`Ledger8CallTxOptionsBase`](Ledger8CallTxOptionsBase.md)\<`C`, `PCK`\> & `object`
 
-A retained-era call transaction configuration that also names where to store
+A ledger 8 call transaction configuration that also names where to store
 the private state the call produces.
 
 ## Type Parameters
