@@ -162,6 +162,10 @@ These packages have their own rules file. Claude Code loads it when it reads a f
 4. Write comprehensive tests
 5. Document configuration options
 
+### Adding or Removing a Ledger Era
+
+Follow the checklists in [`docs/architecture/era-lifecycle.md`](./docs/architecture/era-lifecycle.md).
+
 ### Modifying Transaction Flow
 
 1. Understand current flow in `contracts/` package

@@ -96,9 +96,9 @@ type alias, the router overloads, and a handler key in each provider factory
 current becomes the flow of an older era, named after its ledger.
 
 Removing an era changes no remaining name's meaning: delete its `LedgerN*` functions and types, its
-`case` and flow in every router, its overloads and alias branches, and its pipeline and runtime loader
-in `protocol`. An era is removed when contracts deployed before the fork no longer need to be called,
-not on the day of the fork.
+`case` and flow in every router, its overloads and alias branches, its row in
+`RUNTIME_VERSION_TO_ERA`, and its pipeline and runtime loader in `protocol`. An era is removed when
+contracts deployed before the fork no longer need to be called, not on the day of the fork.
 
 ## Consequences
 
@@ -115,7 +115,8 @@ not on the day of the fork.
   The router still routes correctly at run time, but its declared result becomes the union of both
   eras, and a caller who needs the exact type calls the `LedgerN*` function.
 - **Negative:** each era adds one more copy of every low-level function name, next to the router.
-- **Follow-ups:** the full add-era and remove-era checklists (#1539).
+- **Checklists:** the full add-era and remove-era steps are in
+  [era-lifecycle.md](../architecture/era-lifecycle.md).
 
 ## Alternatives considered
 

@@ -81,7 +81,7 @@ era?
 - **Positive:** a reader can tell from the name alone whether code is bound to one ledger.
 - **Positive:** every type a dApp infers can be named in its emitted declarations.
 - **Negative:** each era adds a copy of every per-era name, and every era-picking alias changes by
-  hand at each fork.
+  hand at each fork. The steps are listed in [era-lifecycle.md](../architecture/era-lifecycle.md).
 - **Negative:** inside a generic function `C` is unknown, so an era-picking alias stays unresolved;
   generic code names the era.
 - **Negative:** the `unprefixedLedger9Types` test matches the constraint by its source text. A type
