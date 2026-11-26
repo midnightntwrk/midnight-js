@@ -17,6 +17,7 @@ import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { PROVIDER_ERROR_CATEGORIES } from '@midnightntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
 
+import * as errors from '../errors';
 import {
   DecoderEraUnsupportedError,
   IndexerDataError,
@@ -28,7 +29,6 @@ import {
   IndexerQueryError,
   IndexerSubscriptionDataError,
   UnknownRecordEraError} from '../errors';
-import * as errors from '../errors';
 
 describe('indexer error classes', () => {
   const exported: unknown[] = Object.values(errors);
