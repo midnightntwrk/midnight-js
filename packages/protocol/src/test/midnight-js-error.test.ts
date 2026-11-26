@@ -15,6 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 
+import * as errors from '../errors';
 import {
   COMMON_ERROR_CATEGORIES,
   COMMON_ERROR_CODES,
@@ -40,7 +41,6 @@ import {
   UnknownLedgerEraError,
   UnknownProtocolVersionError
 } from '../errors';
-import * as errors from '../errors';
 
 describe('general errors', () => {
   it.each([

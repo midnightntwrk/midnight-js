@@ -16,6 +16,7 @@
 import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
+import * as errors from '../errors';
 import {
   ArtifactRuntimeVersionUnavailableError,
   ExportDecryptionError,
@@ -45,7 +46,6 @@ import {
   WatchTimeoutError,
   ZkArtifactFetchError
 } from '../errors';
-import * as errors from '../errors';
 import { ZKArtifactNotFoundError } from '../zk-config-registry';
 
 describe('types error classes', () => {
