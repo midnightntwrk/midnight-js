@@ -13,12 +13,11 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { COMMON_ERROR_CODES } from '@midnightntwrk/midnight-js-protocol/errors';
+import { CostModel, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { InvalidTransactionHandleError, PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';
-import { LedgerTransaction } from '../ledger-transaction';
 import { createLedger9ProofProvider } from '../proof-provider';
 import { handles, inertProvingProvider, ledgerTransactions } from './ledger-transaction-fixtures';
 
@@ -48,7 +47,8 @@ describe('createLedger9ProofProvider', () => {
 
     expect(prove).toHaveBeenCalledWith(inertProvingProvider, costModel);
     expect([result.era, result.stage]).toEqual(['v9', 'Unbound']);
-    expect(LedgerTransaction.unwrap(result, 'v9')).toBe(await prove.mock.results[0]?.value);
+    const proven = await prove.mock.results[0].value;
+    expect(result.serialize()).toEqual(proven.serialize());
   });
 
   it('declares exactly v9', () => {

@@ -1,8 +1,8 @@
 {
-  "compiler-version": "0.35.0",
-  "compiler-commit": "debb05f9414b9d1e176741c2be289bb32233f0fc",
-  "language-version": "0.27.0",
-  "runtime-version": "0.20.0",
+  "compiler-version": "0.36.1",
+  "compiler-commit": "7fa3a117c5e7efe9d2c51da04263e5f0b3509144",
+  "language-version": "0.28.0",
+  "runtime-version": "0.21.0",
   "circuits": [
     {
       "name": "emitMisc",

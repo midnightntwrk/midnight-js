@@ -32,7 +32,7 @@
  * keeps the option of shaking that cost out later open rather than
  * load-bearing. See BarrelPublishedSurface.
  *
- * The retained pre-fork (v8) runtime is a separate matter: it stays off the
+ * The pre-fork ledger 8 runtime is a separate matter: it stays off the
  * eager path entirely, and the second assertion holds that.
  *
  * Modelled on `packages/protocol/src/test/dist-laziness.test.ts`, which guards
@@ -48,9 +48,9 @@ const PKG_ROOT = resolve(__dirname, '..', '..');
 const DIST_INDEX_PATH = 'dist/index.js';
 
 /** The protocol package ROOT. Its `version` and `errors` leaves are the sanctioned way in. */
-const PROTOCOL_BARREL = '@midnight-ntwrk/midnight-js-protocol';
+const PROTOCOL_BARREL = '@midnightntwrk/midnight-js-protocol';
 
-/** The subpaths carrying the retained pre-fork runtime. Off the eager path in any form. */
+/** The subpaths carrying the ledger 8 runtime. Off the eager path in any form. */
 const LEDGER8_SUBPATHS = [`${PROTOCOL_BARREL}/v8`, `${PROTOCOL_BARREL}/v8/engine`];
 
 // Never skipped when dist/ is absent: a skip is reported as a pass, so the gate
@@ -109,7 +109,7 @@ describe('dist laziness gate', () => {
     );
   });
 
-  it('does not name the retained pre-fork runtime subpaths in any form', () => {
+  it('does not name the ledger 8 runtime subpaths in any form', () => {
     const content = eagerContents(DIST_INDEX_PATH);
 
     // Deliberately a plain substring check rather than an import-shaped one:
@@ -125,7 +125,7 @@ describe('dist laziness gate', () => {
     // the names that needed it are genuinely still there, so the assertions
     // above are statements about shipped code rather than about a bundle that
     // quietly lost the vocabulary.
-    const barrel = await import('@midnight-ntwrk/midnight-js');
+    const barrel = await import('@midnightntwrk/midnight-js');
 
     expect(typeof barrel.versionOfRecord).toBe('function');
     expect(typeof barrel.latestNetworkLedgerVersion).toBe('function');

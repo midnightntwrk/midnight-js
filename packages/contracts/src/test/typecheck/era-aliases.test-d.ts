@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { FinalizedTxRead } from '@midnight-ntwrk/midnight-js-types';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { FinalizedTxRead } from '@midnightntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';

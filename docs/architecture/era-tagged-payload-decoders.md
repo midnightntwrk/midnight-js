@@ -10,7 +10,7 @@ envelope; `protocolVersion` is the era of the block that dated the read. A value
 network — a contract state, ledger parameters, a zswap chain state — is a `SerializedState`: the bytes
 and their `era`, the same shape in both eras, decoded by the caller (ADR 0020). A
 finalized-transaction record is the `FinalizedTxRead` union: both of its variants carry a
-`FinalizedTx` handle of the record's era, `record.tx.era === record.era` (ADR 0019). A consumer
+`FinalizedTx` handle of the record's era, `record.tx.era === record.era` (ADR 0024). A consumer
 narrows it with `switch (record.era)` closed by `assertNever`. A `contracts` pipeline result also carries `era`, naming the pipeline that produced it;
 its `public.era` names the ledger that recorded the transaction.
 
@@ -27,7 +27,7 @@ around it, and a failure that only appears against a chain that has crossed the 
 
 | # | Site | Payload | State |
 |---|------|---------|-------|
-| 1 | keep-state envelope check (`assertRetainedStateEnvelope`), `packages/contracts` | contract state | fixed — dates the envelope, no longer the head |
+| 1 | keep-state envelope check (`assertLedger8StateEnvelope`), `packages/contracts` | contract state | fixed — dates the envelope, no longer the head |
 | 2 | `composeCallTx` operation registry, `packages/protocol` | contract state | fixed — the registry is re-expressed for the composing era |
 | 3 | `assemble-call.ts` partitioner | ledger parameters | fixed — the chain's own parameters are carried in as bytes |
 | 4 | `parseHexLedgerParameters`, `packages/indexer-public-data-provider` | ledger parameters | fixed, then removed: the read no longer decodes (ADR 0020) |
@@ -67,7 +67,7 @@ that names a block era has to carry the payloads that era writes.
 
 Every era-fixed ledger decode in `packages/*/src` and `testkit-js/*/src`, with the verdict for each —
 whether it calls a runtime's `*.deserialize` directly or reaches it through the
-`@midnight-ntwrk/midnight-js-utils` typed wrappers.
+`@midnightntwrk/midnight-js-utils` typed wrappers.
 
 Re-run the sweep this was built from with:
 
@@ -110,12 +110,13 @@ the same way, and one does not classify it at all:
 ### Decoders that are correct because the era comes from the request
 
 The provider methods carry transaction handles, and each handle carries its era, so a decoder at
-a boundary is chosen from the era of the request rather than inferred from the bytes (ADR 0019).
+a boundary is chosen from the era of the request rather than inferred from the bytes (ADR 0024).
 
 - `packages/indexer-public-data-provider/src/codec.ts` — `parseHexTransaction(era, …)`, chosen by
   the record's own era
-- `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — `adoptInWallet` and
-  `finalizedFromWallet`, chosen by the era of the handle the wallet provider received
+- `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — `adoptInWallet`, chosen by the era
+  of the handle the wallet provider received; `finalizedFromWallet` returns bytes, which the wallet
+  provider factory seals and decodes in the era of the request
 - `packages/dapp-connector-proof-provider/src/dapp-connector-wallet-providers.ts` —
   `deserializeTransactionAtStage(era, 'Finalized', …)`, chosen by the era of the handle passed to
   `balanceTx`
@@ -165,7 +166,7 @@ from a wallet this process just handed a transaction to, so the era is in practi
 era. Recorded rather than changed because the fix is a method change to a third-party-facing
 interface, not a local guard.
 
-**The fork window between the head read and the state read.** A retained-era operation resolves the
+**The fork window between the head read and the state read.** A ledger 8 operation resolves the
 head era first (`acquireLedger8Runtime`) and reads the contract state after it
 (`readLedger8Snapshot`), and the state read is what brings back the block's ledger parameters. The
 fork can be enacted between the two: the head is read as `v8`, the state read then lands on a
@@ -192,4 +193,4 @@ not run. Testkit only, and not on the path of any defect above.
   `LEDGER_STATE_TAGS` satisfies that by being keyed by kind and ERA, and searched rather than keyed
   by tag and indexed, which also makes a new `LedgerEra` member with no tag a build failure.
 - `packages/protocol/docs/fail-closed-decoding.md` — what a decode guarantees once the era is settled
-- `packages/contracts/docs/keep-state-pipeline.md` — the retained-era read path
+- `packages/contracts/docs/keep-state-pipeline.md` — the ledger 8 read path

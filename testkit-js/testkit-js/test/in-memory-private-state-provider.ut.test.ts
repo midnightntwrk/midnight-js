@@ -13,15 +13,18 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   ImportConflictError,
+  ImportPasswordValidationError,
   InvalidExportFormatError,
+  type PrivateStateExport,
   type SigningKeyExport
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
+import { PasswordValidationError } from '@midnightntwrk/midnight-js-utils';
 import { createCipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
 import { inMemoryPrivateStateProvider } from '../src/contract/in-memory-private-state-provider';
@@ -34,8 +37,9 @@ const PBKDF2_ITERATIONS = 100000;
 const ENCRYPTION_VERSION = 1;
 const VALID_PASSWORD = 'Valid-Pass9-Test!@';
 
-const CONTRACT_ADDRESS_1 = 'contract-address-1' as ContractAddress;
-const CONTRACT_ADDRESS_2 = 'contract-address-2' as ContractAddress;
+const CONTRACT_ADDRESS_1 = '01'.repeat(32) as ContractAddress;
+const CONTRACT_ADDRESS_2 = '02'.repeat(32) as ContractAddress;
+const INVALID_ADDRESSES = ['__proto__', 'constructor', '', 'contract-address-1', `0x${'ab'.repeat(32)}`];
 const VALID_SIGNING_KEY = { tag: 'schnorr', value: 'ab'.repeat(32) };
 
 const encryptPayload = (data: string, password: string, salt: Buffer): string => {
@@ -107,6 +111,17 @@ describe('[Unit tests] inMemoryPrivateStateProvider importSigningKeys validation
     });
   });
 
+  it.each(INVALID_ADDRESSES)('refuses a payload holding the address %j and writes no key', async (invalid) => {
+    const provider = inMemoryPrivateStateProvider<PSI, PS>();
+    const badExport = buildExport({ [CONTRACT_ADDRESS_1]: VALID_SIGNING_KEY, [invalid]: VALID_SIGNING_KEY });
+
+    await expect(
+      provider.importSigningKeys(badExport, { password: VALID_PASSWORD })
+    ).rejects.toThrow(InvalidExportFormatError);
+
+    expect(await provider.getSigningKey(CONTRACT_ADDRESS_1)).toBeNull();
+  });
+
   it('accepts a well-formed structured signing key', async () => {
     const provider = inMemoryPrivateStateProvider<PSI, PS>();
     const goodExport = buildExport({ [CONTRACT_ADDRESS_1]: VALID_SIGNING_KEY });
@@ -115,6 +130,20 @@ describe('[Unit tests] inMemoryPrivateStateProvider importSigningKeys validation
 
     expect(result.imported).toBe(1);
     expect(await provider.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(VALID_SIGNING_KEY);
+  });
+});
+
+describe('[Unit tests] inMemoryPrivateStateProvider signing-key addresses', () => {
+  it.each(INVALID_ADDRESSES)('signing-key methods refuse %j and keep stored keys', async (invalid) => {
+    const provider = inMemoryPrivateStateProvider<PSI, PS>();
+    const signingKey = sampleSigningKey();
+    await provider.setSigningKey(CONTRACT_ADDRESS_1, signingKey);
+
+    await expect(provider.getSigningKey(invalid)).rejects.toThrow(InvalidArgumentError);
+    await expect(provider.setSigningKey(invalid, sampleSigningKey())).rejects.toThrow(InvalidArgumentError);
+    await expect(provider.removeSigningKey(invalid)).rejects.toThrow(InvalidArgumentError);
+
+    expect(await provider.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(signingKey);
   });
 });
 
@@ -224,5 +253,46 @@ describe('[Unit tests] inMemoryPrivateStateProvider per-contract view', () => {
 
     expect(intoOther).toEqual({ imported: 1, skipped: 0, overwritten: 0 });
     await expect(intoSame).rejects.toThrow(ImportConflictError);
+  });
+});
+
+describe('[Unit tests] inMemoryPrivateStateProvider rejects a short import password', () => {
+  const SHORT_PASSWORD = 'short';
+
+  const expectShortImportPassword = (error: unknown): void => {
+    expect(error).toBeInstanceOf(ImportPasswordValidationError);
+    if (error instanceof ImportPasswordValidationError) {
+      expect(error.passwordError).toBeInstanceOf(PasswordValidationError);
+      if (error.passwordError instanceof PasswordValidationError) {
+        expect(error.passwordError.reason).toBe('too_short');
+      }
+    }
+  };
+
+  it('importSigningKeys throws ImportPasswordValidationError', async () => {
+    const provider = inMemoryPrivateStateProvider<PSI, PS>();
+    const signingKeyExport = buildExport({ [CONTRACT_ADDRESS_1]: VALID_SIGNING_KEY });
+
+    const error = await provider.importSigningKeys(signingKeyExport, { password: SHORT_PASSWORD }).catch((e: unknown) => e);
+
+    expectShortImportPassword(error);
+  });
+
+  it('importPrivateStates throws ImportPasswordValidationError', async () => {
+    const provider = inMemoryPrivateStateProvider<PSI, PS>();
+    const salt = randomBytes(SALT_LENGTH);
+    const payload = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), stateCount: 0, states: {} });
+    const stateExport: PrivateStateExport = {
+      format: 'midnight-private-state-export',
+      encryptedPayload: encryptPayload(payload, VALID_PASSWORD, salt),
+      salt: salt.toString('hex')
+    };
+
+    const error = await provider
+      .forContract(CONTRACT_ADDRESS_1)
+      .importPrivateStates(stateExport, { password: SHORT_PASSWORD })
+      .catch((e: unknown) => e);
+
+    expectShortImportPassword(error);
   });
 });

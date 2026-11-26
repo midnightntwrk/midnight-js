@@ -20,15 +20,6 @@ on:
       should_run:
         required: true
         type: string
-    # Declared rather than inherited, so a caller hands over this one credential
-    # instead of the whole repository's secrets.
-    secrets:
-      MIDNIGHTCI_PACKAGES_WRITE:
-        required: true
-
-concurrency:
-  group: consumer-e2e-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   linker-smoke:
@@ -39,10 +30,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
+      - name: Pull the e2e prover keys from Git LFS
+        uses: ./.github/actions/pull-lfs
+
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           cache-key-prefix: 'turbo-consumer-e2e'
 
       - name: Install dependencies
@@ -51,16 +44,16 @@ jobs:
       # The personas consume `dist`, so the smoke is only meaningful against a
       # real build rather than against sources.
       - name: Build
-        run: yarn build --cache-dir ./turbo
+        run: yarn build
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       # BEFORE the pack, so a type error costs seconds rather than a pack plus
       # four persona installs.
       #
       # THIS LANE AND NOT THE MIDNIGHT.JS ONE, which is where it was first put
-      # and where it cannot work: that leg builds `--filter="./packages/*"`, and
-      # `fork-matrix-smoke.mjs` imports `@midnight-ntwrk/testkit-js` by name.
+      # and where it cannot work: that leg builds only `./packages/*`, and
+      # `fork-matrix-smoke.mjs` imports `@midnightntwrk/testkit-js` by name.
       # With testkit unbuilt the check reports `TS2307` for it and nothing else
       # -- a red lane carrying no information. Resolving testkit from source
       # instead is not an option either: its sources are `moduleResolution:
@@ -73,20 +66,5 @@ jobs:
       - name: Pack the framework
         run: node consumer-e2e/pack-framework.mjs
 
-      # The personas resolve `@midnight-ntwrk/compact-runtime` from GitHub
-      # Packages, and neither pnpm nor a PnP install inherits Yarn's own scope
-      # configuration, so each needs the credential written where it looks.
-      - name: Authorize the persona installs
-        run: |
-          {
-            echo "@midnight-ntwrk:registry=https://npm.pkg.github.com"
-            echo "//npm.pkg.github.com/:_authToken=${MIDNIGHTCI_PACKAGES_WRITE}"
-          } >> "$HOME/.npmrc"
-        env:
-          MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
       - name: Run the linker smoke
         run: node consumer-e2e/linker-smoke.mjs
-        env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

@@ -18,15 +18,15 @@ import {
   type LedgerEra,
   protocolVersionToLedger,
   UnknownProtocolVersionError
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { type ContractAddress, type IntentHash, type RawTokenType } from '@midnight-ntwrk/midnight-js-protocol/v9';
+} from '@midnightntwrk/midnight-js-protocol';
+import { type ContractAddress, type IntentHash, type RawTokenType } from '@midnightntwrk/midnight-js-protocol/v9';
 import type {
   ContractStateAndParametersRead,
   ContractStateRead,
   FinalizedTxRead,
   PublicStatesRead,
   ReadMethod,
-  StateReadMethod} from '@midnight-ntwrk/midnight-js-types';
+  StateReadMethod} from '@midnightntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -43,14 +43,14 @@ import {
   type UnshieldedBalances,
   type UnshieldedUtxo,
   type UnshieldedUtxos
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   deserializeLedgerTransaction,
   isHex,
   ledgerVersionOfContractState,
   ledgerVersionOfLedgerParameters,
   parseHex
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
 import { DecoderEraUnsupportedError, IndexerDataError, UnknownRecordEraError } from './errors';
@@ -68,7 +68,7 @@ import type { ContractBalance, Segment, TransactionResult } from './gen/schema-t
  */
 const toByteArray = (s: string): Buffer => Buffer.from(parseHex(s).byteChars, 'hex');
 
-const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+const PKG = '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 /**
  * Facts identifying one read, carried onto a decode failure so it names the
@@ -78,7 +78,7 @@ type ReadDetails = Readonly<Record<string, string | number>>;
 
 /**
  * Takes a hex-encoded indexer transaction, decodes it to bytes, and dispatches to the typed
- * deserialization wrapper from `@midnight-ntwrk/midnight-js-utils`. Re-exported from the package
+ * deserialization wrapper from `@midnightntwrk/midnight-js-utils`. Re-exported from the package
  * entry point, so its signature is public API.
  */
 export const parseHexTransaction = <E extends LedgerEra>(
@@ -119,7 +119,7 @@ export type DecodedRecordTransaction = DistributivePick<FinalizedTxRead, 'era' |
  * `packages/protocol/docs/shared-table-discipline.md`. The era set is gated by
  * `LedgerEra`: an era added there stops this table type-checking. That an
  * era also has a *read variant* is asserted separately, by `_EveryEraHasAReadVariant`
- * in `@midnight-ntwrk/midnight-js-types`.
+ * in `@midnightntwrk/midnight-js-types`.
  */
 type TransactionDecoders = {
   readonly [V in LedgerEra]: (
@@ -153,16 +153,17 @@ export interface TransactionDecodeContext {
 }
 
 /**
- * Decodes one finalized transaction with the runtime of the era it was written
- * under, and tags the result with that era.
+ * Wraps one finalized transaction in a handle of the era it was written under,
+ * and tags the result with that era. Only the header is checked; the caller
+ * decodes the handle with its own ledger copy, so no ledger runtime is loaded.
  *
- * `era` is the authority on which decoder runs, and it is derived from the
+ * `era` is the authority on which header is checked, and it is derived from the
  * record's own `protocolVersion` by `resolveReadEra` (`./era.ts`) before this
  * is called. Nothing here re-derives it: the era and the `era` on the
  * returned record are the same fact.
  *
- * A payload that will not decode leaves as the `DeserializationError` the
- * runtime produced, carrying the era, the `protocolVersion`, the method and the
+ * A payload without the header of that era leaves as a `DeserializationError`,
+ * carrying the era, the `protocolVersion`, the method and the
  * record on its context. This layer deliberately does not re-attribute the
  * failure: whether the record disagrees with itself or the consumer's ledger
  * package is a different vintage than the network's are indistinguishable from
@@ -170,16 +171,13 @@ export interface TransactionDecodeContext {
  *
  * @param hexTransaction The hex-encoded serialized transaction, as the indexer
  *                       serves it.
- * @param era The era whose runtime reads the payload. Validated at runtime, not
+ * @param era The era that wrote the payload. Validated at runtime, not
  *            merely type-checked.
  * @param context The record and read method a failure should name.
  * @throws IndexerDataError if `hexTransaction` is not a whole hex byte string.
  * @throws DecoderEraUnsupportedError if `era` is not a member of `LEDGER_ERAS`.
- * @throws Ledger8RuntimeMissingError if a v8-era record needs the pre-fork
- *   runtime and it cannot be acquired. From
- *   `@midnight-ntwrk/midnight-js-protocol`, and deliberately not an
- *   `IndexerError` — see {@link IndexerError}.
- * @throws DeserializationError for every decode failure.
+ * @throws DeserializationError if the payload does not start with the header
+ *   the ledger of `era` writes for a finalized transaction.
  */
 export const decodeRecordTransaction = async (
   hexTransaction: string,

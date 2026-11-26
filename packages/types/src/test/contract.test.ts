@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { ContractExecutionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
-import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { ContractExecutionError } from '@midnightntwrk/midnight-js-protocol/errors';
+import * as Configuration from '@midnightntwrk/midnight-js-protocol/platform-js/effect/Configuration';
+import { sampleSigningKey, type SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import { Cause, Effect, Exit, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 

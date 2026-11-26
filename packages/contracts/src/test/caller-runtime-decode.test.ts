@@ -17,9 +17,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Worker } from 'node:worker_threads';
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { CompiledContract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   createVerifierKey,
   type ProverKey,
@@ -27,7 +27,7 @@ import {
   type VerifierKey,
   ZKConfigProvider,
   type ZKIR
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
 
 import { createLedger9UnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
@@ -52,7 +52,7 @@ class ShieldedMapKeys extends ZKConfigProvider<string> {
     return Promise.resolve(DEPOSIT_VERIFIER_KEY);
   }
   override getArtifactRuntimeVersion(): Promise<string> {
-    return Promise.resolve('0.20.0');
+    return Promise.resolve('0.21.0');
   }
 }
 

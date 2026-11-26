@@ -24,7 +24,7 @@ import {
 const baseContext: DeserializationContext = {
   dataType: 'ContractState',
   source: 'ledger',
-  caller: '@midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState',
+  caller: '@midnightntwrk/midnight-js-indexer-public-data-provider:queryContractState',
   classification: 'version-mismatch',
   mitigation: ['Hint A', 'Hint B']
 };
@@ -87,7 +87,7 @@ describe('DeserializationError', () => {
       const error = new DeserializationError(baseContext, new Error('inner'));
 
       expect(error.message).toContain(
-        '  Call site: @midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState'
+        '  Call site: @midnightntwrk/midnight-js-indexer-public-data-provider:queryContractState'
       );
     });
 

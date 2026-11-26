@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { CURRENT_LEDGER_ERA, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CURRENT_LEDGER_ERA, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
+import { CONTRACTS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { isLedger8Result } from '../era-results';
@@ -28,7 +28,7 @@ const taggedResult = (era: LedgerEra) => ({ era, txId: 'tx-1' });
 const isLedger8ResultUntyped = (value: unknown): unknown => Reflect.apply(isLedger8Result, undefined, [value]);
 
 describe('isLedger8Result', () => {
-  it('answers true for the retained pipeline and false for the current one', () => {
+  it('answers true for the ledger 8 pipeline and false for the current one', () => {
     expect(isLedger8Result(taggedResult('v8'))).toBe(true);
     expect(isLedger8Result(taggedResult(CURRENT_LEDGER_ERA))).toBe(false);
   });
@@ -40,7 +40,7 @@ describe('isLedger8Result', () => {
   // rewrote the tag.
   it.each([
     ['a tag naming no known pipeline', { era: 'v7', txId: 'tx-1' }],
-    ['a retained-era tag from a 5.0.0 pre-release', { era: 'ledger8', txId: 'tx-1' }],
+    ['a ledger 8 tag from a 5.0.0 pre-release', { era: 'ledger8', txId: 'tx-1' }],
     ['a current-era tag from a 5.0.0 pre-release', { era: 'ledger9', txId: 'tx-1' }],
     ['a tag lost in transit', { txId: 'tx-1' }],
     ['a tag explicitly undefined', { era: undefined, txId: 'tx-1' }],

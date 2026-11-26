@@ -34,9 +34,9 @@ import {
 import type * as Ledger8 from '../../v8.js';
 import { type Ledger8Protocol, loadedLedger8Protocol, loadLedger8Protocol } from '../v8/load';
 import { LEDGER_ERAS, type LedgerEra } from './ledger-version';
+import { TRANSACTION_STAGES, type TransactionStage } from './transaction-tags';
 
-/** The point in its life a transaction has reached: before proving, after proving, after binding. */
-export type TransactionStage = 'Unproven' | 'Unbound' | 'Finalized';
+export type { TransactionStage };
 
 /** The ledger transaction class of each era at each {@link TransactionStage}. */
 export interface LedgerTransactionTypes {
@@ -69,8 +69,6 @@ type _EveryEraHasTransactionTypes = Assert<
 type _NoTransactionTypesOutsideTheEraSet = Assert<
   [Exclude<keyof LedgerTransactionTypes, LedgerEra>] extends [never] ? true : false
 >;
-
-const TRANSACTION_STAGES: readonly string[] = Object.freeze(['Unproven', 'Unbound', 'Finalized'] satisfies TransactionStage[]);
 
 type StageDecoders<E extends LedgerEra> = {
   readonly [S in TransactionStage]: (bytes: Uint8Array) => LedgerTransactionTypes[E][S];
@@ -160,7 +158,7 @@ export const deserializeTransactionAtStage = async <E extends LedgerEra, S exten
   bytes: Uint8Array
 ): Promise<LedgerTransactionTypes[E][S]> => {
   assertKnownEra(era);
-  if (!TRANSACTION_STAGES.includes(stage)) {
+  if (!TRANSACTION_STAGES.some((known) => known === stage)) {
     throw new InvalidArgumentError(`Unknown transaction stage; expected one of ${TRANSACTION_STAGES.join(', ')}.`);
   }
   assertSerializedTransaction(bytes);

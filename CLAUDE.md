@@ -10,8 +10,6 @@ TypeScript framework for building privacy-preserving dApps on the Midnight block
 | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | Common issues and solutions |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Contribution process, license header requirements |
 
-IMPORTANT: Use GitNexus tools (impact analysis, context, query) before modifying code. See GitNexus section below.
-
 ## Architecture
 
 Provider pattern — 7 pluggable providers (interfaces in `packages/types/src/`):
@@ -56,59 +54,25 @@ UnprovenTx → ProofProvider.proveTx() → UnboundTx
   → MidnightProvider.submitTx() → TransactionId
 ```
 
-Every transaction passed to those three methods is a transaction handle,
-`LedgerTransaction<Stage>` from `types`. The handle carries the era (`'v8'` /
-`'v9'`) as data; the stage is in the type. Make one with
-`LedgerTransaction.seal(era, stage, tx)` and read it with
-`LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another
-ledger WASM copy (`ForeignLedgerTransactionError`), and a value that is not a
-transaction or is at another stage (`InvalidTransactionHandleError`). Layer rule: `protocol` speaks
-raw ledger objects; every package from `types` up speaks only handles in its
-public API.
+Rules that hold across the codebase (API details in [llms.txt](./llms.txt)):
 
-The read surface (`watchForTxData`, `watchForDeployTxData`) reports a
-era-tagged *record*, `FinalizedTxRead`. Its `tx` is a `FinalizedTx`
-of the same era (`record.tx.era === record.era`); read it with
-`LedgerTransaction.unwrap(record.tx, record.era)`. To treat the eras
-differently, narrow with a `switch (record.era)` closed by
-`assertNever(record, '<call site>')` from `utils`.
-
-On-chain state is bytes, never a decoded object. `watchForContractState`,
-`queryDeployContractState` and `contractStateObservable` return
-`ContractStateRead`; `queryContractState` returns
-`ContractStateAndParametersRead` (adds `ledgerParameters`);
-`queryZSwapAndContractState` and `Ledger9TransactionContext.getCurrentStates()` return
-`PublicStatesRead`. Each state is one class per kind from `types`:
-`SerializedContractState`, `SerializedLedgerParameters` or
-`SerializedZswapChainState` (bytes + `era`, the ledger that wrote them), made
-only by its own `fromBytes(era, bytes)`. The caller decodes it with its own runtime:
-`read.contractState.deserialize({ v9: ContractState })`. Every full ledger state
-on the `contracts` API is one of these classes too, in both eras, except
-`Ledger9ContractConstructorResult.nextContractState`: call inputs
-(pass `read.contractState` as it is), deploy and found `initialContractState`,
-`verifyContractState` and `ContractTypeError.contractState`. `contracts` decodes
-with the framework's copy only where it builds a transaction. See
-[ADR 0020](./docs/adr/0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
-
-Implementing `WalletProvider` or `MidnightProvider` for v9 only? Use
-`createLedger9WalletProvider` / `createLedger9MidnightProvider` from `types` rather than
-sealing by hand.
-
-Serving more than one era? Use `createProofProviderFromHandlers` /
-`createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers` — one
-handler per era, keyed `v8` / `v9` (`undefined` for an era you do not serve).
-The factory unwraps each handle for its era's handler, seals a transaction
-answer (`proveTx`, `balanceTx`) in the same era and derives `supportedEras`.
-All three providers carry a required `supportedEras`, read before an operation
-starts so a set that cannot carry a transaction end to end is refused before the
-proof is paid for. A handler that
-hands a transaction to another ledger copy (wallet-sdk, a DApp Connector wallet)
-serializes it on the way out and decodes the answer with
-`deserializeTransactionAtStage` from `protocol` on the way in, taking the era
-from the request. See
-[ADR 0019](./docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md),
-which amends [ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md)
-and [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
+- Transactions are handles, `LedgerTransaction<Stage>` from `types`: bytes plus
+  the era (`'v8'` / `'v9'`). The caller decodes with its own ledger copy:
+  `handle.deserialize({ v9: Transaction })`. See
+  [ADR 0024](./docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md).
+- On-chain state is bytes, never a decoded object: one `Serialized*` class per
+  kind, decoded by the caller's runtime. See
+  [ADR 0020](./docs/adr/0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
+- Layer rule: `protocol` speaks raw ledger objects; every package from `types`
+  up speaks only handles in its public API.
+- To treat eras differently, `switch` on `era` and close it with
+  `assertNever(value, '<call site>')` from `utils`.
+- Providers serving more than one era are built from per-era handlers
+  (`create*ProviderFromHandlers`); v9-only providers use
+  `createLedger9WalletProvider` / `createLedger9MidnightProvider`. Proof, wallet
+  and midnight providers carry a required `supportedEras`, checked before an
+  operation starts. See
+  [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ## CI Pipeline & PR Gates
 
@@ -124,7 +88,7 @@ All CI checks block merge unless noted:
 | Integration Tests | Docker-based provider tests (skip: `[skip_it]` in commit message) |
 | API Docs | TypeDoc generation (non-blocking) |
 
-CI uses path filtering: midnight-js jobs run only if `packages/**` changed; testkit jobs if `packages/**` or `testkit-js/**` changed. Changes to workflows, `yarn.lock`, or root `package.json` trigger everything.
+CI uses path filtering: midnight-js jobs run only if `packages/**` changed; testkit jobs if `packages/**` or `testkit-js/**` changed. Changes to the shared root config listed under `shared` in `.github/workflows/ci.yml` (workflows, `yarn.lock`, root `package.json`, any `turbo.json`, `build-tools/`, ...) trigger everything.
 
 ## PR Conventions
 
@@ -181,104 +145,14 @@ All derived from actual PR rejections in this repo:
 | `midnight-js` barrel exports | Consumer import paths change | Verify sub-path exports match |
 | `build-tools/` config | All packages affected | `yarn clean-build` + full test run |
 
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
+## Code navigation
 
-This project is indexed by GitNexus as **midnight-js** (7286 symbols, 12344 relationships, 202 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+Use the editor's TypeScript language server (LSP). Packages import each other
+through `dist/`, so LSP finds references only inside one package. For an exported
+symbol, also search the whole repository by name, with any text search tool
+(for example `rg -w <name> packages testkit-js`).
 
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
-
-## Always Do
-
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
-- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
-
-## When Debugging
-
-1. `gitnexus_query({query: "<error or symptom>"})` — find execution flows related to the issue
-2. `gitnexus_context({name: "<suspect function>"})` — see all callers, callees, and process participation
-3. `READ gitnexus://repo/midnight-js/process/{processName}` — trace the full execution flow step by step
-4. For regressions: `gitnexus_detect_changes({scope: "compare", base_ref: "main"})` — see what your branch changed
-
-## When Refactoring
-
-- **Renaming**: MUST use `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` first. Review the preview — graph edits are safe, text_search edits need manual review. Then run with `dry_run: false`.
-- **Extracting/Splitting**: MUST run `gitnexus_context({name: "target"})` to see all incoming/outgoing refs, then `gitnexus_impact({target: "target", direction: "upstream"})` to find all external callers before moving code.
-- After any refactor: run `gitnexus_detect_changes({scope: "all"})` to verify only expected files changed.
-
-## Never Do
-
-- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
-- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
-
-## Tools Quick Reference
-
-| Tool | When to use | Command |
-|------|-------------|---------|
-| `query` | Find code by concept | `gitnexus_query({query: "auth validation"})` |
-| `context` | 360-degree view of one symbol | `gitnexus_context({name: "validateUser"})` |
-| `impact` | Blast radius before editing | `gitnexus_impact({target: "X", direction: "upstream"})` |
-| `detect_changes` | Pre-commit scope check | `gitnexus_detect_changes({scope: "staged"})` |
-| `rename` | Safe multi-file rename | `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
-| `cypher` | Custom graph queries | `gitnexus_cypher({query: "MATCH ..."})` |
-
-## Impact Risk Levels
-
-| Depth | Meaning | Action |
-|-------|---------|--------|
-| d=1 | WILL BREAK — direct callers/importers | MUST update these |
-| d=2 | LIKELY AFFECTED — indirect deps | Should test |
-| d=3 | MAY NEED TESTING — transitive | Test if critical path |
-
-## Resources
-
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/midnight-js/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/midnight-js/clusters` | All functional areas |
-| `gitnexus://repo/midnight-js/processes` | All execution flows |
-| `gitnexus://repo/midnight-js/process/{name}` | Step-by-step execution trace |
-
-## Self-Check Before Finishing
-
-Before completing any code modification task, verify:
-1. `gitnexus_impact` was run for all modified symbols
-2. No HIGH/CRITICAL risk warnings were ignored
-3. `gitnexus_detect_changes()` confirms changes match expected scope
-4. All d=1 (WILL BREAK) dependents were updated
-
-## Keeping the Index Fresh
-
-After committing code changes, the GitNexus index becomes stale. Re-run analyze to update it:
-
-```bash
-npx gitnexus analyze
-```
-
-If the index previously included embeddings, preserve them by adding `--embeddings`:
-
-```bash
-npx gitnexus analyze --embeddings
-```
-
-To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.embeddings` field shows the count (0 means no embeddings). **Running analyze without `--embeddings` will delete any previously generated embeddings.**
-
-> Claude Code users: A PostToolUse hook handles this automatically after `git commit` and `git merge`.
-
-## CLI
-
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-
-<!-- gitnexus:end -->
+- Before editing a function, class or method, list its callers and report what
+  is affected.
+- Before committing, check that `git diff --stat` touches only the expected files.
+- To rename a symbol, find every use by name, then run `yarn build` and `yarn test`.

@@ -65,7 +65,7 @@ const createLedger9Era = (): LedgerEraFacade => {
 };
 
 /**
- * The v8 era. Acquires the retained pre-fork ledger and binds it into closure,
+ * The v8 era. Acquires ledger 8 and binds it into closure,
  * so the era's own methods stay synchronous -- see the EraBoundary document for why
  * the acquisition is hoisted here.
  */
@@ -91,7 +91,7 @@ const createLedger8Era = async (): Promise<LedgerEraFacade> => {
  * `protocolVersionToLedger` in `../../version.ts`) rather than a string chosen
  * by hand.
  *
- * Memoised per era, so the retained pre-fork WASM is instantiated at most once
+ * Memoised per era, so the ledger 8 WASM is instantiated at most once
  * per process. A FAILED v8 acquisition is not memoised: the next call retries.
  *
  * @param version The era to resolve.
@@ -99,8 +99,8 @@ const createLedger8Era = async (): Promise<LedgerEraFacade> => {
  * for that era, and frozen.
  * @throws UnknownLedgerEraError — as a rejection — if `version` is not a
  * member of `LEDGER_ERAS`.
- * @throws Ledger8RuntimeMissingError — as a rejection — if the retained
- * pre-fork runtime cannot be acquired. It propagates unchanged, carrying the
+ * @throws Ledger8RuntimeMissingError — as a rejection — if the ledger 8
+ * runtime cannot be acquired. It propagates unchanged, carrying the
  * underlying cause.
  * @see {@link EraBoundary}
  * @see {@link SharedTableDiscipline}

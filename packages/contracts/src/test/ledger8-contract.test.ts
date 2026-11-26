@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { ZKConfigProvider } from '@midnightntwrk/midnight-js-types';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
@@ -32,7 +32,7 @@ import type {
 } from './ledger8-fixture-types';
 import { createMockCompiledContract, createMockProviders } from './test-mocks';
 
-// The other half of `../ledger8-contract.ts`. That file hand-writes the retained-era
+// The other half of `../ledger8-contract.ts`. That file hand-writes the ledger 8
 // (`compact-runtime@0.16`) contract type family: it describes generated code without being
 // generated from it. A hand-written type is a claim about generated code, and this test is what
 // makes the claim checkable at RUNTIME: it loads the REAL generated artifact, constructs it, and
@@ -86,7 +86,7 @@ const declaredCircuitIds = (declarations: string): string[] => {
 //
 // An insufficient stub cannot pass silently — the module's top-level code would throw during
 // import and the whole suite would fail loudly — which is why a stub is safe here where
-// `packages/protocol` needs the real retained runtime injected instead.
+// `packages/protocol` needs the real ledger 8 runtime injected instead.
 vi.mock('@midnight-ntwrk/compact-runtime', () => {
   class CompactTypeStub {
     alignment(): unknown[] {
@@ -120,11 +120,11 @@ const loadCounter016 = async (): Promise<Counter016Module> => import(/* @vite-ig
 const loadCoinReceiver016 = async (): Promise<CoinReceiver016Module> =>
   import(/* @vite-ignore */ COIN_RECEIVER_016_MODULE);
 // The current-era twin, loaded for its RAW contract instance rather than its declaration file.
-// `Contract` is the only member read, and it is generated code like the retained-era fixtures.
+// `Contract` is the only member read, and it is generated code like the ledger 8 fixtures.
 const loadTwin = async (): Promise<{ readonly Contract: new (witnesses: object) => object }> =>
   import(/* @vite-ignore */ TWIN_MODULE);
 
-describe('the retained-era contract family matches the real compact-runtime@0.16 artifact', () => {
+describe('the ledger 8 contract family matches the real compact-runtime@0.16 artifact', () => {
   let contract: Counter016Contract;
   let contractModule: Counter016Module;
 
@@ -141,9 +141,9 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
 
   it('exposes initialState as a SYNCHRONOUS function, which admits the artifact without placing it', () => {
     expect(typeof contract.initialState).toBe('function');
-    // A PRECONDITION of the retained route, not its reason. `AsyncFunction` here would mean the
+    // A PRECONDITION of the ledger 8 route, not its reason. `AsyncFunction` here would mean the
     // artifact was produced by the current toolchain and would refuse it outright; `Function` is
-    // what a real retained artifact AND a transpiled current-era one both read, so it decides
+    // what a real ledger 8 artifact AND a transpiled current-era one both read, so it decides
     // nothing on its own -- the declared runtime version does. See `era-artifact-declaration.test.ts`.
     expect(contract.initialState.constructor.name).toBe('Function');
   });
@@ -160,7 +160,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
 
   it('sets provableCircuits as well as impureCircuits, so neither one discriminates the era on its own', () => {
     // The reason the family is built on sync-versus-async rather than on which circuit collections
-    // are present: the retained artifact sets BOTH, exactly as the current era's does.
+    // are present: the ledger 8 artifact sets BOTH, exactly as the current era's does.
     expect(Object.keys(contract.provableCircuits).sort()).toEqual(Object.keys(contract.impureCircuits).sort());
     expect(Object.keys(contract.circuits).sort()).toEqual(Object.keys(contract.impureCircuits).sort());
   });
@@ -170,15 +170,15 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     expect('tag' in contract).toBe(false);
   });
 
-  it('ships the declaration file the type test imports, wired to the RETAINED runtime', () => {
+  it('ships the declaration file the type test imports, wired to the LEDGER 8 runtime', () => {
     // `../ledger8-fixture-types.ts` types both fixtures from these declarations, so the compile
     // assertions and the runtime assertions look at one artifact. Two things have to hold for that
     // to mean anything, and neither is visible from the type side:
     //
     //  - the declaration is there at all (it was deliberately not ported until #1312);
-    //  - it names `compact-runtime-ledger8`, this repo's alias for the retained
+    //  - it names `compact-runtime-ledger8`, this repo's alias for the ledger 8
     //    `@midnight-ntwrk/compact-runtime@0.16.0`. `compactc` emits the bare specifier, which the
-    //    root `resolutions` pin to 0.20.0 — so left alone the retained fixture would be typed
+    //    root `resolutions` pin to 0.21.0 — so left alone the ledger 8 fixture would be typed
     //    against the CURRENT runtime's `CircuitContext`. That is loud rather than silent (the
     //    conformance assertions in `typecheck/overloads.test-d.ts` go red), but it fails somewhere
     //    that says nothing about a specifier, which is what this pins. The one-line rewrite is
@@ -206,7 +206,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     // asserted against a circuit that takes no arguments of its own, so nothing tied the family's
     // handling of real circuit ARGUMENTS to a real artifact. `coin-receiver-016`'s `receive_coin`
     // takes one (its own arity guard is `args_1.length !== 2`, against the counter's `!== 1`), and
-    // `typecheck/overloads.test-d.ts` asserts the retained-era overload RESOLVES for it. These
+    // `typecheck/overloads.test-d.ts` asserts the ledger 8 overload RESOLVES for it. These
     // assertions are what tie the generated DECLARATION `CoinReceiver016Contract` now comes from
     // to the generated JavaScript beside it.
     let coinReceiver: CoinReceiver016Contract;
@@ -260,7 +260,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect('tag' in coinReceiver).toBe(false);
     });
 
-    it('ships the same retained-runtime-wired declaration file, and exports no expectedVk', () => {
+    it('ships the same ledger-8-runtime-wired declaration file, and exports no expectedVk', () => {
       const coinReceiverTypes = readFileSync(resolve(COIN_RECEIVER_016_DIR, 'index.d.ts'), 'utf8');
       expect(coinReceiverTypes).toContain("from 'compact-runtime-ledger8'");
       expect(coinReceiverTypes).not.toContain("from '@midnight-ntwrk/compact-runtime'");
@@ -277,7 +277,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
   });
 
   describe('the era dispatch fork routes the real artifact away from the current-era pipeline', () => {
-    // The overloads accept the retained-era shape but nothing executes it yet. These assertions
+    // The overloads accept the ledger 8 shape but nothing executes it yet. These assertions
     // are what prove the fork is WIRED: each entry point recognises the real artifact and refuses
     // it by name, instead of falling through into the current-era pipeline and failing somewhere
     // unrelated to the era.
@@ -307,9 +307,9 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       coinReceiverContract = new (await loadCoinReceiver016()).Contract({});
     });
 
-    it('places the real retained-era artifacts, and a current-era container as not', async () => {
+    it('places the real ledger 8 artifacts, and a current-era container as not', async () => {
       // `resolveArtifactEra` is the single era decision. Both shapes are placed from the runtime
-      // version their bundle declares; a container served with retained artifacts is refused.
+      // version their bundle declares; a container served with ledger 8 artifacts is refused.
       await expect(resolveArtifactEra(contract, zkConfigProvider)).resolves.toBe('v8');
       await expect(resolveArtifactEra(coinReceiverContract, zkConfigProvider)).resolves.toBe('v8');
       await expect(
@@ -322,7 +322,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       // which is how every real container is built. A literal `{ tag, pipe }` resembles only the
       // transient `make()` result and would keep passing if the check were widened.
       await expect(
-        resolveArtifactEra(createMockCompiledContract(), { getArtifactRuntimeVersion: async () => '0.20.0' })
+        resolveArtifactEra(createMockCompiledContract(), { getArtifactRuntimeVersion: async () => '0.21.0' })
       ).resolves.toBe('v9');
     });
 
@@ -350,10 +350,10 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     });
 
     // The deploy path no longer refuses by artifact. It runs, and what decides it is the ERA PAIRING:
-    // the retained era has no post-fork deployment, so a retained artifact against a post-fork head
-    // is refused by the same table every other retained operation is measured against. This shared
+    // the ledger 8 era has no post-fork deployment, so a ledger 8 artifact against a post-fork head
+    // is refused by the same table every other ledger 8 operation is measured against. This shared
     // mock reports a post-fork head, which is the refusing cell.
-    it('routes a retained-era deployContract into the retained pipeline, where the era table refuses it', async () => {
+    it('routes a ledger 8 deployContract into the ledger 8 pipeline, where the era table refuses it', async () => {
       let caught: unknown;
       try {
         await deployContract(providers, { compiledContract: contract });

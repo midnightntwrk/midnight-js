@@ -23,8 +23,8 @@
  * by using the low-level ProvingProvider internally.
  *
  * ```typescript
- * import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
- * import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
+ * import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+ * import { LedgerTransaction } from '@midnightntwrk/midnight-js-types';
  *
  * const proofProvider = httpClientProofProvider(
  *   'http://localhost:6300',
@@ -37,7 +37,7 @@
  * // midnight-js code.
  * const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
  * const provenTx = await proofProvider.proveTx(unprovenTx);
- * const ledgerProvenTx = LedgerTransaction.unwrap(provenTx, 'v9');
+ * const ledgerProvenTx = provenTx.deserialize({ v9: Transaction }); // Transaction from your own ledger-v9
  * ```
  *
  * ### Both ledger eras
@@ -49,7 +49,7 @@
  * // proven.era is 'v8'
  * ```
  *
- * Note that `createLedger9ProofProvider` in `@midnight-ntwrk/midnight-js-types` refuses the v8 era —
+ * Note that `createLedger9ProofProvider` in `@midnightntwrk/midnight-js-types` refuses the v8 era —
  * it adapts a v9-only `ProvingProvider` — so reach for this provider, not that helper, when
  * you need both eras.
  *
@@ -69,7 +69,7 @@
  * control over individual circuit proving operations.
  *
  * ```typescript
- * import { httpClientProvingProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+ * import { httpClientProvingProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
  *
  * const provingProvider = httpClientProvingProvider(
  *   'http://localhost:6300',

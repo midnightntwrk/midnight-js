@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { AnyProvableCircuitId, FinalizedTx, LedgerTransaction, UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { AnyProvableCircuitId, FinalizedTx, LedgerTransaction, UnprovenTx } from '@midnightntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type {
@@ -43,7 +43,7 @@ describe('every transaction the contracts barrel publishes is a handle', () => {
     >();
   });
 
-  it('carries the unproven transaction of a retained-era deploy as a v8 handle', () => {
+  it('carries the unproven transaction of a ledger 8 deploy as a v8 handle', () => {
     expectTypeOf<Ledger8UnsubmittedDeployTxData<Ledger8Contract>['private']['unprovenTx']>().toEqualTypeOf<
       LedgerTransaction<'Unproven', 'v8'>
     >();
@@ -53,7 +53,7 @@ describe('every transaction the contracts barrel publishes is a handle', () => {
     expectTypeOf<SubmitTxOptions<AnyProvableCircuitId>['unprovenTx']>().toEqualTypeOf<UnprovenTx>();
   });
 
-  it('carries the retained-era call result as an UnprovenTx and no transaction bytes', () => {
+  it('carries the ledger 8 call result as an UnprovenTx and no transaction bytes', () => {
     expectTypeOf<Ledger8CallResultPrivate<Ledger8Contract, AnyLedger8CircuitId>['unprovenTx']>().toEqualTypeOf<UnprovenTx>();
     expectTypeOf<Ledger8CallResultPrivate<Ledger8Contract, AnyLedger8CircuitId>>().not.toHaveProperty('txBytes');
   });

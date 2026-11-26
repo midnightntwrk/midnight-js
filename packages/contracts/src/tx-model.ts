@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { ContractAddress, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { type Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { ContractAddress, SigningKey,ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import type {
   Ledger8FinalizedTxData,
   Ledger9FinalizedTxData,
@@ -22,7 +22,7 @@ import type {
   SerializedContractState,
   SubmittedCallTxBase,
   UnsubmittedTxDataBase
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 
 import type { Ledger9CallResult, Ledger9CallResultPrivate, Ledger9CallResultPublic } from './call';
 
@@ -44,8 +44,8 @@ import type { Ledger9CallResult, Ledger9CallResultPrivate, Ledger9CallResultPubl
  */
 export interface Ledger9UnsubmittedTxData extends UnsubmittedTxDataBase {
   /**
-   * The unproven transaction produced, as a v9 handle. Read it with
-   * `LedgerTransaction.unwrap(unprovenTx, 'v9')`.
+   * The unproven transaction produced, as a v9 handle. Read it with your own
+   * ledger copy: `unprovenTx.deserialize({ v9: Transaction })`.
    */
   readonly unprovenTx: LedgerTransaction<'Unproven', 'v9'>;
 }
@@ -182,7 +182,7 @@ export interface Ledger9FinalizedDeployTxDataBase<C extends Contract.Any> extend
  * The public data of a deployment found on chain whose deploy transaction was
  * recorded by the ledger-8 runtime, i.e. a contract deployed before the ledger fork.
  *
- * @remarks Unlike the other `Ledger8*` types, it outlives the retained pipeline:
+ * @remarks Unlike the other `Ledger8*` types, it outlives the ledger 8 pipeline:
  * it is part of `Ledger9FoundDeployTxData`.
  *
  * @see {@link ErrorTaxonomy} for how the `Ledger8` names are used.
@@ -213,7 +213,7 @@ export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9Fi
  * authority replaced -- resolves with once the chain has recorded it.
  *
  * Nested like every other `contracts` result, so `era` names the pipeline and `public` carries the
- * record. The retained era's counterpart is `Ledger8FinalizedMaintenanceTxData`; the two together
+ * record. The ledger 8 counterpart is `Ledger8FinalizedMaintenanceTxData`; the two together
  * are `FinalizedMaintenanceTxData`.
  */
 export interface Ledger9FinalizedMaintenanceTxData {

@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { CompiledContract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { ProvableCircuitId } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { PrivateStateId } from '@midnightntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { Ledger9CallOptionsWithArguments, Ledger9CallResult } from '../../call';
@@ -33,7 +33,7 @@ import type {
   Counter016Contract
 } from '../ledger8-fixture-types';
 
-// The current era's twin of `overloads.test-d.ts`'s retained-era assertions.
+// The current era's twin of `overloads.test-d.ts`'s ledger 8 assertions.
 // compact-js's `CircuitParameters` unbrands the circuit id itself as of
 // 3.0.0-rc.2 (midnightntwrk/midnight-sdk#402), so a branded id and a plain
 // literal resolve to the same parameter tuple. These assertions hold both

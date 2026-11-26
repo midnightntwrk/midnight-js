@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { CostModel, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   InvalidTransactionHandleError,
   type KeyMaterialProvider,
@@ -23,9 +24,8 @@ import {
   LedgerTransaction,
   type UnprovenTx,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
-import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
+} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dappConnectorProofProvider } from '../dapp-connector-proof-provider';
@@ -118,7 +118,7 @@ describe('dappConnectorProofProvider', () => {
   });
 
   // Set equality rather than `toContain`: this provider serves both eras, and
-  // an era silently dropped from the declaration would have a retained-era
+  // an era silently dropped from the declaration would have a ledger 8
   // operation refused before it started -- which `toContain` would not catch.
   it('declares both eras, matching the two handlers it is built from', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, costModel);
@@ -140,9 +140,7 @@ describe('dappConnectorProofProvider', () => {
       costModel
     );
     expect([result.era, result.stage]).toEqual(['v9', 'Unbound']);
-    // Identity, not structural equality: ledger objects from different WASM
-    // instances must not be interchanged, so a structurally-equal copy must fail.
-    expect(LedgerTransaction.unwrap(result, 'v9')).toBe(provenLedger9Tx);
+    expect(result.serialize()).toEqual(provenLedger9Tx.serialize());
   });
 
   describe('proveTxConfig.timeout', () => {
@@ -173,7 +171,7 @@ describe('dappConnectorProofProvider', () => {
 
       const result = await proofProvider.proveTx(unprovenLedger9Handle(), {});
 
-      expect(LedgerTransaction.unwrap(result, 'v9')).toBe(provenLedger9Tx);
+      expect(result.serialize()).toEqual(provenLedger9Tx.serialize());
     });
 
     it('proves a v9 transaction when the timeout key is present but undefined', async () => {
@@ -181,7 +179,7 @@ describe('dappConnectorProofProvider', () => {
 
       const result = await proofProvider.proveTx(unprovenLedger9Handle(), { timeout: undefined });
 
-      expect(LedgerTransaction.unwrap(result, 'v9')).toBe(provenLedger9Tx);
+      expect(result.serialize()).toEqual(provenLedger9Tx.serialize());
     });
   });
 

@@ -23,7 +23,7 @@ type Era = { readonly version: 'v8'; readonly bytes: string } | { readonly versi
 const describeEra = (era: Era): string => {
   switch (era.version) {
     case 'v8':
-      return `retained ${era.bytes.length}`;
+      return `ledger 8: ${era.bytes.length}`;
     case 'v9':
       return `native ${era.value}`;
     default:
@@ -34,15 +34,15 @@ const describeEra = (era: Era): string => {
 describe('assertNever', () => {
   test('lets an exhaustive switch return normally on every case', () => {
     // Arrange.
-    const retained: Era = { version: 'v8', bytes: 'abcd' };
+    const ledger8: Era = { version: 'v8', bytes: 'abcd' };
     const native: Era = { version: 'v9', value: 7 };
 
     // Act.
-    const retainedResult = describeEra(retained);
+    const ledger8Result = describeEra(ledger8);
     const nativeResult = describeEra(native);
 
     // Assert.
-    expect(retainedResult).toBe('retained 4');
+    expect(ledger8Result).toBe('ledger 8: 4');
     expect(nativeResult).toBe('native 7');
   });
 

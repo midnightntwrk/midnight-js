@@ -85,7 +85,7 @@ export interface LedgerEraFacade {
    * `.prove()` is ever called; proving needs a proving provider and a running
    * proof server, neither of which this method has.
    *
-   * The retained pre-fork era composes exactly ONE call and refuses a longer
+   * Ledger 8 composes exactly ONE call and refuses a longer
    * list. A Zswap offer is NOT refused on either era.
    *
    * A call's Zswap offer is supplied as a FACTORY rather than as ready-made
@@ -96,7 +96,7 @@ export interface LedgerEraFacade {
    * @returns The serialized UNPROVEN transaction and each call's partition.
    * @throws ComposeOptionError if an option is unusable on this era — an
    * empty `networkId`, an invalid `ttl`, undecodable offer or state bytes, or
-   * a call tree with more than one entry on the retained pre-fork era.
+   * a call tree with more than one entry on ledger 8.
    * @throws ComposeFailedError if a call cannot be assembled; `stage` names
    * which step refused it.
    * @see {@link ComposeRefusalOrder}

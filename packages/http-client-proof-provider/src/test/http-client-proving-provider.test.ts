@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9';
+import * as ledger from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   encodeContractKeyLocation,
   hashVerifierKey,
@@ -26,25 +26,21 @@ import {
   type ZKConfig,
   type ZKConfigProvider,
   ZKConfigRegistry,
-  type ZKIR} from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+  type ZKIR} from '@midnightntwrk/midnight-js-types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { httpClientProvingProvider } from '../http-client-proving-provider';
 
-const { mockFetchRetry } = vi.hoisted(() => ({
-  mockFetchRetry: vi.fn()
+const { mockFetch } = vi.hoisted(() => ({
+  mockFetch: vi.fn()
 }));
 
 vi.mock('cross-fetch', () => ({
-  default: vi.fn()
+  default: mockFetch
 }));
 
-vi.mock('fetch-retry', () => ({
-  default: () => mockFetchRetry
-}));
-
-vi.mock('@midnight-ntwrk/midnight-js-protocol/v9', async () => {
-  const actual = await vi.importActual('@midnight-ntwrk/midnight-js-protocol/v9');
+vi.mock('@midnightntwrk/midnight-js-protocol/v9', async () => {
+  const actual = await vi.importActual('@midnightntwrk/midnight-js-protocol/v9');
   return {
     ...actual,
     createCheckPayload: vi.fn(),
@@ -73,7 +69,7 @@ describe('httpClientProvingProvider', () => {
   let mockZkConfigProvider: ZKConfigProvider<string>;
 
   beforeEach(() => {
-    mockFetchRetry.mockReset();
+    mockFetch.mockReset();
     vi.mocked(ledger.createCheckPayload).mockReset();
     vi.mocked(ledger.createProvingPayload).mockReset();
     vi.mocked(ledger.parseCheckResult).mockReset();
@@ -82,13 +78,17 @@ describe('httpClientProvingProvider', () => {
       get: vi.fn().mockResolvedValue(mockZkConfig)
     });
 
-    mockFetchRetry.mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
       statusText: 'OK',
       url: mockUrl,
       arrayBuffer: vi.fn().mockResolvedValue(new Uint8Array([10, 11, 12]).buffer)
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('factory function', () => {
@@ -178,7 +178,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.check(serializedPreimage, 'test-circuit');
 
-      expect(mockFetchRetry).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         new URL('/check', mockUrl),
         expect.objectContaining({
           method: 'POST',
@@ -197,7 +197,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.check(serializedPreimage, 'test-circuit');
 
-      expect(mockFetchRetry).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.any(URL),
         expect.objectContaining({
           signal: expect.any(AbortSignal)
@@ -220,21 +220,25 @@ describe('httpClientProvingProvider', () => {
     });
 
     it('should throw error when HTTP response is not ok', async () => {
-      mockFetchRetry.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-        url: mockUrl
+        url: mockUrl,
+        headers: new Headers()
       });
+      vi.useFakeTimers();
 
       const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
       const serializedPreimage = new Uint8Array([1, 2, 3]);
 
       vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20, 21, 22]));
 
-      await expect(provider.check(serializedPreimage, 'test-circuit')).rejects.toThrow(
+      const result = expect(provider.check(serializedPreimage, 'test-circuit')).rejects.toThrow(
         /Failed Proof Server response/
       );
+      await vi.runAllTimersAsync();
+      await result;
     });
   });
 
@@ -311,7 +315,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.prove(serializedPreimage, 'test-circuit');
 
-      expect(mockFetchRetry).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         new URL('/prove', mockUrl),
         expect.objectContaining({
           method: 'POST',
@@ -322,7 +326,7 @@ describe('httpClientProvingProvider', () => {
 
     it('should return proof bytes from response', async () => {
       const expectedProof = new Uint8Array([40, 41, 42]);
-      mockFetchRetry.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
         statusText: 'OK',
@@ -341,21 +345,25 @@ describe('httpClientProvingProvider', () => {
     });
 
     it('should throw error when HTTP response is not ok', async () => {
-      mockFetchRetry.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 503,
         statusText: 'Service Unavailable',
-        url: mockUrl
+        url: mockUrl,
+        headers: new Headers()
       });
+      vi.useFakeTimers();
 
       const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
       const serializedPreimage = new Uint8Array([1, 2, 3]);
 
       vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
 
-      await expect(provider.prove(serializedPreimage, 'test-circuit')).rejects.toThrow(
+      const result = expect(provider.prove(serializedPreimage, 'test-circuit')).rejects.toThrow(
         /Failed Proof Server response/
       );
+      await vi.runAllTimersAsync();
+      await result;
     });
   });
 
@@ -364,7 +372,7 @@ describe('httpClientProvingProvider', () => {
       [502, 'Bad Gateway', 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE'],
       [400, 'Bad Request', 'MIDNIGHT_JS_PR_PROOF_SERVER_REFUSED']
     ])('maps a %i answer to %s', async (status, statusText, code) => {
-      mockFetchRetry.mockResolvedValue({ ok: false, status, statusText, url: mockUrl });
+      mockFetch.mockResolvedValue({ ok: false, status, statusText, url: mockUrl });
       vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30]));
       const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
 
@@ -380,7 +388,7 @@ describe('httpClientProvingProvider', () => {
     it('wraps a failure while reading the response body and keeps it on cause', async () => {
       // Arrange
       const bodyFailure = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
-      mockFetchRetry.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
         statusText: 'OK',
@@ -413,7 +421,7 @@ describe('httpClientProvingProvider', () => {
 
       // Assert
       expect(error).toBe(unavailable);
-      expect(mockFetchRetry).not.toHaveBeenCalled();
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it('still proves without keys when the flat provider does not serve the circuit', async () => {
@@ -431,11 +439,14 @@ describe('httpClientProvingProvider', () => {
 
     it('wraps a transport failure and keeps it on cause', async () => {
       const networkFailure = new TypeError('fetch failed');
-      mockFetchRetry.mockRejectedValue(networkFailure);
+      mockFetch.mockRejectedValue(networkFailure);
       vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20]));
+      vi.useFakeTimers();
       const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
 
-      const error = await provider.check(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+      const pending = provider.check(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+      await vi.runAllTimersAsync();
+      const error = await pending;
 
       expect(error).toBeInstanceOf(ProofServerError);
       expect(error).toMatchObject({
@@ -457,7 +468,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.check(serializedPreimage, 'test-circuit');
 
-      expect(mockFetchRetry).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.any(URL),
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -478,7 +489,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.prove(serializedPreimage, 'test-circuit');
 
-      expect(mockFetchRetry).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.any(URL),
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -498,7 +509,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.check(serializedPreimage, 'test-circuit');
 
-      expect(mockFetchRetry).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.any(URL),
         expect.objectContaining({
           headers: { 'Content-Type': 'application/octet-stream' }
@@ -517,7 +528,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.check(serializedPreimage, 'test-circuit');
 
-      expect(mockFetchRetry).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.any(URL),
         expect.objectContaining({
           signal: expect.any(AbortSignal)
@@ -534,7 +545,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.prove(serializedPreimage, 'test-circuit');
 
-      expect(mockFetchRetry).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.any(URL),
         expect.objectContaining({
           signal: expect.any(AbortSignal)
@@ -582,6 +593,231 @@ describe('httpClientProvingProvider', () => {
     });
   });
 
+  describe('retry policy', () => {
+    const TIMEOUT = 60_000;
+
+    const answer = (status: number, headers: Record<string, string> = {}) => ({
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: `status ${status}`,
+      url: mockUrl,
+      headers: new Headers(headers),
+      arrayBuffer: vi.fn().mockResolvedValue(new Uint8Array([10]).buffer)
+    });
+
+    const timedOut = () => new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+
+    const startProve = (timeout = TIMEOUT) => {
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { timeout });
+      return provider.prove(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+    };
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30]));
+      vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms: number) => {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(timedOut()), ms);
+        return controller.signal;
+      });
+    });
+
+    afterEach(() => {
+      vi.mocked(AbortSignal.timeout).mockRestore();
+    });
+
+    it.each([429, 500, 503])('retries a %i answer after the backoff, under the same deadline', async (status) => {
+      // Arrange
+      mockFetch.mockResolvedValueOnce(answer(status)).mockResolvedValueOnce(answer(200));
+
+      // Act
+      const result = startProve();
+      await vi.advanceTimersByTimeAsync(999);
+      const callsBeforeBackoff = mockFetch.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(1);
+
+      // Assert
+      expect(callsBeforeBackoff).toBe(1);
+      expect(await result).toEqual(new Uint8Array([10]));
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch.mock.calls[1][1].signal).toBe(mockFetch.mock.calls[0][1].signal);
+    });
+
+    it.each([400, 404, 502, 504])('does not retry a %i answer', async (status) => {
+      // Arrange
+      mockFetch.mockResolvedValue(answer(status));
+
+      // Act
+      const result = startProve();
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      // Assert
+      expect(await result).toMatchObject({ name: 'ProofServerError', message: expect.stringContaining(`code="${status}"`) });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('backs off 1s, 2s and 4s, then gives up with the last answer', async () => {
+      // Arrange
+      mockFetch.mockResolvedValue(answer(503));
+
+      // Act
+      const result = startProve();
+      const callsAt: number[] = [];
+      for (const elapsed of [999, 1, 1_999, 1, 3_999, 1]) {
+        await vi.advanceTimersByTimeAsync(elapsed);
+        callsAt.push(mockFetch.mock.calls.length);
+      }
+
+      // Assert
+      expect(callsAt).toEqual([1, 2, 2, 3, 3, 4]);
+      const error = await result;
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({ code: 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', status: 503 });
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+    });
+
+    it('waits the number of seconds a Retry-After header asks for', async () => {
+      // Arrange
+      mockFetch.mockResolvedValueOnce(answer(429, { 'Retry-After': '5' })).mockResolvedValueOnce(answer(200));
+
+      // Act
+      const result = startProve();
+      await vi.advanceTimersByTimeAsync(4_999);
+      const callsBeforeRetryAfter = mockFetch.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(1);
+
+      // Assert
+      expect(callsBeforeRetryAfter).toBe(1);
+      expect(await result).toEqual(new Uint8Array([10]));
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('waits until the HTTP date a Retry-After header names', async () => {
+      // Arrange
+      vi.setSystemTime(new Date('2026-11-23T12:00:00Z'));
+      mockFetch
+        .mockResolvedValueOnce(answer(429, { 'Retry-After': 'Mon, 23 Nov 2026 12:00:03 GMT' }))
+        .mockResolvedValueOnce(answer(200));
+
+      // Act
+      const result = startProve();
+      await vi.advanceTimersByTimeAsync(2_999);
+      const callsBeforeRetryAfter = mockFetch.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(1);
+
+      // Assert
+      expect(callsBeforeRetryAfter).toBe(1);
+      expect(await result).toEqual(new Uint8Array([10]));
+    });
+
+    it.each(['0', 'Sun, 22 Nov 2026 12:00:00 GMT'])('retries at once when Retry-After is %s', async (retryAfter) => {
+      // Arrange
+      vi.setSystemTime(new Date('2026-11-23T12:00:00Z'));
+      mockFetch.mockResolvedValueOnce(answer(429, { 'Retry-After': retryAfter })).mockResolvedValueOnce(answer(200));
+
+      // Act
+      const result = startProve();
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Assert
+      expect(await result).toEqual(new Uint8Array([10]));
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(['soon', '-5', '1.5'])('falls back to the backoff when Retry-After is %s', async (retryAfter) => {
+      // Arrange
+      mockFetch.mockResolvedValueOnce(answer(429, { 'Retry-After': retryAfter })).mockResolvedValueOnce(answer(200));
+
+      // Act
+      const result = startProve();
+      await vi.advanceTimersByTimeAsync(999);
+      const callsBeforeBackoff = mockFetch.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(1);
+
+      // Assert
+      expect(callsBeforeBackoff).toBe(1);
+      expect(await result).toEqual(new Uint8Array([10]));
+    });
+
+    it.each(['3600', '99999999'])('fails at the deadline when Retry-After %s outlasts the timeout', async (retryAfter) => {
+      // Arrange
+      mockFetch.mockResolvedValue(answer(429, { 'Retry-After': retryAfter }));
+
+      // Act
+      const result = startProve(2_000);
+      await vi.advanceTimersByTimeAsync(2_000);
+      const error = await result;
+      await vi.advanceTimersByTimeAsync(600_000);
+
+      // Assert
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({ code: 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', cause: { name: 'TimeoutError' } });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries a network failure after the backoff', async () => {
+      // Arrange
+      mockFetch.mockRejectedValueOnce(new TypeError('fetch failed')).mockResolvedValueOnce(answer(200));
+
+      // Act
+      const result = startProve();
+      await vi.advanceTimersByTimeAsync(1_000);
+
+      // Assert
+      expect(await result).toEqual(new Uint8Array([10]));
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not retry a request the timeout aborted', async () => {
+      // Arrange
+      const abortError = new DOMException('This operation was aborted', 'AbortError');
+      mockFetch.mockImplementation(
+        (_url: URL, init: RequestInit) =>
+          new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(abortError)))
+      );
+
+      // Act
+      const result = startProve(2_000);
+      await vi.advanceTimersByTimeAsync(2_000);
+      const error = await result;
+      await vi.advanceTimersByTimeAsync(600_000);
+
+      // Assert
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({ code: 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', cause: abortError });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('ends the call at the deadline when the timeout fires during the backoff', async () => {
+      // Arrange
+      mockFetch.mockResolvedValue(answer(503));
+
+      // Act
+      const result = startProve(500);
+      await vi.advanceTimersByTimeAsync(500);
+      const error = await result;
+      await vi.advanceTimersByTimeAsync(600_000);
+
+      // Assert
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({ cause: { name: 'TimeoutError' } });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not send the request again when reading a successful answer fails', async () => {
+      // Arrange
+      mockFetch.mockResolvedValue({ ...answer(200), arrayBuffer: vi.fn().mockRejectedValue(timedOut()) });
+
+      // Act
+      const result = startProve();
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      // Assert
+      expect(await result).toMatchObject({ message: `Proof Server response could not be read: url="${mockUrl}/prove"` });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('URL configuration', () => {
     it('should preserve path prefix in URL', async () => {
       const urlWithPath = 'http://localhost:8080/api/v1';
@@ -593,7 +829,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.check(serializedPreimage, 'test-circuit');
 
-      const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
+      const calledUrl = mockFetch.mock.calls[0][0] as URL;
       expect(calledUrl.pathname).toBe('/api/v1/check');
     });
 
@@ -607,7 +843,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.check(serializedPreimage, 'test-circuit');
 
-      const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
+      const calledUrl = mockFetch.mock.calls[0][0] as URL;
       expect(calledUrl.search).toBe('?token=secret123');
     });
 
@@ -620,7 +856,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.prove(serializedPreimage, 'test-circuit');
 
-      const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
+      const calledUrl = mockFetch.mock.calls[0][0] as URL;
       expect(calledUrl.pathname).toBe('/api/v1/prove');
       expect(calledUrl.search).toBe('?token=secret&env=test');
     });
@@ -635,7 +871,7 @@ describe('httpClientProvingProvider', () => {
 
       await provider.check(serializedPreimage, 'test-circuit');
 
-      const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
+      const calledUrl = mockFetch.mock.calls[0][0] as URL;
       expect(calledUrl.pathname).toBe('/api/v1/check');
     });
   });

@@ -1,0 +1,90 @@
+import type * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
+
+export type Witnesses<PS> = {
+}
+
+export type ImpureCircuits<PS> = {
+  depositToVault(context: __compactRuntime.CircuitContext<PS>,
+                 coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint }): Promise<__compactRuntime.CircuitResults<PS, []>>;
+  mintAndSendFromVault(context: __compactRuntime.CircuitContext<PS>,
+                       domainSep_0: Uint8Array,
+                       mintValue_0: bigint,
+                       mintNonce_0: Uint8Array,
+                       publicKey_0: { bytes: Uint8Array },
+                       sendValue_0: bigint): Promise<__compactRuntime.CircuitResults<PS, { change: { is_some: boolean,
+                                                                                                     value: { nonce: Uint8Array,
+                                                                                                              color: Uint8Array,
+                                                                                                              value: bigint
+                                                                                                            }
+                                                                                                   },
+                                                                                           sent: { nonce: Uint8Array,
+                                                                                                   color: Uint8Array,
+                                                                                                   value: bigint
+                                                                                                 }
+                                                                                         }>>;
+}
+
+export type ProvableCircuits<PS> = {
+  depositToVault(context: __compactRuntime.CircuitContext<PS>,
+                 coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint }): Promise<__compactRuntime.CircuitResults<PS, []>>;
+  mintAndSendFromVault(context: __compactRuntime.CircuitContext<PS>,
+                       domainSep_0: Uint8Array,
+                       mintValue_0: bigint,
+                       mintNonce_0: Uint8Array,
+                       publicKey_0: { bytes: Uint8Array },
+                       sendValue_0: bigint): Promise<__compactRuntime.CircuitResults<PS, { change: { is_some: boolean,
+                                                                                                     value: { nonce: Uint8Array,
+                                                                                                              color: Uint8Array,
+                                                                                                              value: bigint
+                                                                                                            }
+                                                                                                   },
+                                                                                           sent: { nonce: Uint8Array,
+                                                                                                   color: Uint8Array,
+                                                                                                   value: bigint
+                                                                                                 }
+                                                                                         }>>;
+}
+
+export type PureCircuits = {
+}
+
+export type Circuits<PS> = {
+  depositToVault(context: __compactRuntime.CircuitContext<PS>,
+                 coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint }): Promise<__compactRuntime.CircuitResults<PS, []>>;
+  mintAndSendFromVault(context: __compactRuntime.CircuitContext<PS>,
+                       domainSep_0: Uint8Array,
+                       mintValue_0: bigint,
+                       mintNonce_0: Uint8Array,
+                       publicKey_0: { bytes: Uint8Array },
+                       sendValue_0: bigint): Promise<__compactRuntime.CircuitResults<PS, { change: { is_some: boolean,
+                                                                                                     value: { nonce: Uint8Array,
+                                                                                                              color: Uint8Array,
+                                                                                                              value: bigint
+                                                                                                            }
+                                                                                                   },
+                                                                                           sent: { nonce: Uint8Array,
+                                                                                                   color: Uint8Array,
+                                                                                                   value: bigint
+                                                                                                 }
+                                                                                         }>>;
+}
+
+export type Ledger = {
+  readonly vault: { bytes: Uint8Array };
+}
+
+export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>> {
+  witnesses: W;
+  circuits: Circuits<PS>;
+  impureCircuits: ImpureCircuits<PS>;
+  provableCircuits: ProvableCircuits<PS>;
+  constructor(witnesses: W);
+  initialState(context: __compactRuntime.ConstructorContext<PS>,
+               target_0: { bytes: Uint8Array }): Promise<__compactRuntime.ConstructorResult<PS>>;
+}
+
+export declare function ledger(state: __compactRuntime.StateValue | __compactRuntime.ChargedState): Ledger;
+export declare const pureCircuits: PureCircuits;
+export declare const expectedVk: Record<string, string>;
+export declare const circuitSignatures: __compactRuntime.CircuitSignatures;
+export declare const declaredInterfaces: __compactRuntime.DeclaredInterfaces;

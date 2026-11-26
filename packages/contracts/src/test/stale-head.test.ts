@@ -27,20 +27,20 @@
  * node minor bump (2_000_000 -> 2_001_000) is the case a naive integer
  * comparison reports as a fork and this one must not.
  *
- * The second is that the decision is wired into the retained-era pipelines at
+ * The second is that the decision is wired into the ledger 8 pipelines at
  * `submitTx`, and that a caller who follows the remediation actually gets
  * somewhere: the re-run after the head has flipped lands on the keep-state
  * pipeline with no change to the caller's code. That half reuses the committed
- * retained-era recording — see `./ledger8-replay.ts` and `./v8-native.test.ts`
+ * ledger 8 recording — see `./ledger8-replay.ts` and `./v8-native.test.ts`
  * for what the replay proves and what it stands in for.
  */
 
 import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { type LedgerEra, loadLedger8Protocol, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
-import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
+import { type LedgerEra, loadLedger8Protocol, NO_CIRCUIT } from '@midnightntwrk/midnight-js-protocol';
+import { LedgerParameters } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   type ContractStateAndParametersRead,
   type FinalizedTx,
@@ -48,8 +48,8 @@ import {
   type UnboundTx,
   type UnprovenTx,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { assert, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -77,13 +77,13 @@ import { contractStateAndParametersRead, createMockFinalizedTxData, createMockPr
 
 // Both redirects are `./v8-native.test.ts`'s -- see that file for why each is
 // needed. The artifact's own runtime check needs an import-time stub, and the
-// retained engine acquisition is replaced so this package never acquires the
-// retained runtime. Everything else on the protocol barrel stays real.
+// ledger 8 engine acquisition is replaced so this package never acquires the
+// ledger 8 runtime. Everything else on the protocol barrel stays real.
 vi.mock('@midnight-ntwrk/compact-runtime', () => import('./ledger8-runtime-stub'));
 
 const engineSlot = vi.hoisted((): { engine?: unknown } => ({}));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,
@@ -129,18 +129,18 @@ interface SeenPayloads {
   balanced?: FinalizedTx;
 }
 
-type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> & {
+type Ledger8Providers = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> & {
   readonly seen: SeenPayloads;
 };
 
 // Minted per era, because a block's parameters are era-tagged and the path that composes reads them
-// with its OWN era: a pre-fork block's go to the retained composer, a post-fork block's to the
+// with its OWN era: a pre-fork block's go to the ledger 8 composer, a post-fork block's to the
 // current one. Handing either the other's bytes is refused on the header tag.
-let retainedLedgerParameters: Uint8Array;
+let ledger8LedgerParameters: Uint8Array;
 let currentLedgerParameters: Uint8Array;
 
 beforeAll(async () => {
-  retainedLedgerParameters = (await loadLedger8Protocol()).LedgerParameters.initialParameters().serialize();
+  ledger8LedgerParameters = (await loadLedger8Protocol()).LedgerParameters.initialParameters().serialize();
   currentLedgerParameters = LedgerParameters.initialParameters().serialize();
 });
 
@@ -149,7 +149,7 @@ const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateAndPar
   contractStateAndParametersRead(
     raw,
     protocolVersion,
-    protocolVersion === PRE_FORK_PROTOCOL_VERSION ? retainedLedgerParameters : currentLedgerParameters
+    protocolVersion === PRE_FORK_PROTOCOL_VERSION ? ledger8LedgerParameters : currentLedgerParameters
   );
 
 /**
@@ -317,7 +317,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     expect(caughtDeploy).toBeInstanceOf(ForkCrossedDuringOperationError);
     expect((caughtDeploy as ForkCrossedDuringOperationError).kind).toBe('deploy');
     const deployMessage = (caughtDeploy as Error).message;
-    // A deploy cannot be re-run at all once the head has crossed: the retained
+    // A deploy cannot be re-run at all once the head has crossed: the ledger 8
     // era has no post-fork deployment. So the second step is a different step,
     // and the two messages must not be the same text.
     expect(deployMessage).toMatch(/did not.*finalize|not finalize/);
@@ -504,7 +504,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
   });
 });
 
-describe('the fork-crossing failure through the retained-era entry points', () => {
+describe('the fork-crossing failure through the ledger 8 entry points', () => {
   let recording: CoinReceiverRecording;
   let contract: CoinReceiver016Contract;
   let v6Envelope: Uint8Array;
@@ -522,8 +522,8 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope);
   });
 
-  /** A retained-era provider set on a PRE-FORK head, with the three transaction methods recorded. */
-  const preForkProviders = (): RetainedProviders => {
+  /** A ledger 8 provider set on a PRE-FORK head, with the three transaction methods recorded. */
+  const preForkProviders = (): Ledger8Providers => {
     const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
       getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.16.0'),
       getVerifierKeys: vi.fn(),
@@ -557,7 +557,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     });
     providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: FinalizedTx) => {
       seen.submitTx = tx;
-      return Promise.resolve('retained-era-tx-id');
+      return Promise.resolve('ledger8-tx-id');
     });
 
     return { ...providers, seen };
@@ -647,7 +647,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect(serialized).toContain('[redacted]');
   });
 
-  it('gives a retained-era DEPLOY rejected across the fork the runtime-deploy remediation', async () => {
+  it('gives a ledger 8 DEPLOY rejected across the fork the runtime-deploy remediation', async () => {
     const providers = preForkProviders();
     providers.publicDataProvider.queryLatestProtocolVersion = vi
       .fn()
@@ -694,7 +694,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     );
 
     await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(ForkCrossedDuringOperationError);
-    // The transaction the pre-fork attempt built was composed by the RETAINED
+    // The transaction the pre-fork attempt built was composed by the LEDGER 8
     // ledger, which is what makes the second attempt a different composition
     // rather than a retry of the same bytes.
     const preForkComposed = providers.seen.proveTx;
@@ -704,7 +704,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
 
     // THE RE-RUN. Nothing has called this contract since the fork, and an indexer older than
     // 4.4.0-rc.6 serves such a contract untranslated (midnight-indexer #1605) -- so `raw` is still
-    // the very same retained-era envelope, which is precisely what sends the re-run down the
+    // the very same ledger 8 envelope, which is precisely what sends the re-run down the
     // keep-state path.
     //
     // What does move is the BLOCK the read is dated by. `queryContractState` answers as of the
@@ -726,7 +726,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect(finalized.circuitId).toBe(CIRCUIT_ID);
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
     // The keep-state path: an ORDINARY current-era transaction carrying a
-    // retained-era call, so it is passed to the providers as a v9 handle.
+    // ledger 8 call, so it is passed to the providers as a v9 handle.
     expect(providers.seen.proveTx?.era).toBe('v9');
     expect(providers.seen.balanceTx).toBe(providers.seen.proven);
     expect(providers.seen.submitTx).toBe(providers.seen.balanced);

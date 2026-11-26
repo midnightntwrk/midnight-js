@@ -24,7 +24,7 @@ import type * as LoadLedger8Module from '../lib/v8/load';
 //
 // What this pins is the one laziness property the facade still owes a v9-only
 // consumer. Asking for the v8 era IS the observation of v8, so acquiring the
-// retained pre-fork ledger inside `loadLedgerEra('v8')` costs that consumer
+// ledger 8 inside `loadLedgerEra('v8')` costs that consumer
 // nothing — but a v9 era must never reach for it. Without this gate, a v8
 // acquisition hoisted into the shared dispatch would make every v9-only
 // consumer instantiate multi-megabyte WASM it never calls, and nothing would

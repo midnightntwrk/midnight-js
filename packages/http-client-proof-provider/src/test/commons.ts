@@ -16,33 +16,33 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
+import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnightntwrk/midnight-js-contracts';
 import {
   LedgerParameters,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
+  Transaction,
   type UnprovenTransaction,
   ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import { CompiledContract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
   type CoinPublicKey,
   createConstructorContext,
   emptyZswapLocalState,
-  sampleSigningKey} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+  sampleSigningKey} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import { createProverKey,
   createVerifierKey,
   createZKIR,
-  LedgerTransaction,
   type ProverKey,
   SerializedLedgerParameters,
   SerializedZswapChainState,
   type VerifierKey,
   ZKConfigProvider,
-  type ZKIR } from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+  type ZKIR } from '@midnightntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 import fs from 'fs/promises';
 
 const TEST_CONFIG = { networkId: 'undeployed', ttlSeconds: 3600 };
@@ -151,5 +151,5 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
     encryptionPublicKey
   );
 
-  return LedgerTransaction.unwrap(result.private.unprovenTx, 'v9');
+  return result.private.unprovenTx.deserialize({ v9: Transaction });
 };

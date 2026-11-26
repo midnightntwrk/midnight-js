@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ProverKey, VerifierKey, ZKIR } from '@midnight-ntwrk/midnight-js-types';
-import { createProverKey, createVerifierKey, createZKIR, ZKConfigProvider, ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
+import { ConfigurationError, InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ProverKey, VerifierKey, ZKIR } from '@midnightntwrk/midnight-js-types';
+import { createProverKey, createVerifierKey, createZKIR, ZKConfigProvider, ZKConfigRegistry } from '@midnightntwrk/midnight-js-types';
 import {
   assertManifestHash,
   assertSafeName,
@@ -29,7 +29,7 @@ import {
   ZkArtifactIntegrityError,
   type ZkArtifactManifest,
   type ZkConfigIntegrityOptions
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 

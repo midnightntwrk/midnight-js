@@ -68,7 +68,7 @@ const plainThrowSelectors = [
 // `loadLedger8Protocol()` may reach it at runtime, so no consumer can grow a direct v8
 // dependency that pulls that WASM into an eagerly-loaded module graph.
 const LEDGER8_RUNTIME_MESSAGE =
-  'Runtime v8 access only via loadLedger8Protocol() from @midnight-ntwrk/midnight-js-protocol.';
+  'Runtime v8 access only via loadLedger8Protocol() from @midnightntwrk/midnight-js-protocol.';
 
 // Blocks dynamic `import(...)` of protocol/v8 (and any subpath under it) in
 // both of its statically matchable forms: a plain string literal, and a
@@ -77,12 +77,12 @@ const LEDGER8_RUNTIME_MESSAGE =
 // interpolation cannot be matched statically and is not covered here.
 const ledger8DynamicImportSelectors = [
   {
-    selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(?!\\/engine(\\/|$))(\\/|$)/]",
+    selector: "ImportExpression > Literal[value=/^@midnightntwrk\\/midnight-js-protocol\\/v8(?!\\/engine(\\/|$))(\\/|$)/]",
     message: `${LEDGER8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
   },
   {
     selector:
-      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(?!\\/engine(\\/|$))(\\/|$)/]",
+      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnightntwrk\\/midnight-js-protocol\\/v8(?!\\/engine(\\/|$))(\\/|$)/]",
     message: `${LEDGER8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
   }
 ];
@@ -90,17 +90,34 @@ const ledger8DynamicImportSelectors = [
 // The engine's heavy chunk is reachable only through loadLedger8Engine(); the
 // gate mirrors the v8 pair above, on the `./v8/engine` subpath.
 const ENGINE_RUNTIME_MESSAGE =
-  'Runtime engine access only via loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol.';
+  'Runtime engine access only via loadLedger8Engine() from @midnightntwrk/midnight-js-protocol.';
 
 const engineDynamicImportSelectors = [
   {
-    selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8\\/engine(\\/|$)/]",
+    selector: "ImportExpression > Literal[value=/^@midnightntwrk\\/midnight-js-protocol\\/v8\\/engine(\\/|$)/]",
     message: `${ENGINE_RUNTIME_MESSAGE} Dynamic imports of protocol/v8/engine are not allowed outside packages/protocol/src/.`
   },
   {
     selector:
-      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8\\/engine(\\/|$)/]",
+      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnightntwrk\\/midnight-js-protocol\\/v8\\/engine(\\/|$)/]",
     message: `${ENGINE_RUNTIME_MESSAGE} Dynamic imports of protocol/v8/engine are not allowed outside packages/protocol/src/.`
+  }
+];
+
+// An `=== 'v8'` branch keeps compiling when an era is added, and its else-branch
+// silently takes the new era. Branch on an era with a `switch` closed by
+// `assertNever` instead. Exempt: packages/protocol/src/ (it owns the era list),
+// package test folders and testkit-js.
+const ERA_COMPARISON_MESSAGE =
+  'Do not compare an era with a literal. Use a `switch` closed by `assertNever` from utils, so a new era is a compile error; a reviewed exception needs an inline eslint-disable with the reason.';
+const ERA_COMPARISON = 'BinaryExpression[operator=/^[!=]==?$/]';
+const ERA_LITERAL = 'Literal[value=/^v[0-9]+$/]';
+const eraComparisonSelectors = [
+  { selector: `${ERA_COMPARISON} > ${ERA_LITERAL}`, message: ERA_COMPARISON_MESSAGE },
+  { selector: `${ERA_COMPARISON} > :matches(TSAsExpression, TSSatisfiesExpression) > ${ERA_LITERAL}`, message: ERA_COMPARISON_MESSAGE },
+  {
+    selector: `${ERA_COMPARISON} > TemplateLiteral[quasis.length=1] > TemplateElement[value.raw=/^v[0-9]+$/]`,
+    message: ERA_COMPARISON_MESSAGE
   }
 ];
 
@@ -131,32 +148,32 @@ const protocolImportPatterns = [
   {
     group: ['@midnight-ntwrk/ledger-v*', '@midnightntwrk/ledger-v*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/v9 (or `import type` from /v8 for ledger 8) instead. Only packages/protocol/src/ may import from ledger directly.'
+      'Import from @midnightntwrk/midnight-js-protocol/v9 (or `import type` from /v8 for ledger 8) instead. Only packages/protocol/src/ may import from ledger directly.'
   },
   {
     group: ['@midnight-ntwrk/compact-runtime'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/v9/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
+      'Import from @midnightntwrk/midnight-js-protocol/v9/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
   },
   {
-    group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*'],
+    group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*', '@midnightntwrk/compact-js', '@midnightntwrk/compact-js/*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/v9/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
+      'Import from @midnightntwrk/midnight-js-protocol/v9/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
   },
   {
     group: ['@midnight-ntwrk/onchain-runtime-v*', '@midnightntwrk/onchain-runtime-v*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/v9/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
+      'Import from @midnightntwrk/midnight-js-protocol/v9/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
   },
   {
     group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
+      'Import from @midnightntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
   },
   {
     group: ['compact-runtime-ledger8'],
     message:
-      'The retained pre-fork compact-runtime@0.16 glue is a packages/protocol/src/ implementation detail. Use loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol instead.'
+      'The ledger 8 (pre-fork) compact-runtime@0.16 glue is a packages/protocol/src/ implementation detail. Use loadLedger8Engine() from @midnightntwrk/midnight-js-protocol instead.'
   }
 ];
 
@@ -180,15 +197,15 @@ export default tseslint.config(
       // Generated by the consumer-e2e smoke: packed tarballs. The persona installs
       // themselves live outside the repository, so they need no ignore.
       'consumer-e2e/.tarballs/**',
-      // Generated by `consumer-e2e/build-retained-twins.mjs`: contract modules the
+      // Generated by `consumer-e2e/build-ledger8-twins.mjs`: contract modules the
       // pre-fork `compactc` emitted. Codegen, and from a compiler this repo does
       // not control -- the `**/compiled/**` entry above covers the current-era
       // equivalents for the same reason.
       'consumer-e2e/.retained/**',
-      // Generated by `yarn compact-retained`: the same pre-fork codegen, committed
+      // Generated by `yarn compact-ledger8`: the same pre-fork codegen, committed
       // beside the current-era artifacts.
-      // @see docs/architecture/retained-era-coverage.md
-      'testkit-js/testkit-js-e2e/src/contract/compiled-retained/**',
+      // @see docs/architecture/ledger8-coverage.md
+      'testkit-js/testkit-js-e2e/src/contract/compiled-ledger8/**',
       // Checkouts of this same repository, which `.gitignore` already excludes.
       // Linting them offers a second copy of every source file and, because each
       // carries its own `tsconfig.json`, leaves the type-aware parser with several
@@ -340,14 +357,14 @@ export default tseslint.config(
         {
           patterns: [
             {
-              regex: '^@midnight-ntwrk/midnight-js-protocol/v8(?!/engine(/|$))(/|$)',
+              regex: '^@midnightntwrk/midnight-js-protocol/v8(?!/engine(/|$))(/|$)',
               allowTypeImports: true,
               message: `${LEDGER8_RUNTIME_MESSAGE} Type-only imports are allowed.`
             },
             {
               group: [
-                '@midnight-ntwrk/midnight-js-protocol/v8/engine',
-                '@midnight-ntwrk/midnight-js-protocol/v8/engine/*'
+                '@midnightntwrk/midnight-js-protocol/v8/engine',
+                '@midnightntwrk/midnight-js-protocol/v8/engine/*'
               ],
               allowTypeImports: true,
               message: `${ENGINE_RUNTIME_MESSAGE} Type-only imports are allowed.`
@@ -375,16 +392,23 @@ export default tseslint.config(
         ...unsafeCastSelectors,
         ...plainThrowSelectors,
         ...ledger8DynamicImportSelectors,
-        ...engineDynamicImportSelectors
+        ...engineDynamicImportSelectors,
+        ...eraComparisonSelectors
       ]
     }
   },
   {
-    // Exempt from the plain-throw gate only: casts and v8 stay gated.
+    // Exempt from the plain-throw gate only: casts, v8 and era comparisons stay gated.
     files: PLAIN_THROW_EXEMPT_DIRS,
     ignores: [PACKAGE_TEST_DIRS],
     rules: {
-      'no-restricted-syntax': ['error', ...unsafeCastSelectors, ...ledger8DynamicImportSelectors, ...engineDynamicImportSelectors]
+      'no-restricted-syntax': [
+        'error',
+        ...unsafeCastSelectors,
+        ...ledger8DynamicImportSelectors,
+        ...engineDynamicImportSelectors,
+        ...eraComparisonSelectors
+      ]
     }
   },
   {

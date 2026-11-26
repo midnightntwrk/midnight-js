@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { PrivateStateDecryptionError } from '@midnight-ntwrk/midnight-js-types';
-import { validatePassword } from '@midnight-ntwrk/midnight-js-utils';
+import { InvalidArgumentError, InvariantViolationError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { PrivateStateDecryptionError } from '@midnightntwrk/midnight-js-types';
+import { validatePassword } from '@midnightntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
 import { type CryptoBackend, type CryptoBackendType, resolveCryptoBackend } from './crypto-backend';
@@ -220,6 +220,9 @@ export class StorageEncryption {
     return Buffer.from(this.salt);
   }
 }
+
+export const readEmbeddedSalt = (encryptedData: string): Buffer =>
+  Buffer.from(extractEncryptedComponents(Buffer.from(encryptedData, 'base64')).salt);
 
 export const getPasswordFromProvider = async (provider: PrivateStoragePasswordProvider): Promise<string> => {
   const password = await provider();

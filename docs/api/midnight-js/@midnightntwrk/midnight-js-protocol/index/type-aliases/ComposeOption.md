@@ -1,0 +1,47 @@
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js-protocol](../../README.md) / [index](../README.md) / ComposeOption
+
+# Type Alias: ComposeOption
+
+> **ComposeOption** = `"calls"` \| `"contractStateBytes"` \| `"guaranteedZswapOfferBytes"` \| `"ledgerParametersBytes"` \| `"networkId"` \| `"newSigningKey"` \| `"signingKey"` \| `"ttl"` \| `"verifierKeys"` \| `"zswapOffer"`
+
+Which option handed to a composition leg was unusable:
+- `'contractStateBytes'` — the state could not be bridged into the target
+  ledger era (the era's decoder rejected its bytes).
+- `'guaranteedZswapOfferBytes'` — the offer bytes supplied to a deploy were
+  rejected by the target era's decoder.
+- `'ledgerParametersBytes'` — the supplied ledger parameters could not be
+  read by the target era.
+- `'networkId'` — the network id was empty. The ledger accepts an empty
+  string and bakes it into the transaction, so a caller that forgot to
+  resolve one would only find out at submission.
+- `'ttl'` — the time-to-live was not a valid instant. `new Date('...')` on
+  an unparseable value yields an Invalid Date, which the ledger silently
+  records as the Unix epoch: a transaction that is already expired when it
+  is composed.
+- `'calls'` — the call list is not one the target era can compose. The
+  ledger 8 composes exactly one call: a cross-contract call is a
+  ledger-9-only feature that a pre-fork contract cannot emit, so that era has
+  no call tree to express.
+- `'verifierKeys'` — a deploy was requested with no verifier-key map, and the
+  state it was given needs one. Raised on BOTH eras, for two different
+  reasons: ledger 8's deploy leg has to register the compiled
+  contract's keys itself and so always needs the map, while the current era
+  accepts its omission for a state that already carries its keys and refuses
+  it only for a state still declaring a blank-keyed entry point.
+- `'signingKey'` — a signing key is not the 32 bytes of hex the era's runtime
+  reads: the key a constructor builds the maintenance authority from, or the
+  key a maintenance update is signed with.
+- `'newSigningKey'` — the key a maintenance update would make the new
+  authority is not the 32 bytes of hex the era's runtime reads.
+- `'zswapOffer'` — the offer bytes a call's offer factory returned were
+  rejected by the target era's decoder. Raised on BOTH eras, for the same reason and with the same
+  remediation: pass the bytes that era's own offer serialization produced.
+
+## See
+
+ - [ComposeRefusalOrder](../../documents/ComposeRefusalOrder.md)
+ - [VerifierKeys](../../documents/VerifierKeys.md)

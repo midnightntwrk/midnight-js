@@ -15,6 +15,11 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    rebase-strategy: "disabled"
+    groups:
+      github-actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
 #  - package-ecosystem: "cargo"
 #    directory: "/"
@@ -34,6 +39,12 @@ updates:
       interval: "daily"
     cooldown:
       default-days: 7
+    rebase-strategy: "disabled"
+    groups:
+      npm-minor-patch:
+        patterns: ["*"]
+        exclude-patterns: ["@midnight-ntwrk/*", "@midnightntwrk/*"]
+        update-types: ["minor", "patch"]
 
 #  - package-ecosystem: "docker"
 #    directory: "/"

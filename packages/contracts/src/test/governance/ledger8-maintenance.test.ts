@@ -14,23 +14,23 @@
  */
 
 /**
- * Contract maintenance through a retained-era artifact on a pre-fork head.
+ * Contract maintenance through a ledger 8 artifact on a pre-fork head.
  *
  * The engine is doubled, as in `../v8-native.test.ts`: what it builds is tested in
- * `packages/protocol`. Everything else is real -- the retained era facade decodes the committed
+ * `packages/protocol`. Everything else is real -- the ledger 8 era facade decodes the committed
  * state, and the contract is the real generated artifact -- so these tests pin what this package
  * adds: the era gate, the key read, the slot checks, the provider chain, the record check, and the
  * key store after a replacement.
  */
 import { readFileSync } from 'node:fs';
 
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
 import {
   loadLedger8Protocol,
   MaintenanceAuthorityMismatchError
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type ContractStateAndParametersRead,
   FailFallible,
@@ -39,7 +39,7 @@ import {
   type UnprovenTx,
   type VerifierKey,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -70,7 +70,7 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => import('../ledger8-runtime-stub
 
 const engineSlot = vi.hoisted((): { engine?: unknown } => ({}));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,
@@ -94,17 +94,17 @@ const NEW_VK = Uint8Array.from(
 
 type Providers = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID>;
 
-describe('contract maintenance through a retained-era artifact', () => {
+describe('contract maintenance through a ledger 8 artifact', () => {
   let contract: CoinReceiver016Contract;
   let keyedState: Uint8Array;
   let blankState: Uint8Array;
   let emptyState: Uint8Array;
-  let retainedLedgerParameters: Uint8Array;
+  let ledger8LedgerParameters: Uint8Array;
   let composeMaintenanceTx: ReturnType<typeof vi.fn>;
   let composed: Uint8Array;
 
   const rawState = (raw: Uint8Array, protocolVersion = PRE_FORK_PROTOCOL_VERSION): ContractStateAndParametersRead =>
-    contractStateAndParametersRead(raw, protocolVersion, retainedLedgerParameters);
+    contractStateAndParametersRead(raw, protocolVersion, ledger8LedgerParameters);
 
   const providersOn = (state: Uint8Array, protocolVersion = PRE_FORK_PROTOCOL_VERSION): Providers => {
     const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
@@ -135,7 +135,7 @@ describe('contract maintenance through a retained-era artifact', () => {
     );
     contract = new module.Contract({});
     const v8 = await loadLedger8Protocol();
-    retainedLedgerParameters = v8.LedgerParameters.initialParameters().serialize();
+    ledger8LedgerParameters = v8.LedgerParameters.initialParameters().serialize();
     keyedState = readHfHexFixture('coin-receiver-016', 'state-v6-envelope.hex');
     const blank = v8.ContractState.deserialize(keyedState);
     blank.setOperation(CIRCUIT_ID, new v8.ContractOperation());
@@ -216,7 +216,7 @@ describe('contract maintenance through a retained-era artifact', () => {
       expect(result).toEqual({ era: 'v8', public: createMockLedger8FinalizedTxData() });
     });
 
-    it('builds handles keyed by the circuits the artifact declares, routed through the retained pipeline', async () => {
+    it('builds handles keyed by the circuits the artifact declares, routed through the ledger 8 pipeline', async () => {
       const providers = providersOn(keyedState);
 
       const circuits = createCircuitMaintenanceTxInterfaces(providers, contract, CONTRACT_ADDRESS);

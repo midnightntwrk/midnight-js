@@ -16,9 +16,9 @@
 import {
   createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTxFromVerifierKeys
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+} from '@midnightntwrk/midnight-js-contracts';
+import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { NodeZkConfigProvider } from '@midnightntwrk/midnight-js-node-zk-config-provider';
 import {
   ContractCall,
   ContractDeploy,
@@ -27,11 +27,12 @@ import {
   type Proof,
   sampleCoinPublicKey,
   sampleEncryptionPublicKey,
+  Transaction,
   type UnprovenTransaction,
   WellFormedStrictness,
   ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import { sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type Ledger9UnboundTransaction,
   LedgerTransaction,
@@ -39,12 +40,12 @@ import {
   type ProveTxConfig,
   SerializedLedgerParameters,
   SerializedZswapChainState
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   createLogger,
   DynamicProofServerContainer,
   type ProofServerContainer
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 import { createInitialPrivateState } from '../src/contract/witnesses';
@@ -69,14 +70,13 @@ describe('Proof server integration', () => {
   let zkConfigProvider: NodeZkConfigProvider<CounterCircuit>;
 
   // `proveTx` carries a transaction handle in both directions. This suite only
-  // ever sends v9 transactions, so it seals the request and unwraps the v9
+  // ever sends v9 transactions, so it seals the request and decodes the v9
   // response once here, keeping every assertion below written against the
   // plain ledger transaction.
   const proveLedger9 = async (unprovenTx: UnprovenTransaction, config?: ProveTxConfig): Promise<Ledger9UnboundTransaction> =>
-    LedgerTransaction.unwrap(
-      await proofProvider.proveTx(LedgerTransaction.seal('v9', 'Unproven', unprovenTx), config),
-      'v9'
-    );
+    (await proofProvider.proveTx(LedgerTransaction.seal('v9', 'Unproven', unprovenTx), config)).deserialize({
+      v9: Transaction
+    });
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -100,7 +100,7 @@ describe('Proof server integration', () => {
       encryptionPublicKey,
       MIDNIGHT_CONFIG
     );
-    unprovenDeployTx = LedgerTransaction.unwrap(unprovenDeployTxResult.private.unprovenTx, 'v9');
+    unprovenDeployTx = unprovenDeployTxResult.private.unprovenTx.deserialize({ v9: Transaction });
     const unprovenCallTxResult = await createUnprovenCallTxFromInitialStates(
       zkConfigProvider,
       {
@@ -116,7 +116,7 @@ describe('Proof server integration', () => {
       },
       encryptionPublicKey
     );
-    unprovenCallTx = LedgerTransaction.unwrap(unprovenCallTxResult.private.unprovenTx, 'v9');
+    unprovenCallTx = unprovenCallTxResult.private.unprovenTx.deserialize({ v9: Transaction });
   });
 
   afterAll(async () => {

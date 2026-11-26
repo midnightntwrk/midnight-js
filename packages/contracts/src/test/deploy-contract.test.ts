@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_ERA } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
+import { COMMON_ERROR_CODES } from '@midnightntwrk/midnight-js-protocol/errors';
+import { type Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { type ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { CURRENT_LEDGER_ERA } from '@midnightntwrk/midnight-js-protocol/version';
+import type { AnyPrivateState } from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 
 import { type Ledger9ContractProviders } from '../contract-providers';

@@ -13,32 +13,35 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { PrivateStateId } from '@midnightntwrk/midnight-js-types';
+import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9CallResult } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';
-import { IncompleteCallTxPrivateStateConfig } from './errors';
+import { EraMismatchError, IncompleteCallTxPrivateStateConfig } from './errors';
 import { resolveEraRequest } from './internal/era';
 import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
+import { joinLedger8Scope, ledger8ScopeOf } from './internal/ledger8-scope';
 import * as Transaction from './internal/transaction';
 import {
   type AnyLedger8CallTxOptions,
   type AnyLedger8FinalizedCallTxData,
   type AnyLedger8SubmittedCallTx,
+  type AnyLedger8UnsubmittedCallTxData,
   type Ledger8CallTxOptions,
   type Ledger8CircuitId,
   type Ledger8Contract,
   type Ledger8ContractProviders,
   type Ledger8FinalizedCallTxData,
-  type Ledger8SubmittedCallTx
+  type Ledger8SubmittedCallTx,
+  type Ledger8UnsubmittedCallTxData
 } from './ledger8-contract';
 import type { Ledger9SubmitTxProviders } from './submit-tx';
 import { submitLedger9PayloadAsync } from './submit-tx';
-import { type Ledger9TransactionContext } from './transaction';
+import { type AnyLedger8TransactionContext, type Ledger8TransactionContext, type Ledger9TransactionContext } from './transaction';
 import type { Ledger9FinalizedCallTxData, Ledger9SubmittedCallTx } from './tx-model';
 import {
   createLedger9UnprovenCallTx,
@@ -73,26 +76,20 @@ const assertPrivateStateIdNamed = (privateStateId: PrivateStateId | undefined | 
 const ledger8CallFlow = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9SubmitCallTxProviders<C, PCK>,
   options: AnyLedger8CallTxOptions,
-  transactionContext: Ledger9TransactionContext<C, PCK> | undefined
-): Promise<AnyLedger8FinalizedCallTxData> => {
-  // The retained-era pipeline runs OUTSIDE the scoped-transaction machinery:
-  // that machinery merges live current-era transactions, and a retained-era
-  // call is composed and submitted on its own, so there is nothing for it to
-  // merge into. A `transactionContext` is therefore REFUSED on this path
-  // rather than ignored -- ignoring it submitted a transaction the caller
-  // believed had been batched with the rest of its scope. The retained-era
-  // overload declares no parameter for one, so this is reachable from
-  // JavaScript only.
-  Transaction.assertScopeAdmitsLedger8Call(options.circuitId, transactionContext, 'submitCallTx');
-
-  return submitLedger8CallTx(providers, toLedger8CallEntryOptions(options));
+  transactionContext: Ledger9TransactionContext<C, PCK> | AnyLedger8TransactionContext | undefined
+): Promise<AnyLedger8FinalizedCallTxData | AnyLedger8UnsubmittedCallTxData> => {
+  const scope = ledger8ScopeOf(options.circuitId, transactionContext, 'submitCallTx');
+  return scope === undefined
+    ? submitLedger8CallTx(providers, toLedger8CallEntryOptions(options))
+    : joinLedger8Scope(providers, toLedger8CallEntryOptions(options), scope);
 };
 
 const ledger9CallFlow = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9SubmitCallTxProviders<C, PCK>,
   options: Ledger9CallTxOptions<C, PCK>,
-  transactionContext: Ledger9TransactionContext<C, PCK> | undefined
+  transactionContext: Ledger9TransactionContext<C, PCK> | AnyLedger8TransactionContext | undefined
 ): Promise<Ledger9FinalizedCallTxData<C, PCK> | Ledger9CallResult<C, PCK>> => {
+  const ledger9Context = Transaction.ledger9ScopeOf<C, PCK>(transactionContext, options.circuitId, 'submitCallTx');
   assertIsContractAddress(options.contractAddress);
   const declaredCircuitId = ContractExecutable.make(options.compiledContract)
     .getProvableCircuitIds()
@@ -125,24 +122,24 @@ const ledger9CallFlow = async <C extends Contract.Any, PCK extends Contract.Prov
   // the declared `Ledger9ContractProviders<C>` -- whose `PCK` defaults to the whole
   // circuit-id union -- is not assignable to the one-circuit instantiation
   // this scope needs. The value is the same object either way.
-  return transactionContext
-    ? Transaction.scoped(providers as Ledger9ContractProviders<C, PCK>, callTxFn, transactionContext)
+  return ledger9Context
+    ? Transaction.scoped(providers as Ledger9ContractProviders<C, PCK>, callTxFn, ledger9Context)
     : Transaction.scoped(providers as Ledger9ContractProviders<C, PCK>, callTxFn)
 };
 
 /*
- * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * OVERLOAD ORDER IS LOAD-BEARING: the ledger 8 overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
  * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
  * gives an uncommented signature the comment of the first commented sibling -- which published
  * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Which pipeline runs is decided by the NETWORK'S LEDGER VERSION, not by this overload: before the fork the
- * retained-era-native pipeline runs, after it the keep-state one.
+ * ledger 8 pipeline runs, after it the keep-state one.
  *
  * @see {@link KeepStatePipeline} for the era table, and for why a provider needs to serve v8
  *      handles only while the network is still before the fork.
@@ -153,6 +150,17 @@ export async function submitCallTx<C extends Ledger8Contract, PCK extends Ledger
   providers: Ledger8ContractProviders<C, PCK>,
   options: Ledger8CallTxOptions<C, PCK>
 ): Promise<Ledger8FinalizedCallTxData<C, PCK>>;
+
+/**
+ * Calls a circuit of a contract produced by the ledger 8 (pre-fork) Compact toolchain inside a scope
+ * made by `withLedger8ContractScopedTransaction` or `withContractScopedTransaction` before the hard
+ * fork. The call is added to the scope rather than submitted on its own.
+ */
+export async function submitCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, PCK>,
+  options: Ledger8CallTxOptions<C, PCK>,
+  transactionContext: Ledger8TransactionContext<C, PCK>
+): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
 
 /**
  * Calls a circuit on a contract that declares no private state.
@@ -238,8 +246,10 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9SubmitCallTxProviders<C, PCK>,
   options: Ledger9CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
-  transactionContext?: Ledger9TransactionContext<C, PCK>
-): Promise<Ledger9FinalizedCallTxData<C, PCK> | Ledger9CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
+  transactionContext?: Ledger9TransactionContext<C, PCK> | AnyLedger8TransactionContext
+): Promise<
+  Ledger9FinalizedCallTxData<C, PCK> | Ledger9CallResult<C, PCK> | AnyLedger8FinalizedCallTxData | AnyLedger8UnsubmittedCallTxData
+> {
   assertValidMidnightConfig(providers.config);
   const request = await resolveEraRequest<AnyLedger8CallTxOptions, Ledger9CallTxOptions<C, PCK>>(
     options,
@@ -298,18 +308,18 @@ const ledger9CallAsyncFlow = async <C extends Contract.Any, PCK extends Contract
 };
 
 /*
- * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * OVERLOAD ORDER IS LOAD-BEARING: the ledger 8 overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
  * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
  * gives an uncommented signature the comment of the first commented sibling -- which published
  * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Which pipeline runs is decided by the NETWORK'S LEDGER VERSION, not by this overload: before the fork the
- * retained-era-native pipeline runs, after it the keep-state one.
+ * ledger 8 pipeline runs, after it the keep-state one.
  *
  * @see {@link KeepStatePipeline} for the era table, and for why a provider needs to serve v8
  *      handles only while the network is still before the fork.

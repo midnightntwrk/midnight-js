@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { Intent, type MaintenanceUpdate, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { type Contract, ProvableCircuitId, VerifierKey as ContractVerifierKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { Intent, type MaintenanceUpdate, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type CompiledContract, ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { type Contract, ProvableCircuitId, VerifierKey as ContractVerifierKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import type {
   CoinPublicKey,
   ContractAddress,
   ContractState,
   SigningKey
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   asContractAddress,
   asEffectOption,
@@ -31,8 +31,8 @@ import {
   type UnprovenTx,
   type VerifierKey,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { intentTtl } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { intentTtl } from '@midnightntwrk/midnight-js-utils';
 
 
 export const unprovenTxFromContractUpdates = async (

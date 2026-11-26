@@ -23,6 +23,7 @@ import {
   type RetainedLedgerEra
 } from './lib/shared/ledger-version';
 import { LEDGER_STATE_KINDS, LEDGER_STATE_TAGS, type StateKind } from './lib/shared/state-tags';
+import { LEDGER_TRANSACTION_TAGS, TRANSACTION_STAGES, type TransactionStage } from './lib/shared/transaction-tags';
 
 // Declared in the leaf module `./lib/shared/ledger-version`, which `./errors`
 // can also reach; declaring it here would close a cycle — see ModuleGraphAndLazyLoading.
@@ -32,10 +33,13 @@ export {
   LEDGER_ERAS,
   LEDGER_STATE_KINDS,
   LEDGER_STATE_TAGS,
+  LEDGER_TRANSACTION_TAGS,
   type LedgerEra,
   RETAINED_LEDGER_ERAS,
   type RetainedLedgerEra,
-  type StateKind
+  type StateKind,
+  TRANSACTION_STAGES,
+  type TransactionStage
 };
 
 /**

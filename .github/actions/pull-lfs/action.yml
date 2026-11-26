@@ -1,0 +1,31 @@
+name: 'Pull Git LFS objects'
+description: >-
+  Replace the Git LFS pointers in the checkout (the e2e prover keys) with their
+  content. The objects are cached under a key built from their LFS object ids,
+  so unchanged keys come from the Actions cache instead of LFS bandwidth.
+
+runs:
+  using: 'composite'
+  steps:
+    - name: List LFS object ids
+      id: lfs-ids
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "hash=$(git lfs ls-files --long | cut -d' ' -f1 | sort | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+    - name: Cache LFS objects
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
+      with:
+        path: .git/lfs/objects
+        key: lfs-${{ steps.lfs-ids.outputs.hash }}
+
+    - name: Pull LFS objects
+      shell: bash
+      run: |
+        set -euo pipefail
+        git lfs pull
+        if git lfs ls-files | grep ' - '; then
+          echo "::error::The LFS objects listed above are still pointers after git lfs pull"
+          exit 1
+        fi

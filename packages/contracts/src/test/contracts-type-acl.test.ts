@@ -70,6 +70,7 @@ describe('Contracts type ACL', () => {
     expect(typeOnlyExportNames()).toEqual([
       'AnyContract',
       'AnyFinalizedCallTxData',
+      'AnyLedger8TransactionContext',
       'AnySubmittedCallTx',
       'CallResultPrivate',
       'CallTxOptions',
@@ -136,6 +137,7 @@ describe('Contracts type ACL', () => {
       'Ledger8PrivateState',
       'Ledger8SigningKeyReason',
       'Ledger8SubmittedCallTx',
+      'Ledger8TransactionContext',
       'Ledger8UnprovenDeployTxOptions',
       'Ledger8UnprovenDeployTxOptionsBase',
       'Ledger8UnsubmittedCallTxData',

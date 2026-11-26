@@ -2,84 +2,67 @@
 
 - Status: Accepted
 - Date: 2026-07-10
-- Deciders: Szymon Paluchowski
-- Related: PR #629
 
 ## Context
 
-TypeScript renders `type` aliases and `interface` declarations differently in
-IDE tooltips. An object-type alias, and especially an intersection of them, is
-expanded inline: hovering shows every constituent field, recursively, as a
-multi-line blob. An `interface` is displayed by name.
+TypeScript shows `type` aliases and `interface` declarations differently in IDE tooltips. An
+object-type alias, and above all an intersection of them, is expanded inline: hovering shows every
+field, recursively, as a long block. An `interface` is shown by its name.
 
-`packages/contracts` exposes the framework's transaction model — deep
-inheritance chains such as `FinalizedCallTxData` built from `UnsubmittedCallTxData`,
-`CallResult`, `UnsubmittedTxData`, and `FinalizedTxData`. As plain intersection
-aliases these produced tooltips a consumer could not read at a glance, which is
-the first thing a developer sees when working against the public API.
+`packages/contracts` exposes the framework's transaction model as deep chains, for example
+`Ledger9FinalizedCallTxData` built from `Ledger9UnsubmittedCallTxData`, `Ledger9CallResult`,
+`Ledger9UnsubmittedTxData` and `Ledger9FinalizedTxData`. As plain intersection aliases these
+gave tooltips a developer could not read at a glance, and the tooltip is the first thing a
+developer sees of the public API.
 
-Interfaces and object-type aliases are structurally compatible, so the choice
-is a display/authoring convention rather than a change to the type system.
-Three constraints bound where the convention can apply:
+Interfaces and object-type aliases are structurally compatible, so this is a display and authoring
+convention, not a change to the type system. The language limits where it can apply:
 
 - A union (`A | B`) has no interface form.
-- A conditional type (`X extends [] ? A : B`), and any alias derived from one,
-  cannot be an interface, nor can an interface `extends` one.
-- An interface may only `extends` a statically-known object type, so mapped
-  types and utility-type aliases (`Record`, `Pick`, `Omit`) and bare renames
-  of another generic type stay as aliases.
+- A conditional type, and any alias derived from one, cannot be an interface, and an interface
+  cannot `extends` one.
+- An interface can only `extends` a statically known object type. Mapped types, utility-type
+  aliases (`Record`, `Pick`, `Omit`) and bare renames of another generic type stay aliases.
 
-A subtler case: an intersection that *overrides* an inherited property to a
-narrower type (`Base & { private: Narrower }`) merges the two via intersection,
-whereas an interface that redeclares the property replaces it and requires the
-replacement to be assignable to the inherited one.
+One case needs care. An intersection that narrows an inherited property
+(`Base & { private: Narrower }`) merges the two types. An interface that redeclares the property
+replaces it, and the replacement must be assignable to the inherited one.
 
 ## Decision
 
-We will declare named object types as `interface`, and intersections of object
-types as `interface … extends …`, throughout `packages/contracts`, and apply
-the same convention to new object types added across the framework going
-forward.
+We will declare named object types as `interface`, and intersections of object types as
+`interface … extends …`, throughout `packages/contracts`. New object types anywhere in the
+framework follow the same convention.
 
-We will keep `type` where an interface cannot express the shape: unions,
-conditional types and anything derived from them, mapped types, utility-type
-aliases (`Record`/`Pick`/`Omit`), function types, and bare aliases that only
-rename or re-parameterize another type. The TypeScript compiler is the arbiter —
-if a conversion fails to compile (including under declaration emit), it stays a
-`type`.
+We will keep `type` where an interface cannot express the shape: unions, conditional types and
+anything derived from them, mapped types, utility-type aliases, function types, and bare aliases
+that only rename or re-parameterize another type. The compiler decides: if a conversion fails to
+compile (including declaration emit), it stays a `type`.
 
-Where an intersection overrides an inherited property, we will introduce a named
-helper interface that `extends` the combined members (for example
-`FinalizedCallTxPublicData extends CallResultPublic, FinalizedTxData`) and
-reference it from the redeclared property, so the property stays assignable to
-the base and the resulting type is unchanged.
+Where an intersection narrows an inherited property, we will add a named helper interface that
+`extends` the combined members and reference it from the redeclared property. For example,
+`Ledger9FinalizedCallTxPublicData extends Ledger9CallResultPublic, Ledger9FinalizedTxData`. The
+property stays assignable to the base, and the resulting type is unchanged.
 
 ## Consequences
 
-- **Positive:** IDE tooltips show the interface name instead of an expanded
-  field chain. The change is structurally identical to the previous aliases, so
-  it is not a breaking change. Interfaces also support declaration merging if a
-  consumer ever needs to augment a type.
-- **Negative:** The codebase now mixes `interface` and `type` — types that
-  depend on conditionals or utilities must remain aliases. This is a language
-  constraint, not a style inconsistency to be "fixed". Interfaces can be
-  accidentally declaration-merged if a consumer redeclares the same name in
-  scope. Representing overridden-property intersections adds four exported
-  helper interfaces (`UnsubmittedDeployTxPrivateDataFull`,
-  `FinalizedDeployTxPublicData`, `UnsubmittedCallTxPrivateData`,
-  `FinalizedCallTxPublicData`), widening the public API surface.
-- **Follow-ups:** The convention is applied to `packages/contracts` now
-  (PR #629). It is not applied retroactively to the other packages; new object
-  types there should follow it as they are written or touched.
+- **Positive:** IDE tooltips show the interface name instead of an expanded field chain. The
+  change is structurally identical to the aliases, so it breaks no consumer. Interfaces also allow
+  declaration merging if a consumer ever needs to augment a type.
+- **Negative:** the codebase mixes `interface` and `type`. Types built on conditionals or
+  utilities must stay aliases; this is a language limit, not an inconsistency to fix.
+- **Negative:** a consumer that redeclares the same name in scope can merge into an interface by
+  accident.
+- **Negative:** the helper interfaces for narrowed properties widen the public API:
+  `Ledger9UnsubmittedDeployTxPrivateDataFull`, `Ledger9FinalizedDeployTxPublicData`,
+  `Ledger9UnsubmittedCallTxPrivateData` and `Ledger9FinalizedCallTxPublicData`.
+- **Follow-up:** the convention is not applied retroactively to the other packages. Their object
+  types follow it as they are written or touched.
 
 ## Alternatives considered
 
-- **Keep every declaration as a `type` alias:** rejected — this is the status
-  quo that produced unreadable tooltips for the transaction-model chain.
-- **Convert everything, including unions and conditionals:** impossible —
-  TypeScript does not allow unions, conditionals, or their derivatives to be
-  interfaces.
-- **Flatten tooltips with an identity/`Prettify` mapped helper instead of
-  interfaces:** rejected — it adds a utility-type indirection to every
-  declaration and still expands the fields inline; using interfaces is the
-  idiomatic fix and needs no wrapper.
+- **Keep every declaration as a `type` alias.** Rejected: this produced the unreadable tooltips.
+- **Convert everything, including unions and conditionals.** Impossible: TypeScript does not
+  allow these as interfaces.
+- **Flatten tooltips with a `Prettify`-style mapped helper.** Rejected: it adds a wrapper to every
+  declaration and still expands the fields inline. Interfaces are the idiomatic fix.

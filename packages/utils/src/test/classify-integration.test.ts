@@ -38,7 +38,7 @@ import {
   deserializeLedger9ZswapChainState,
   deserializeLedgerTransaction} from '../deserialization/typed-wrappers';
 
-const caller = '@midnight-ntwrk/midnight-js-test:classify-integration';
+const caller = '@midnightntwrk/midnight-js-test:classify-integration';
 
 const headerBytes = (tag: string): Uint8Array => new TextEncoder().encode(tag);
 
@@ -153,8 +153,8 @@ describe('integration: ledger source — LedgerTransaction', () => {
     const caught = await deserializeLedgerTransaction('v9', new Uint8Array([0]), { caller }).catch((e: unknown) => e);
 
     expect(isDeserializationError(caught)).toBe(true);
-    // dataType pulled from WASM-reported class name 'Transaction' (per D9 override)
-    expect(caught).toMatchObject({ context: { source: 'ledger', dataType: 'Transaction' } });
+    // The header check refuses it before any ledger runtime reads it, so the wrapper's own dataType stays.
+    expect(caught).toMatchObject({ context: { source: 'ledger', dataType: 'LedgerTransaction' } });
   });
 });
 

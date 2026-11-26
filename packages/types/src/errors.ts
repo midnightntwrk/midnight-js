@@ -17,10 +17,10 @@ import {
   MIDNIGHT_JS_ERROR_CATEGORIES,
   MidnightJsError,
   type MidnightJsErrorCategory
-} from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { FrameworkInstanceCheck } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { LedgerEra, StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/errors';
+import type { TransactionStage } from '@midnightntwrk/midnight-js-protocol/transaction';
+import type { ContractAddress, TransactionId } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { LedgerEra, StateKind } from '@midnightntwrk/midnight-js-protocol/version';
 
 /**
  * The provider methods that carry a transaction handle.
@@ -83,8 +83,8 @@ export type WatchOperation =
  * Declared in this package because this is where the provider interfaces and the
  * transaction handle are defined, and where most of the classes live; two others
  * come from
- * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`, which depends on
- * this package. `@midnight-ntwrk/midnight-js-utils` re-exports the group and
+ * `@midnightntwrk/midnight-js-indexer-public-data-provider`, which depends on
+ * this package. `@midnightntwrk/midnight-js-utils` re-exports the group and
  * folds it into the registry `hasErrorCode` consults.
  */
 export const PROVIDER_ERROR_CODES = Object.freeze({
@@ -109,6 +109,7 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   EXPORT_DECRYPTION_FAILED: 'MIDNIGHT_JS_PR_EXPORT_DECRYPTION_FAILED',
   INVALID_EXPORT_FORMAT: 'MIDNIGHT_JS_PR_INVALID_EXPORT_FORMAT',
   IMPORT_CONFLICT: 'MIDNIGHT_JS_PR_IMPORT_CONFLICT',
+  IMPORT_PASSWORD_INVALID: 'MIDNIGHT_JS_PR_IMPORT_PASSWORD_INVALID',
   PRIVATE_STATE_DECRYPTION_FAILED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_DECRYPTION_FAILED',
   PRIVATE_STATE_STORAGE_FAILED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_STORAGE_FAILED',
   PRIVATE_STATE_LIMIT_EXCEEDED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_LIMIT_EXCEEDED',
@@ -121,9 +122,10 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   INDEXER_INVARIANT_VIOLATED: 'MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED',
   INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE',
   UNUSABLE_ERA_ENTRY: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY',
-  FOREIGN_LEDGER_TRANSACTION: 'MIDNIGHT_JS_PR_FOREIGN_LEDGER_TRANSACTION',
   INVALID_TRANSACTION_HANDLE: 'MIDNIGHT_JS_PR_INVALID_TRANSACTION_HANDLE',
   TRANSACTION_ERA_MISMATCH: 'MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH',
+  TRANSACTION_DECODER_MISSING: 'MIDNIGHT_JS_PR_TRANSACTION_DECODER_MISSING',
+  TRANSACTION_DECODE_FAILED: 'MIDNIGHT_JS_PR_TRANSACTION_DECODE_FAILED',
   INVALID_LEDGER_STATE: 'MIDNIGHT_JS_PR_INVALID_LEDGER_STATE',
   LEDGER_STATE_DECODER_MISSING: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING',
   LEDGER_STATE_DECODE_FAILED: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED',
@@ -152,6 +154,7 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.EXPORT_DECRYPTION_FAILED]: INTEGRITY,
   [PROVIDER_ERROR_CODES.INVALID_EXPORT_FORMAT]: INTEGRITY,
   [PROVIDER_ERROR_CODES.IMPORT_CONFLICT]: USAGE,
+  [PROVIDER_ERROR_CODES.IMPORT_PASSWORD_INVALID]: USAGE,
   [PROVIDER_ERROR_CODES.PRIVATE_STATE_DECRYPTION_FAILED]: INTEGRITY,
   [PROVIDER_ERROR_CODES.PRIVATE_STATE_STORAGE_FAILED]: ENVIRONMENT,
   [PROVIDER_ERROR_CODES.PRIVATE_STATE_LIMIT_EXCEEDED]: USAGE,
@@ -164,9 +167,10 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.INDEXER_INVARIANT_VIOLATED]: INTERNAL,
   [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY,
   [PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY]: USAGE,
-  [PROVIDER_ERROR_CODES.FOREIGN_LEDGER_TRANSACTION]: ENVIRONMENT,
   [PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE]: USAGE,
   [PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH]: USAGE,
+  [PROVIDER_ERROR_CODES.TRANSACTION_DECODER_MISSING]: USAGE,
+  [PROVIDER_ERROR_CODES.TRANSACTION_DECODE_FAILED]: INTEGRITY,
   [PROVIDER_ERROR_CODES.INVALID_LEDGER_STATE]: USAGE,
   [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODER_MISSING]: USAGE,
   [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]: INTEGRITY,
@@ -184,6 +188,7 @@ const {
   EXPORT_DECRYPTION_FAILED,
   INVALID_EXPORT_FORMAT,
   IMPORT_CONFLICT,
+  IMPORT_PASSWORD_INVALID,
   PRIVATE_STATE_DECRYPTION_FAILED,
   PRIVATE_STATE_STORAGE_FAILED,
   PRIVATE_STATE_LIMIT_EXCEEDED,
@@ -192,9 +197,10 @@ const {
   PROOF_SERVER_UNAVAILABLE,
   PROOF_SERVER_REFUSED,
   UNUSABLE_ERA_ENTRY,
-  FOREIGN_LEDGER_TRANSACTION,
   INVALID_TRANSACTION_HANDLE,
   TRANSACTION_ERA_MISMATCH,
+  TRANSACTION_DECODER_MISSING,
+  TRANSACTION_DECODE_FAILED,
   INVALID_LEDGER_STATE,
   LEDGER_STATE_DECODER_MISSING,
   LEDGER_STATE_DECODE_FAILED,
@@ -216,7 +222,7 @@ const {
  *   verifies, so the method refuses again before doing any work.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
+ * `@midnightntwrk/midnight-js-utils`.
  */
 export class ProviderEraUnsupportedError extends MidnightJsError {
   readonly code = PROVIDER_ERA_UNSUPPORTED;
@@ -275,7 +281,7 @@ const ERA_ENTRY_SHAPE_DESCRIPTIONS: Readonly<Record<EraEntryShape, string>> = {
  * material, still passes.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
+ * `@midnightntwrk/midnight-js-utils`.
  */
 export class UnusableEraEntryError extends MidnightJsError {
   readonly code = UNUSABLE_ERA_ENTRY;
@@ -305,99 +311,59 @@ export class UnusableEraEntryError extends MidnightJsError {
 }
 
 /**
- * Why `LedgerTransaction.seal` refused a transaction object: it belongs to
- * another WASM instance of the ledger package, or the framework has not loaded
- * its v8 ledger yet, so no v8 object can be judged.
- */
-export type ForeignLedgerTransactionReason = Exclude<FrameworkInstanceCheck, 'own' | 'not-a-transaction'>;
-
-const FOREIGN_LEDGER_TRANSACTION_REMEDIES: Readonly<Record<ForeignLedgerTransactionReason, (era: LedgerEra) => string>> = {
-  'foreign-instance': (era) =>
-    `The ${era} transaction is not an object of the ledger copy this framework loaded: it was built by a ` +
-    `duplicate install of the ledger package (another WASM instance), or it is not a ledger transaction at all. ` +
-    `Build it with the ledger module the framework uses, and make sure only one copy of that ledger package is installed.`,
-  'ledger8-not-loaded': (era) =>
-    `A ${era} transaction cannot be checked before the framework has loaded its v8 ledger. ` +
-    `Call and await loadLedger8Protocol() from @midnight-ntwrk/midnight-js-protocol first, and build the ` +
-    `transaction with the module it returns. Import it from the same copy of @midnight-ntwrk/midnight-js-protocol ` +
-    `that @midnight-ntwrk/midnight-js-types depends on: a separately installed version has its own load flag, so ` +
-    `loading it does not load the framework's v8 ledger.`
-};
-
-/**
- * Thrown by `LedgerTransaction.seal` when the transaction object is not one of
- * the ledger copy this framework loaded for its era.
+ * Why a value was refused as a transaction handle, or as the bytes or object to
+ * make one from:
  *
- * Catch it via its stable `code`, using `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
- */
-export class ForeignLedgerTransactionError extends MidnightJsError {
-  readonly code = FOREIGN_LEDGER_TRANSACTION;
-  readonly category = PROVIDER_ERROR_CATEGORIES[FOREIGN_LEDGER_TRANSACTION];
-
-  /**
-   * @param era The era the object was sealed as.
-   * @param reason Why the object was refused.
-   * @param method The provider method whose answer was sealed, or
-   *               `LedgerTransaction.seal` when it was sealed directly.
-   */
-  constructor(
-    readonly era: LedgerEra,
-    readonly reason: ForeignLedgerTransactionReason,
-    readonly method: TransactionHandleMethod = 'LedgerTransaction.seal'
-  ) {
-    super(`${method} cannot seal a ${era} transaction. ${FOREIGN_LEDGER_TRANSACTION_REMEDIES[reason](era)}`);
-    this.name = 'ForeignLedgerTransactionError';
-  }
-}
-
-/**
- * Why a value was refused as a transaction handle, or as the object to seal
- * into one:
- *
- * - `'not-a-handle'`: the value is not a handle made by `LedgerTransaction.seal`.
+ * - `'not-a-handle'`: the value is not a handle made by `LedgerTransaction.fromBytes`.
  * - `'wrong-stage'`: the handle is at another stage than the method takes.
- * - `'invalid-stage'`: the stage to seal at is not a transaction stage.
- * - `'not-a-transaction'`: the value to seal is not a ledger transaction object.
- * - `'stage-mismatch'`: the object to seal is at another stage than the one it
- *   is sealed as.
+ * - `'invalid-stage'`: the stage to make a handle at is not a transaction stage.
+ * - `'not-bytes'`: the value passed to `fromBytes` is not a `Uint8Array`.
+ * - `'not-a-transaction'`: the value passed to `seal` has no `serialize` method.
+ * - `'header-mismatch'`: the bytes do not start with the header the ledger of
+ *   that era writes for a transaction at that stage.
  */
 export type InvalidTransactionHandleReason =
   | 'not-a-handle'
   | 'wrong-stage'
   | 'invalid-stage'
+  | 'not-bytes'
   | 'not-a-transaction'
-  | 'stage-mismatch';
+  | 'header-mismatch';
 
 /** The methods that check transaction handles, named in a refusal. */
-export type TransactionHandleMethod = TransactionMethod | ReadMethod | 'LedgerTransaction.seal' | 'LedgerTransaction.unwrap';
+export type TransactionHandleMethod =
+  | TransactionMethod
+  | ReadMethod
+  | 'LedgerTransaction.fromBytes'
+  | 'LedgerTransaction.seal';
 
 const INVALID_TRANSACTION_HANDLE_REMEDIES: Readonly<Record<InvalidTransactionHandleReason, string>> = {
   'not-a-handle':
-    'Pass the handle made by LedgerTransaction.seal itself. A copy is not a handle: structuredClone, ' +
-    'postMessage, JSON and object spread all drop it, so pass the original, or pass handle.serialize() and seal ' +
-    'the bytes again after deserializeTransactionAtStage. A handle that is passed on unchanged and still refused ' +
-    'was most likely sealed by a duplicate midnight-js-types install: make sure only one copy of ' +
-    '@midnight-ntwrk/midnight-js-types is installed.',
+    'Pass the handle itself. A copy is not a handle: structuredClone, postMessage, JSON and object spread all ' +
+    'drop it, so pass the original, or pass handle.serialize(), handle.era and handle.stage and rebuild it with ' +
+    'LedgerTransaction.fromBytes. A handle that is passed on unchanged and still refused was most likely made by a ' +
+    'duplicate midnight-js-types install: make sure only one copy of @midnightntwrk/midnight-js-types is installed.',
   'wrong-stage': 'Pass the handle at the stage this method takes.',
   'invalid-stage': 'Use one of the transaction stages: Unproven, Unbound, Finalized.',
-  'not-a-transaction':
-    'Pass a ledger transaction object. Serialized bytes are not one: decode them with deserializeTransactionAtStage ' +
-    'from @midnight-ntwrk/midnight-js-protocol/transaction, taking the era and stage from the request.',
-  'stage-mismatch':
-    'Seal the object at the stage it is at: a proveTx answer is Unbound, and only bind() makes it Finalized.'
+  'not-bytes': 'Pass the serialized transaction as a Uint8Array.',
+  'not-a-transaction': 'Pass a ledger transaction object, or pass its bytes to LedgerTransaction.fromBytes.',
+  'header-mismatch':
+    'Pass the era of the ledger that wrote the transaction and the stage it is at: a proveTx answer is Unbound, ' +
+    'and only bind() makes it Finalized.'
 };
 
 /**
  * Thrown when a value reaching a method that takes a transaction handle is not
- * a usable one, or when `LedgerTransaction.seal` is given a value it cannot
- * seal at the stage it is asked for.
+ * a usable one, or when `LedgerTransaction.fromBytes` or `LedgerTransaction.seal`
+ * is given a value that is not a transaction of that era at that stage.
  *
- * The types rule these values out, so it is reachable only from JavaScript,
- * across an untyped boundary, or from a second copy of this package.
+ * The types rule out every reason but `header-mismatch`, so those are reachable
+ * only from JavaScript, across an untyped boundary, or from a second copy of this
+ * package. `header-mismatch` is a check of the bytes at run time: typed code meets
+ * it with bytes, or a provider answer, of another era or stage.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
+ * `@midnightntwrk/midnight-js-utils`.
  */
 export class InvalidTransactionHandleError extends MidnightJsError {
   readonly code = INVALID_TRANSACTION_HANDLE;
@@ -420,11 +386,11 @@ export class InvalidTransactionHandleError extends MidnightJsError {
 }
 
 /**
- * Thrown by `LedgerTransaction.unwrap` when the handle carries a transaction of
- * another era than the one asked for.
+ * Thrown when a handle carries a transaction of another era than the one the
+ * caller serves.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
+ * `@midnightntwrk/midnight-js-utils`.
  */
 export class TransactionEraMismatchError extends MidnightJsError {
   readonly code = TRANSACTION_ERA_MISMATCH;
@@ -440,9 +406,65 @@ export class TransactionEraMismatchError extends MidnightJsError {
   ) {
     super(
       `Expected a ${expected} transaction, but the handle carries a ${actual} one. ` +
-        `Read the handle's era before unwrapping it, and route it to the code that serves that era.`
+        `Read the handle's era first, and route it to the code that serves that era.`
     );
     this.name = 'TransactionEraMismatchError';
+  }
+}
+
+const TRANSACTION_DECODER_SOURCE: Readonly<Record<LedgerEra, string>> = {
+  v8: '`Transaction` from `@midnightntwrk/ledger-v8`',
+  v9: '`Transaction` from `@midnightntwrk/ledger-v9`'
+};
+
+/**
+ * Thrown by `LedgerTransaction.deserialize` when the decoders passed in have none for the era of the
+ * handle. The message names the class to import.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from `@midnightntwrk/midnight-js-utils`.
+ */
+export class TransactionDecoderMissingError extends MidnightJsError {
+  readonly code = TRANSACTION_DECODER_MISSING;
+  readonly category = PROVIDER_ERROR_CATEGORIES[TRANSACTION_DECODER_MISSING];
+
+  /**
+   * @param era The era of the handle.
+   */
+  constructor(readonly era: LedgerEra) {
+    super(`No decoder for a ${era} transaction. Pass { ${era}: Transaction }, with ${TRANSACTION_DECODER_SOURCE[era]}.`);
+    this.name = 'TransactionDecoderMissingError';
+  }
+}
+
+/**
+ * Thrown by `LedgerTransaction.deserialize` when the decoder for the era of the handle throws an
+ * error that is not a `MidnightJsError`. The bytes carry the right header, so either the bytes after
+ * it are corrupt or the decoder is the wrong one. Also raised inside a provider of this framework
+ * that decodes the handle it receives, with no decoder passed by the caller. Categorised
+ * `INTEGRITY`. The decoder's failure is the `cause`.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from `@midnightntwrk/midnight-js-utils`.
+ */
+export class TransactionDecodeFailedError extends MidnightJsError {
+  readonly code = TRANSACTION_DECODE_FAILED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[TRANSACTION_DECODE_FAILED];
+
+  /**
+   * @param era The era of the handle.
+   * @param stage The stage of the handle.
+   * @param options Carries the decoder's failure as `cause`.
+   */
+  constructor(
+    readonly era: LedgerEra,
+    readonly stage: TransactionStage,
+    options: { readonly cause: unknown }
+  ) {
+    super(
+      `Could not decode a ${stage} ${era} transaction. Either the bytes after the header are corrupt, ` +
+        `or the decoder is not { ${era}: Transaction }, with ${TRANSACTION_DECODER_SOURCE[era]}.`,
+      options
+    );
+    this.name = 'TransactionDecodeFailedError';
   }
 }
 
@@ -479,7 +501,7 @@ const INVALID_LEDGER_STATE_MESSAGES: Readonly<
  * given era, and by their constructors when called without `fromBytes`. The bytes are never quoted in
  * the message.
  *
- * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
+ * Catch it via its stable `code`, using `hasErrorCode` from `@midnightntwrk/midnight-js-utils`.
  */
 export class InvalidSerializedStateError extends MidnightJsError {
   readonly code = INVALID_LEDGER_STATE;
@@ -520,7 +542,7 @@ const DECODER_SOURCE: Readonly<Record<StateKind, Readonly<Record<LedgerEra, stri
  * Thrown by `deserialize` of a serialized state when the decoders passed in have none for the era of the
  * value. The message names the class to import.
  *
- * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
+ * Catch it via its stable `code`, using `hasErrorCode` from `@midnightntwrk/midnight-js-utils`.
  */
 export class SerializedStateDecoderMissingError extends MidnightJsError {
   readonly code = LEDGER_STATE_DECODER_MISSING;
@@ -549,7 +571,7 @@ export class SerializedStateDecoderMissingError extends MidnightJsError {
  * cannot read this era). Categorised `INTEGRITY`: the data and its decoder do not match. The
  * decoder's failure is the `cause`.
  *
- * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
+ * Catch it via its stable `code`, using `hasErrorCode` from `@midnightntwrk/midnight-js-utils`.
  */
 export class SerializedStateDecodeFailedError extends MidnightJsError {
   readonly code = LEDGER_STATE_DECODE_FAILED;
@@ -729,13 +751,15 @@ export type PrivateStateImportErrorCause =
   | 'decryption_failed'
   | 'invalid_format'
   | 'conflict'
+  | 'invalid_password'
   | 'unknown';
 
 type PrivateStateImportErrorCode =
   | typeof PRIVATE_STATE_IMPORT_FAILED
   | typeof EXPORT_DECRYPTION_FAILED
   | typeof INVALID_EXPORT_FORMAT
-  | typeof IMPORT_CONFLICT;
+  | typeof IMPORT_CONFLICT
+  | typeof IMPORT_PASSWORD_INVALID;
 
 /**
  * Base error thrown when importing private states fails.
@@ -800,6 +824,24 @@ export class ImportConflictError extends PrivateStateImportError {
       'conflict'
     );
     this.name = 'ImportConflictError';
+  }
+}
+
+/**
+ * Error thrown when the password supplied to an import does not satisfy the
+ * password strength policy.
+ *
+ * The failed check is kept on {@link passwordError}: narrow it with
+ * `instanceof PasswordValidationError` from `@midnightntwrk/midnight-js-utils`
+ * and read its `reason`.
+ */
+export class ImportPasswordValidationError extends PrivateStateImportError {
+  readonly code = IMPORT_PASSWORD_INVALID;
+  readonly category = PROVIDER_ERROR_CATEGORIES[IMPORT_PASSWORD_INVALID];
+
+  constructor(public readonly passwordError: MidnightJsError) {
+    super(passwordError.message, 'invalid_password');
+    this.name = 'ImportPasswordValidationError';
   }
 }
 

@@ -1,0 +1,19 @@
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [types](../README.md) / VerifierKey
+
+# Type Alias: VerifierKey
+
+> **VerifierKey** = `Uint8Array` & `object`
+
+A type representing a verifier key derived from a contract circuit.
+
+## Type Declaration
+
+### VerifierKey
+
+> `readonly` **VerifierKey**: unique `symbol`
+
+Unique symbol brand.

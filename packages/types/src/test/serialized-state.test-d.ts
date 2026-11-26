@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractState as Ledger8ContractState } from '@midnight-ntwrk/midnight-js-protocol/v8';
-import type { ContractState as Ledger9ContractState, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ContractState as Ledger8ContractState } from '@midnightntwrk/midnight-js-protocol/v8';
+import type { ContractState as Ledger9ContractState, LedgerParameters, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import {

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 // Imported from the package BARREL, not from `../errors`: every other suite reaches into the module
@@ -81,7 +81,7 @@ describe('the era and verification-path errors a caller has to catch are reachab
       'ledger8-maintenance-on-ledger9-network': 'recompile-and-maintain',
       'ledger8-artifact-on-ledger9-contract': 'pass-ledger9-artifacts',
       'ledger8-contract-state-unsupported': 'upgrade-indexer',
-      'scope-on-ledger8-network': 'submit-each-call',
+      'scope-era-mismatch': 'use-the-routing-scope',
       'ledger8-call-in-scope': 'call-outside-scope',
       'contract-era-unsupported': 'use-an-era-routing-function',
       'unrecognised-result-era': 'carry-the-era'

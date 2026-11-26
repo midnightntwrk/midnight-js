@@ -54,7 +54,7 @@ export type {
 };
 
 /**
- * The public surface {@link createLedger8Engine} builds: the retained pre-fork
+ * The public surface {@link createLedger8Engine} builds: the pre-fork ledger 8
  * EXECUTION capabilities.
  *
  * The two execution members are ASYNCHRONOUS. They used to be synchronous, and
@@ -77,14 +77,14 @@ export interface Ledger8Engine {
    *
    * @throws StateConversionFailedError At stage `'state conversion'` when the
    *   state cannot be decoded, does not re-encode to its source, or carries a
-   *   balance the retained runtime cannot read.
+   *   balance the ledger 8 runtime cannot read.
    * @throws InvalidArgumentError When the contract declares no circuit of that name.
    */
   executeCircuit<C extends Ledger8EngineContract, PS>(
     options: Ledger8CircuitOptions<C, PS>
   ): Promise<TranscriptPojo>;
   /**
-   * Runs one retained-era constructor and returns the state it built.
+   * Runs one ledger 8 constructor and returns the state it built.
    *
    * ASYNCHRONOUS for the same reason {@link Ledger8Engine.executeCircuit} is.
    * Stricter than the leg it replaced: compact-js registers a verifier key
@@ -92,7 +92,7 @@ export interface Ledger8Engine {
    * hand-written constructor left every slot blank.
    *
    * @throws ComposeOptionError Naming option `'signingKey'` when a supplied key
-   *   is not the 32 bytes of hex the retained runtime reads.
+   *   is not the 32 bytes of hex the ledger 8 runtime reads.
    * @throws ComposeFailedError At stage `'deploy-verifier-key-blob'` when the
    *   ledger refuses the bytes served for a circuit.
    */
@@ -130,11 +130,11 @@ export interface Ledger8Engine {
 /**
  * Builds a {@link Ledger8Engine}.
  *
- * The retained toolchain is no longer acquired here: compact-js's era-pinned
+ * The ledger 8 toolchain is no longer acquired here: compact-js's era-pinned
  * ledger-8 entries own it, and `lib/v8/executable.ts` reaches them. What this
  * function still does is sit behind the dynamic `import('../../engine.js')` in
  * `lib/v8/load-engine.ts`, so importing the package root never pulls the
- * multi-megabyte retained WASM onto the module graph.
+ * multi-megabyte ledger 8 WASM onto the module graph.
  *
  * It no longer runs a dual-instantiation guard either. That guard compared
  * `onchain-runtime-v3` against the 0.16 glue at construction time. Both

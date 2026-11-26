@@ -13,7 +13,7 @@ that way here.
 
 The code is `packages/contracts/src/errors.ts`. The remediation an error asks
 for is a separate thread — see [ForkCrossedRemediation](./stale-head-remediation.md).
-The order a retained-era operation runs in, which fixes where each refusal can
+The order a ledger 8 operation runs in, which fixes where each refusal can
 sit, is [KeepStatePipeline](./keep-state-pipeline.md).
 
 ## One class per fault
@@ -51,8 +51,9 @@ Its constructor is `TxFailedError(operation, record, details)`:
   constructor requires the ones each operation always has: `contractAddress`
   and `signingKey` for a deploy or a replacement, `contractAddress` and
   `circuitId` for a verifier key update, `circuitId` for a call. A ledger 9
-  call never sets `contractAddress`, because a scope can call several
-  contracts; `circuitId` is then a list.
+  call never sets `contractAddress`; a ledger 9 scope's `circuitId` is a list of
+  every circuit it merged. A ledger 8 scope sets `contractAddress`, and its
+  `circuitId` names every merged circuit, joined by `', '`.
 
 ### Why the shared code sits on the class
 
@@ -87,7 +88,7 @@ the record:
 The four reason and stage types are exported flat, next to the classes:
 `Ledger8SigningKeyReason`, `Ledger8KeyedOperation`, `Ledger8NotStoredStage` and
 `Ledger8CallUnsupportedReason`. There is no `Ledger8` namespace
-([ADR 0013](../../../docs/adr/0013-publish-the-retained-era-as-one-namespace.md)).
+([ADR 0018](../../../docs/adr/0018-name-single-ledger-code-after-its-ledger.md)).
 
 Every refusal for a value of the wrong era is one `EraMismatchError`
 (`ERA_MISMATCH`), and its `reason` says which. Where the old classes carried a
@@ -145,7 +146,7 @@ Before that check each state is rebuilt from its `era` and `serialize()` with th
 `fromBytes` of the class of its kind (`SerializedContractState`,
 `SerializedLedgerParameters`, `SerializedZswapChainState`). The class guards, such as
 `SerializedContractState.isSerializedContractState`, answer `false` for
-a state made by a second installed copy of `@midnight-ntwrk/midnight-js-types`,
+a state made by a second installed copy of `@midnightntwrk/midnight-js-types`,
 and a dApp can end up with two copies the same way it ends up with two runtimes.
 Refusing such a state would name a provider fault where there is none. The
 rebuild checks the tag again, so forged bytes and a state of another kind are
@@ -172,7 +173,7 @@ dApp to pass a decoder it never passed.
 
 Building a transaction's Zswap offer for a spend of a coin the contract already
 holds on chain needs the contract's Zswap CHAIN state, to locate the coin's
-commitment in the chain's Merkle tree. The retained-era pipeline does not read
+commitment in the chain's Merkle tree. The ledger 8 pipeline does not read
 one. A coin the same call produced needs no chain state — it is paired with its
 own output as a transient — which is why only spends of previously held coins
 are refused. The other reason, `'unmappable-recipient'`, refuses a shielded
@@ -183,23 +184,24 @@ condition surfaced as a bare assertion inside the offer builder, naming neither
 the era nor the circuit, which told a caller nothing about why its call could not
 be composed.
 
-The fix is to supply the retained-era path with a Zswap chain state, tracked
+The fix is to supply the ledger 8 path with a Zswap chain state, tracked
 separately. Until then this refuses in the caller's own test run rather than in
 production.
 
-### `EraMismatchError`, reason `'scope-on-ledger8-network'`
+### `EraMismatchError`, reason `'scope-era-mismatch'`
 
-The pre-fork era composes exactly one call per transaction and refuses a longer
-list, which leaves a pre-fork scope nothing to batch into.
+A scope function bound to one ledger era — `withLedger8ContractScopedTransaction`
+or `withLedger9ContractScopedTransaction` — was run on a head of the other era.
+`detail` names the function and the head era.
 
 It is raised when the scope is CREATED, and from the head READING alone — before
 that era's runtime is acquired. Both placements are load-bearing and must not
-move later. The message names both ways forward, because the caller's batching
-intent cannot be honoured either way and it has to choose.
+move later. The message points at `withContractScopedTransaction`, which runs the
+scope of the era the head is on.
 
 ## After submission, the signing key rides along
 
-The retained-era deploy path has a region that begins the moment a deployment is
+The ledger 8 deploy path has a region that begins the moment a deployment is
 submitted. Inside it, a deployment may exist on chain under a maintenance
 authority whose key this process is the only holder of. Every error raised in
 that region carries the key.

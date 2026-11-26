@@ -5,13 +5,13 @@ Utilities for deploying and interacting with Midnight smart contracts.
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-contracts
+yarn add @midnightntwrk/midnight-js-contracts
 ```
 
 ## Quick Start
 
 ```typescript
-import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, findDeployedContract } from '@midnightntwrk/midnight-js-contracts';
 
 // Deploy a new contract
 const deployed = await deployContract(providers, {
@@ -62,14 +62,20 @@ const found = await findDeployedContract(providers, {
   contractAddress,           // Address of deployed contract
   privateStateId,            // ID for retrieving/storing private state (optional)
   initialPrivateState,       // Private state to store (optional, uses existing if omitted)
-  signingKey                 // Maintenance authority key (optional, auto-generated if needed)
+  signingKey,                // Maintenance authority key (optional, auto-generated if needed)
+  circuitIds                 // Circuits to check and call (optional, ledger 9 only, all if omitted)
 });
 ```
+
+A contract can have only some of its circuits on chain and receive the rest later through
+maintenance updates. To attach to it, name the circuits you will call in `circuitIds`. Only those
+are checked, and a call to any other circuit is refused. After a maintenance update adds a circuit,
+find the contract again with that circuit in the list.
 
 ### Transaction Submission
 
 ```typescript
-import { submitCallTx, submitDeployTx, submitTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { submitCallTx, submitDeployTx, submitTx } from '@midnightntwrk/midnight-js-contracts';
 
 // Submit a call transaction
 await submitCallTx(providers, callOptions);
@@ -83,11 +89,14 @@ await submitDeployTx(providers, deployOptions);
 const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
 const record = await submitTx(providers, { unprovenTx });
 
-// The record's tx is a FinalizedTx handle of the record's era.
-const finalized = LedgerTransaction.unwrap(record.tx, record.era);
+// The record's tx is a FinalizedTx handle of the record's era. Decode it with
+// your own ledger copy (Transaction from @midnightntwrk/ledger-v9).
+if (record.era === 'v9') {
+  const finalized = record.tx.deserialize({ v9: Transaction });
+}
 ```
 
-`LedgerTransaction` comes from `@midnight-ntwrk/midnight-js-types`. A handle you
+`LedgerTransaction` comes from `@midnightntwrk/midnight-js-types`. A handle you
 get from `createUnprovenCallTx` or `createUnprovenDeployTx`
 (`result.private.unprovenTx`) is already sealed, so you pass it on as it is.
 
@@ -130,8 +139,8 @@ if (record.status === 'SucceedEntirely') {
 }
 ```
 
-Ledger 8 differences: a ledger 8 deploy works only before the fork; a ledger 8 call cannot join a
-scoped transaction; `createLedger8UnprovenCallTxFromInitialStates` takes the head era as well as
+Ledger 8 differences: a ledger 8 deploy works only before the fork; a ledger 8 call joins a scoped
+transaction only before the fork; `createLedger8UnprovenCallTxFromInitialStates` takes the head era as well as
 the states, because the fork translates a ledger 8 contract's state into a ledger 9 one.
 
 Both eras' `FromInitialStates` builders take the states as a read returns them. Pass
@@ -170,7 +179,7 @@ import {
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 
 // Remove the verifier key a circuit holds, then insert one
 await submitRemoveVerifierKeyTx(providers, compiledContract, contractAddress, 'increment');
@@ -190,7 +199,7 @@ contract with the same stored key.
 ### State Queries
 
 ```typescript
-import { getPublicStates, getStates, getUnshieldedBalances } from '@midnight-ntwrk/midnight-js-contracts';
+import { getPublicStates, getStates, getUnshieldedBalances } from '@midnightntwrk/midnight-js-contracts';
 
 // Get contract states (public + private)
 const states = await getStates(
@@ -234,7 +243,7 @@ import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterface,
   createContractMaintenanceTxInterface
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 ```
 
 Each factory takes a ledger 8 or a ledger 9 contract and builds the interface for that contract's era:
@@ -247,7 +256,7 @@ await callTx.increment();
 ### Utility Functions
 
 ```typescript
-import { verifierKeysEqual, verifyContractState } from '@midnight-ntwrk/midnight-js-contracts';
+import { verifierKeysEqual, verifyContractState } from '@midnightntwrk/midnight-js-contracts';
 
 // Compare verifier keys
 const equal = verifierKeysEqual(keyA, keyB);
@@ -364,7 +373,7 @@ import {
   ContractTypeError,
   EraInvariantViolationError,
   TxFailedError
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 ```
 
 ## Handling Errors
@@ -372,7 +381,7 @@ import {
 One class covers one fault. A field on it says which case it was.
 
 ```typescript
-import { EraMismatchError, TxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
+import { EraMismatchError, TxFailedError } from '@midnightntwrk/midnight-js-contracts';
 
 try {
   await submitCallTx(providers, options);
@@ -401,11 +410,11 @@ docstring resolves to it.
 
 | Document | What it explains |
 |---|---|
-| [Overload typing](./docs/overload-typing.md) | Why the retained-era contract types are hand-written, what discriminates the two toolchain eras, how openness is expressed without `any`, and why overload order is load-bearing |
+| [Overload typing](./docs/overload-typing.md) | Why the ledger 8 contract types are hand-written, what discriminates the two toolchain eras, how openness is expressed without `any`, and why overload order is load-bearing |
 | [Era dispatch](./docs/era-dispatch.md) | How an operation's pipeline era and the network's ledger version are each established, why the artifact check is structural rather than branded, and which pairings may run |
 | [Verification path](./docs/verification-path.md) | What the pre-proving verifier-key check buys, and why routing on key generation is unavailable rather than unimplemented |
-| [Keep-state pipeline](./docs/keep-state-pipeline.md) | The order one retained-era operation runs in, the two composition paths, per-recipient shielded encryption, provider-failure sanitization, and why a retained-era deploy is refused |
-| [Fork crossed during an operation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and why a pre-fork contract-scoped transaction is refused outright |
+| [Keep-state pipeline](./docs/keep-state-pipeline.md) | The order one ledger 8 operation runs in, the two composition paths, per-recipient shielded encryption, provider-failure sanitization, and why a ledger 8 deploy is refused |
+| [Fork crossed during an operation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and which scope a contract-scoped transaction runs on each side of the fork |
 | [Breadcrumbs](./docs/breadcrumbs.md) | Which era decisions reach the log and which deliberately do not, the four network version readings and their provenance, the privacy rule, and the one fault that is swallowed |
 | [Error taxonomy](./docs/error-taxonomy.md) | Which class to catch across both eras, how the ledger 8 names are used, the code every class registers, the four refusals that fire before a caller pays, and the after-submission region the signing key rides through |
 

@@ -76,9 +76,9 @@ const entryNamesBySubpath = (): Map<string, string[]> =>
 const LEDGER9_SUBPATHS: readonly (readonly [subpath: string, load: () => Promise<Record<string, unknown>>])[] = [
   ['./v9', () => import('@midnightntwrk/ledger-v9')],
   ['./v9/compact-runtime', () => import('@midnight-ntwrk/compact-runtime')],
-  ['./v9/compact-js', () => import('@midnight-ntwrk/compact-js')],
-  ['./v9/compact-js/effect', () => import('@midnight-ntwrk/compact-js/effect')],
-  ['./v9/compact-js/effect/Contract', () => import('@midnight-ntwrk/compact-js/effect/Contract')],
+  ['./v9/compact-js', () => import('@midnightntwrk/compact-js')],
+  ['./v9/compact-js/effect', () => import('@midnightntwrk/compact-js/effect')],
+  ['./v9/compact-js/effect/Contract', () => import('@midnightntwrk/compact-js/effect/Contract')],
   ['./v9/onchain-runtime', () => import('@midnightntwrk/onchain-runtime-v4')]
 ];
 
@@ -99,7 +99,7 @@ const sourceEntryNames = (): string[] =>
 
 describe('protocol export surface', () => {
   /**
-   * @given the `exports` map of `@midnight-ntwrk/midnight-js-protocol`
+   * @given the `exports` map of `@midnightntwrk/midnight-js-protocol`
    * @when every condition of a subpath is reduced to its entry name
    * @then all conditions of that subpath name the same entry
    */

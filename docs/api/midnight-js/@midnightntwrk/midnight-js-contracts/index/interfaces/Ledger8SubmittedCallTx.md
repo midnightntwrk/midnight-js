@@ -1,0 +1,74 @@
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / Ledger8SubmittedCallTx
+
+# Interface: Ledger8SubmittedCallTx\<C, PCK\>
+
+What a ledger 8 call transaction resolves with when submitted without
+waiting for finalization.
+
+Carries the execution data on `callTxData`, as the current era's
+[Ledger9SubmittedCallTx](Ledger9SubmittedCallTx.md) does, and names the same members it does. The next
+private state is reachable at `callTxData.private.nextPrivateState`, the one
+path both eras publish it on.
+
+## Extends
+
+- [`SubmittedCallTxBase`](../../../midnight-js/types/interfaces/SubmittedCallTxBase.md)\<[`Ledger8UnsubmittedCallTxData`](Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Ledger8Contract`](Ledger8Contract.md)
+
+### PCK
+
+`PCK` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
+
+## Properties
+
+### callTxData
+
+> `readonly` **callTxData**: [`Ledger8UnsubmittedCallTxData`](Ledger8UnsubmittedCallTxData.md)
+
+The execution data of the call that was submitted.
+
+#### Remarks
+
+**Privacy-sensitive.** Carries the call's private half.
+
+#### Inherited from
+
+[`SubmittedCallTxBase`](../../../midnight-js/types/interfaces/SubmittedCallTxBase.md).[`callTxData`](../../../midnight-js/types/interfaces/SubmittedCallTxBase.md#calltxdata-1)
+
+***
+
+### circuitId
+
+> `readonly` **circuitId**: `PCK`
+
+***
+
+### era
+
+> `readonly` **era**: `"v8"`
+
+The pipeline that produced this result: always ledger 8 here, even
+when the transaction that recorded it is a keep-state transaction tagged
+`'v9'`. Those are different facts, and only this one says which module
+produced the objects below.
+
+***
+
+### txId
+
+> `readonly` **txId**: `string`
+
+The transaction ID returned from submission.
+
+#### Inherited from
+
+[`SubmittedCallTxBase`](../../../midnight-js/types/interfaces/SubmittedCallTxBase.md).[`txId`](../../../midnight-js/types/interfaces/SubmittedCallTxBase.md#txid)

@@ -13,18 +13,19 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { LedgerParameters, sampleContractAddress, Transaction, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
   type CircuitContext,
   type ContractModuleProvider,
   ContractState,
   type ContractStateProvider,
+  finalizeCallProofData,
   StateValue
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { LEDGER_STATE_TAGS } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   InvalidSerializedStateError,
@@ -32,13 +33,13 @@ import {
   SerializedContractState,
   SerializedLedgerParameters,
   SerializedZswapChainState
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, UTILS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
 import { GetCurrentStatesForIdentity, MergeUnsubmittedCallTxData, TransactionContextImpl, TypeId } from '../internal/transaction';
-import { createUnprovenLedgerCallTx, makeCalleeStateResolver } from '../internal/utils';
+import { createUnprovenLedgerCallTx, makeCalleeStateResolver, zswapCallsToNewCoins } from '../internal/utils';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
@@ -66,8 +67,8 @@ vi.mock('../get-states', () => ({
 }));
 
 vi.mock('../internal/utils', async () => {
-  const ledger = await import('@midnight-ntwrk/midnight-js-protocol/v9');
-  const runtime = await import('@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime');
+  const ledger = await import('@midnightntwrk/midnight-js-protocol/v9');
+  const runtime = await import('@midnightntwrk/midnight-js-protocol/v9/compact-runtime');
   return {
     createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', new runtime.ContractState(), ledger.Transaction.fromParts('undeployed')]),
     createUnprovenLedgerCallTx: vi.fn(() => ledger.Transaction.fromParts('undeployed')),
@@ -157,7 +158,7 @@ describe('unproven-call-tx', () => {
         era: 'v9',
         stage: 'Unproven'
       });
-      expect(LedgerTransaction.unwrap(result.private.unprovenTx, 'v9')).toBe(built);
+      expect(result.private.unprovenTx.serialize()).toEqual(built.serialize());
     });
 
     it('should create unproven call tx from initial states with private state', async () => {
@@ -193,7 +194,7 @@ describe('unproven-call-tx', () => {
       expect(result.public.logEvents).toEqual([]);
     });
 
-    it('publishes the post-call state as an ENCODED value beside the handle, as the retained era does', async () => {
+    it('publishes the post-call state as an ENCODED value beside the handle, as the ledger 8 era does', async () => {
       const options = createMockCallOptions({
         initialContractState: await getInitialContractState()
       });
@@ -263,6 +264,72 @@ describe('unproven-call-tx', () => {
       expect(seen[0]!.callContext.parentBlockHash).toBe(BLOCK_HASH);
       expect(seen[0]!.stateProvider).toBe(stateProvider);
       expect(seen[0]!.moduleProvider).toBe(moduleProvider);
+    });
+
+    describe('with a cross-contract callee in the call tree', () => {
+      const calleeAddress = sampleContractAddress();
+      const calleeZswapChainState = new ZswapChainState().postBlockUpdate(new Date(1_000_000), 3600n);
+      const rootZswapChainState = new ZswapChainState();
+
+      const createCallingCircuit = () => {
+        const root = createDefaultCircuit();
+        return vi.fn().mockImplementation((ctx: CircuitContext) => {
+          const rootAddress = ctx.callContext.contractAddress;
+          ctx.callContext.contractAddress = calleeAddress;
+          finalizeCallProofData(ctx, {
+            input: { value: [], alignment: [] },
+            output: { value: [], alignment: [] },
+            publicTranscript: [],
+            privateTranscriptOutputs: []
+          });
+          ctx.callContext.contractAddress = rootAddress;
+          return root(ctx);
+        });
+      };
+
+      const callWithCallee = async () => {
+        vi.mocked(makeCalleeStateResolver).mockReturnValueOnce({
+          stateProvider: { getContractState: vi.fn() },
+          resolvedStates: new Map([
+            [calleeAddress, { contractState: new ContractState(), zswapChainState: calleeZswapChainState }]
+          ]),
+          blockHash: BLOCK_HASH
+        });
+        const options = createMockCallOptions({
+          compiledContract: createMockCompiledContract({ testCircuit: createCallingCircuit() }),
+          initialContractState: await getInitialContractState(),
+          initialZswapChainState: SerializedZswapChainState.fromBytes('v9', rootZswapChainState.serialize())
+        });
+        const result = await createUnprovenCallTxFromInitialStates(
+          createMockZKConfigProvider(),
+          options,
+          createMockEncryptionPublicKey(),
+          { publicDataProvider: createMockProviders().publicDataProvider, blockHash: BLOCK_HASH, moduleProvider: { resolve: vi.fn() } }
+        );
+        return { result, rootAddress: options.contractAddress };
+      };
+
+      it("assembles the callee's Zswap spends against the chain state resolved for the callee", async () => {
+        // Act
+        const { result, rootAddress } = await callWithCallee();
+
+        // Assert
+        const [calls, , chainStateFor] = vi.mocked(createUnprovenLedgerCallTx).mock.lastCall!;
+        expect(calls.map((call) => String(call.contractAddress))).toEqual([calleeAddress, rootAddress]);
+        expect(chainStateFor(calls[0]!.contractAddress)).toBe(calleeZswapChainState);
+        expect(chainStateFor(calls[1]!.contractAddress)?.serialize()).toEqual(rootZswapChainState.serialize());
+        expect(result.calls).toBe(calls);
+      });
+
+      it('hands the coins of every call, not only the root, to the wallet', async () => {
+        // Act
+        const { result } = await callWithCallee();
+
+        // Assert
+        const [, zswapLocalStates] = vi.mocked(zswapCallsToNewCoins).mock.lastCall!;
+        expect(result.calls).toHaveLength(2);
+        expect(zswapLocalStates).toEqual(result.calls.map((call) => call.private.zswapLocalState));
+      });
     });
 
     it('should fail when circuit fails at runtime', async () => {
@@ -807,6 +874,45 @@ describe('unproven-call-tx', () => {
         options.privateStateId,
         '00'.repeat(32)
       );
+    });
+
+    describe('hands providers.contractModuleProvider to the runtime', () => {
+      const runWithModuleProvider = async (privateState: 'with' | 'without') => {
+        const seen: CircuitContext[] = [];
+        const stateProvider: ContractStateProvider = { getContractState: vi.fn() };
+        const contractModuleProvider: ContractModuleProvider = { resolve: vi.fn() };
+        vi.mocked(makeCalleeStateResolver).mockReturnValueOnce({
+          stateProvider,
+          resolvedStates: new Map(),
+          blockHash: MOCK_BLOCK_HASH
+        });
+        const { getPublicStates, getStates } = await import('../get-states');
+        const read = await ledger9StatesDecodingTo(await getInitialContractState());
+        vi.mocked(getPublicStates, { partial: true }).mockResolvedValue(read);
+        vi.mocked(getStates, { partial: true }).mockResolvedValue({ ...read, privateState: { test: 'private-state' } });
+        const providers = { ...createMockProviders(), contractModuleProvider, config: MOCK_CONFIG };
+        const options = {
+          compiledContract: createMockCompiledContract({ testCircuit: createContextRecordingCircuit(seen) }),
+          circuitId: 'testCircuit',
+          contractAddress: createMockContractAddress(),
+          args: ['test-arg'],
+          ...(privateState === 'with' ? { privateStateId: createMockPrivateStateId() } : {})
+        };
+
+        await createUnprovenCallTx(providers, options);
+
+        return { seen, stateProvider, contractModuleProvider };
+      };
+
+      it.each(['without', 'with'] as const)('%s a private state', async (privateState) => {
+        // Act
+        const { seen, stateProvider, contractModuleProvider } = await runWithModuleProvider(privateState);
+
+        // Assert
+        expect(seen).toHaveLength(1);
+        expect(seen[0]!.moduleProvider).toBe(contractModuleProvider);
+        expect(seen[0]!.stateProvider).toBe(stateProvider);
+      });
     });
 
     it('forwards providers.config to the ledger builder', async () => {

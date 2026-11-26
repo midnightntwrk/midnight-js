@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
+import { ConfigurationError, InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { MidnightConfig } from '@midnightntwrk/midnight-js-types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { assertValidMidnightConfig, intentTtl } from '../midnight-config';

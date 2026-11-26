@@ -66,7 +66,7 @@ const LEDGER8_TYPES = [
 const CONSUMER_SOURCE = `
 import type {
   ${LEDGER8_TYPES.join(',\n  ')}
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterface,
@@ -79,7 +79,7 @@ import {
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 
 import type * as Counter016 from '../../../../testkit-js/testkit-js/src/fixtures/hf/counter-016/compiled/contract/index.js';
 

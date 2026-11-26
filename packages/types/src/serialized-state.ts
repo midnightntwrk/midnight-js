@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { MidnightJsError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { MidnightJsError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   LEDGER_ERAS,
   LEDGER_STATE_TAGS,
   type LedgerEra,
   type StateKind
-} from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/version';
 
 import { InvalidSerializedStateError, SerializedStateDecodeFailedError, SerializedStateDecoderMissingError } from './errors';
 

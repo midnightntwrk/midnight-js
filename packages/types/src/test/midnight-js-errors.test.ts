@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
 import {
   ArtifactRuntimeVersionUnavailableError,
   ExportDecryptionError,
-  ForeignLedgerTransactionError,
   ImportConflictError,
+  ImportPasswordValidationError,
   InvalidExportFormatError,
   InvalidProtocolSchemeError,
   InvalidSerializedStateError,
@@ -38,6 +38,8 @@ import {
   SerializedStateDecodeFailedError,
   SerializedStateDecoderMissingError,
   SigningKeyExportError,
+  TransactionDecodeFailedError,
+  TransactionDecoderMissingError,
   TransactionEraMismatchError,
   UnusableEraEntryError,
   WatchTimeoutError,
@@ -64,6 +66,7 @@ describe('types error classes', () => {
     ['ExportDecryptionError', new ExportDecryptionError()],
     ['InvalidExportFormatError', new InvalidExportFormatError()],
     ['ImportConflictError', new ImportConflictError(2)],
+    ['ImportPasswordValidationError', new ImportPasswordValidationError(new PrivateStateExportError('weak'))],
     ['ZkArtifactFetchError', new ZkArtifactFetchError('msg', 503)],
     ['ProofServerError', new ProofServerError('msg', 503)],
     ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg', 'malformed')],
@@ -71,9 +74,10 @@ describe('types error classes', () => {
     ['PrivateStateLimitExceededError', new PrivateStateLimitExceededError('msg')],
     ['WatchTimeoutError', new WatchTimeoutError('watchForTxData', 'abc', 5000)],
     ['ZKArtifactNotFoundError', new ZKArtifactNotFoundError(keyLocation)],
-    ['ForeignLedgerTransactionError', new ForeignLedgerTransactionError('v8', 'ledger8-not-loaded')],
-    ['InvalidTransactionHandleError', new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', 'null')],
+    ['InvalidTransactionHandleError', new InvalidTransactionHandleError('LedgerTransaction.fromBytes', 'not-bytes', 'null')],
     ['TransactionEraMismatchError', new TransactionEraMismatchError('v8', 'v9')],
+    ['TransactionDecoderMissingError', new TransactionDecoderMissingError('v9')],
+    ['TransactionDecodeFailedError', new TransactionDecodeFailedError('v9', 'Finalized', { cause: new Error('bad body') })],
     ['InvalidSerializedStateError', new InvalidSerializedStateError('ContractState', 'v9', 'tag-mismatch')],
     ['SerializedStateDecoderMissingError', new SerializedStateDecoderMissingError('ContractState', 'v8')],
     ['SerializedStateDecodeFailedError', new SerializedStateDecodeFailedError('ContractState', 'v9', { cause: new Error('bad body') })]
@@ -185,6 +189,22 @@ describe('types error classes', () => {
 
     expect([conflict.code, conflict.category]).toEqual(['MIDNIGHT_JS_PR_IMPORT_CONFLICT', 'USAGE']);
     expect([format.code, format.category]).toEqual(['MIDNIGHT_JS_PR_INVALID_EXPORT_FORMAT', 'INTEGRITY']);
+  });
+
+  it('a rejected import password is a usage import error that keeps the validation error', () => {
+    const passwordError = new PrivateStateExportError('Password is shorter than 16 characters');
+
+    const error = new ImportPasswordValidationError(passwordError);
+
+    expect(error).toBeInstanceOf(PrivateStateImportError);
+    expect([error.name, error.code, error.category, error.cause, error.message, error.passwordError]).toEqual([
+      'ImportPasswordValidationError',
+      'MIDNIGHT_JS_PR_IMPORT_PASSWORD_INVALID',
+      'USAGE',
+      'invalid_password',
+      'Password is shorter than 16 characters',
+      passwordError
+    ]);
   });
 
   it.each([

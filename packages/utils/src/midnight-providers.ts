@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import { ConfigurationError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { MidnightProviders } from '@midnightntwrk/midnight-js-types';
 
 import { assertValidMidnightConfig } from './midnight-config';
 

@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import { createUnprovenCallTx, deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { LedgerTransaction, type UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
+import { createUnprovenCallTx, deployContract } from '@midnightntwrk/midnight-js-contracts';
+import { Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type ContractAddress, sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { UnprovenTx } from '@midnightntwrk/midnight-js-types';
 import {
   type ContractConfiguration,
   createLogger,
@@ -25,7 +26,7 @@ import {
   initializeMidnightProviders,
   type MidnightWalletProvider,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
@@ -110,7 +111,7 @@ describe('Fee-mint segment routing — regression #731', () => {
     partitionedTranscript: Awaited<ReturnType<typeof createUnprovenCallTx>>['public']['partitionedTranscript'],
     unprovenTxHandle: UnprovenTx
   ) => {
-    const unprovenTx = LedgerTransaction.unwrap(unprovenTxHandle, 'v9');
+    const unprovenTx = unprovenTxHandle.deserialize({ v9: Transaction });
     // The heavy pre-checkpoint writes push the whole circuit into the fallible
     // segment, so there is no guaranteed transcript at all.
     expect(partitionedTranscript[0]).toBeUndefined();

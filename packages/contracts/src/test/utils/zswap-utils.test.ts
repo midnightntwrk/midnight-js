@@ -14,7 +14,7 @@
  */
 
 import { fc } from '@fast-check/vitest';
-import { InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvariantViolationError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   type AlignedValue,
   type CoinCommitment,
@@ -37,9 +37,9 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { parseEncPublicKeyToHex, toHex } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import { type Recipient } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { parseEncPublicKeyToHex, toHex } from '@midnightntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { expect, vi } from 'vitest';
 
@@ -1739,6 +1739,12 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
           zswapLocalState: { currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs: [qualified], outputs: [] },
           zswapChainState: chainState,
           partitionedTranscript: guaranteedOnly([], [calleeNullifier])
+        },
+        {
+          contractAddress: root,
+          zswapLocalState: { currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [] },
+          zswapChainState: chainState,
+          partitionedTranscript: guaranteedOnly([])
         }
       ],
       randomEncryptionPublicKey()

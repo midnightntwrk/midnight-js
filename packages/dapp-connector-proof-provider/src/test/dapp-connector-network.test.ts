@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { Configuration } from '@midnightntwrk/dapp-connector-api';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
 import { dappConnectorNetwork } from '../dapp-connector-network';

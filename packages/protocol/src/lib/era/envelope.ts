@@ -34,7 +34,7 @@ export type { EncodedStateValue };
  * vendor's own class and narrowed to `deserialize`.
  * @see {@link ModuleGraphAndLazyLoading} for why it is reached by injection
  * rather than by a value import.
- * @see {@link RetainedEraExecution} for the era pin the narrowing carries.
+ * @see {@link Ledger8Execution} for the era pin the narrowing carries.
  */
 export type Ledger8ContractState = Pick<typeof OnchainRuntimeV3.ContractState, 'deserialize'>;
 

@@ -13,15 +13,17 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type ContractPrivateStates,
   ExportDecryptionError,
   type ExportPrivateStatesOptions,
   type ExportSigningKeysOptions,
   ImportConflictError,
+  ImportPasswordValidationError,
   type ImportPrivateStatesOptions,
   type ImportPrivateStatesResult,
   type ImportSigningKeysOptions,
@@ -35,8 +37,8 @@ import {
   type PrivateStateProvider,
   type SigningKeyExport,
   SigningKeyExportError
-} from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { assertIsContractAddress, isValidSigningKey, PasswordValidationError } from '@midnightntwrk/midnight-js-utils';
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -127,12 +129,31 @@ const validateSigningKeyExportPassword = (password: string): void => {
   }
 };
 
+const validateImportPassword = (password: string): void => {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new ImportPasswordValidationError(
+      new PasswordValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`, 'too_short')
+    );
+  }
+};
+
 const validateSalt = (salt: string): void => {
   if (salt.length !== EXPECTED_SALT_LENGTH) {
     throw new InvalidExportFormatError('Invalid salt length');
   }
   if (!/^[0-9a-fA-F]+$/.test(salt)) {
     throw new InvalidExportFormatError('Invalid salt format');
+  }
+};
+
+const validateSigningKeyAddress = (address: string): void => {
+  try {
+    assertIsContractAddress(address);
+  } catch (error: unknown) {
+    if (!(error instanceof InvalidArgumentError)) {
+      throw error;
+    }
+    throw new InvalidExportFormatError(`Invalid contract address in import: ${error.message}`);
   }
 };
 
@@ -275,7 +296,7 @@ export const inMemoryPrivateStateProvider = <
           throw new InvalidExportFormatError('Password is required for in-memory provider import');
         }
 
-        validateExportPassword(options.password);
+        validateImportPassword(options.password);
 
         let payload: PrivateStatePayload<PSI>;
         try {
@@ -373,28 +394,31 @@ export const inMemoryPrivateStateProvider = <
      * @param {ContractAddress} address - The contract address.
      * @param {SigningKey} signingKey - The signing key to set.
      * @returns {Promise<void>} A promise that resolves when the signing key is set.
+     * @throws {InvalidArgumentError} If `address` is not a contract address.
      */
-    setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+    async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+      assertIsContractAddress(address);
       signingKeys[storedAddress(address)] = signingKey;
-      return Promise.resolve();
     },
     /**
      * Gets the signing key for a given contract address.
      * @param {ContractAddress} address - The contract address.
      * @returns {Promise<SigningKey | null>} A promise that resolves to the signing key or null if not found.
+     * @throws {InvalidArgumentError} If `address` is not a contract address.
      */
-    getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
-      const value = signingKeys[storedAddress(address)] ?? null;
-      return Promise.resolve(value);
+    async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
+      assertIsContractAddress(address);
+      return signingKeys[storedAddress(address)] ?? null;
     },
     /**
      * Removes the signing key for a given contract address.
      * @param {ContractAddress} address - The contract address.
      * @returns {Promise<void>} A promise that resolves when the signing key is removed.
+     * @throws {InvalidArgumentError} If `address` is not a contract address.
      */
-    removeSigningKey(address: ContractAddress): Promise<void> {
+    async removeSigningKey(address: ContractAddress): Promise<void> {
+      assertIsContractAddress(address);
       delete signingKeys[storedAddress(address)];
-      return Promise.resolve();
     },
     /**
      * Clears all signing keys.
@@ -475,7 +499,7 @@ export const inMemoryPrivateStateProvider = <
         throw new InvalidExportFormatError('Password is required for in-memory provider import');
       }
 
-      validateSigningKeyExportPassword(options.password);
+      validateImportPassword(options.password);
 
       let payload: SigningKeyPayload;
       try {
@@ -514,6 +538,7 @@ export const inMemoryPrivateStateProvider = <
       }
 
       for (const address of addresses) {
+        validateSigningKeyAddress(address);
         validateSigningKeyValue(payload.keys[address]);
       }
 

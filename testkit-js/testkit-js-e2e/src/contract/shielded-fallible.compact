@@ -24,8 +24,8 @@ export circuit heavyCheckpointMintAndSend(
   publicKey: ZswapCoinPublicKey,
   sendValue: Uint<128>
 ): ShieldedSendResult {
-  for (const i of 0..32) {
-    const key = persistentHash<Vector<2, Bytes<32>>>([disclose(mintNonce), disclose(domainSep)]);
+  const key = persistentHash<Vector<2, Bytes<32>>>([disclose(mintNonce), disclose(domainSep)]);
+  for (const i of 0..128) {
     counters.insertDefault(key);
   }
   kernel.checkpoint();

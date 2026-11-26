@@ -5,14 +5,15 @@ HTTP client for interacting with Midnight proof servers to generate zero-knowled
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-http-client-proof-provider
+yarn add @midnightntwrk/midnight-js-http-client-proof-provider
 ```
 
 ## Quick Start
 
 ```typescript
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { LedgerTransaction } from '@midnightntwrk/midnight-js-types';
+import { Transaction } from '@midnightntwrk/ledger-v9';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
@@ -23,7 +24,7 @@ const proofProvider = httpClientProofProvider(
 // The proven handle comes back in the same era.
 const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
 const provenTx = await proofProvider.proveTx(unprovenTx);
-const ledgerProvenTx = LedgerTransaction.unwrap(provenTx, 'v9');
+const ledgerProvenTx = provenTx.deserialize({ v9: Transaction });
 ```
 
 ## Configuration
@@ -51,7 +52,7 @@ Proof Server (/check, /prove endpoints)
 Use `httpClientProofProvider` for most use cases. It handles complete transactions by orchestrating individual circuit proofs internally.
 
 ```typescript
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
@@ -66,7 +67,7 @@ const provenTx = await proofProvider.proveTx(unprovenTx);
 Use `httpClientProvingProvider` for advanced scenarios requiring fine-grained control over individual circuit proving operations.
 
 ```typescript
-import { httpClientProvingProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { httpClientProvingProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
 
 const provingProvider = httpClientProvingProvider(
   'http://localhost:6300',
@@ -91,9 +92,9 @@ proveTx(
 Proves all circuits in a transaction and returns the proven transaction.
 
 The argument and the result are transaction handles from
-`@midnight-ntwrk/midnight-js-types`. The result has the same era as the
-argument. Read the ledger object with
-`LedgerTransaction.unwrap(provenTx, provenTx.era)`. This provider serves both
+`@midnightntwrk/midnight-js-types`. The result has the same era as the
+argument. Read the ledger object with your own ledger copy:
+`provenTx.deserialize({ v9: Transaction })`. This provider serves both
 eras: `supportedEras` is `['v8', 'v9']`.
 
 ### ProvingProvider (Low-Level)
@@ -164,15 +165,35 @@ const proofProvider = httpClientProofProvider(
 );
 ```
 
+The timeout applies to each HTTP request to the proof server (`/check` or `/prove`), and covers every retry
+and every wait between retries. When it runs out, the request stops at once and is not retried.
+
 ## Retry Behavior
 
-The provider automatically retries failed requests with exponential backoff:
+The provider retries a request up to 3 times when the proof server answers 429, 500 or 503:
 
-| Attempt | Delay    | Retried Status Codes |
-| ------- | -------- | -------------------- |
-| 1       | 1 second | 500, 503             |
-| 2       | 2 seconds| 500, 503             |
-| 3       | 4 seconds| 500, 503             |
+| Retry | Wait before it                         |
+| ----- | -------------------------------------- |
+| 1     | `Retry-After` if present, else 1 second  |
+| 2     | `Retry-After` if present, else 2 seconds |
+| 3     | `Retry-After` if present, else 4 seconds |
+
+- `Retry-After` may be a number of seconds or an HTTP date. An invalid value falls back to the wait above.
+  A wait longer than the timeout ends the request at the timeout. In a browser, a cross-origin proof server must
+  expose `Retry-After` through CORS (`Access-Control-Expose-Headers`), otherwise the wait above is used.
+- A network failure is also retried, with the waits above.
+- 502 and 504 are not retried. A gateway sends them when it gives up waiting, but the proof server keeps
+  proving: it proves on a blocking worker thread and cannot cancel a job that has started
+  ([`worker_pool.rs`](https://github.com/midnightntwrk/midnight-ledger/blob/main/proof-server/src/worker_pool.rs)).
+  A retry would queue the same proof again and double the work.
+- A retried network failure carries the same risk: the server may have received the request before the
+  connection broke. It is still retried, to keep the behaviour of earlier versions.
+
+## Redirects
+
+The provider does not follow redirects. A redirect from the proof server fails the request with a
+`ProofServerError` and is not retried. The request body and the configured `headers` are never sent to the
+redirect target. Configure the final proof server URL directly.
 
 ## Error Handling
 
@@ -205,7 +226,7 @@ import {
   httpClientProvingProvider,
   DEFAULT_TIMEOUT,
   type ProvingProviderConfig
-} from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+} from '@midnightntwrk/midnight-js-http-client-proof-provider';
 ```
 
 ## Detailed

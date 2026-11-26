@@ -16,7 +16,7 @@
 import { describe, expectTypeOf, it } from 'vitest';
 
 // Through the BARREL. `typecheck/overloads.test-d.ts` asserts the same resolutions against the
-// source modules, which a consumer cannot import: it would keep passing with the retained-era types
+// source modules, which a consumer cannot import: it would keep passing with the ledger 8 types
 // unreachable from the published surface entirely.
 import {
   type Ledger8CallTxOptionsBase,
@@ -36,8 +36,8 @@ type K = 'increment';
 declare const providers: Ledger8ContractProviders<C, K>;
 declare const options: Ledger8CallTxOptionsBase<C, K>;
 
-describe('a consumer can name the retained era from the barrel', () => {
-  it('declares the result the retained-era overload resolves to', () => {
+describe('a consumer can name the ledger 8 era from the barrel', () => {
+  it('declares the result the ledger 8 overload resolves to', () => {
     expectTypeOf(submitCallTx(providers, options)).toEqualTypeOf<Promise<Ledger8FinalizedCallTxData<C, K>>>();
   });
 
@@ -45,7 +45,7 @@ describe('a consumer can name the retained era from the barrel', () => {
     expectTypeOf(submitCallTxAsync(providers, options)).toEqualTypeOf<Promise<Ledger8SubmittedCallTx<C, K>>>();
   });
 
-  it('constrains a helper of its own by the retained contract type', () => {
+  it('constrains a helper of its own by the ledger 8 contract type', () => {
     // What the family is published FOR: a caller writing `<C extends Ledger8Contract>` of its own.
     // Asserted through the family's own machinery rather than `Counter016Contract extends
     // Ledger8Contract`, which is true by the fixture's DECLARATION and so cannot fail -- the rule

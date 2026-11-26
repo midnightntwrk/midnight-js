@@ -1,57 +1,89 @@
 # midnight-js v5.0.0 Release Documentation
 
-**Release Date:** July 2, 2026
+**Release Date:** TBD
 **Previous Version:** v4.1.1
-**Node.js Requirement:** >=22
-**Migration Complexity:** Significant — protocol upgrade (ledger-v9 / onchain-runtime-v4), a structured `SigningKey` shape change, a new npm scope (`@midnightntwrk`), and fail-closed ZK artifact integrity verification
+**Node.js Requirement:** >=22.12
+**Migration Complexity:** High. Every dApp must decide, for each contract, whether it runs as a
+ledger 8 contract (deployed before the fork) or is recompiled (deployed after the fork), add a
+`config` to its providers and move to ESM. dApps that wire their own providers,
+read on-chain state or catch framework errors need more changes.
+
+These documents describe the difference between **v4.1.1** and **v5.0.0**. If you used a 5.0.0
+beta or release candidate, names that existed only in those pre-releases (for example
+`unwrapLedger9`, `VersionedTransaction`) have no entry here; replace them with the final API these
+documents describe.
 
 ## Quick Links
 
-- [Release Notes](./release-notes.md) — High-level changelog
-- [Breaking Changes](./breaking-changes.md) — Protocol swap, `SigningKey` shape, scope change, ZK artifact integrity verification
-- [New Features](./new-features.md) — Cross-contract calls, MIP-0002 contract events, ZK integrity manifest, deflate subscriptions, disposable indexer provider, classified deserialization errors
-- [Migration Guide](./migration-guide.md) — Step-by-step upgrade instructions, including [Step 14](./migration-guide.md#step-14--operating-across-the-ledger-fork) on operating across the ledger fork
-- [API Changes](./api-changes.md) — New types, methods, and signature changes
+- [Release Notes](./release-notes.md): a one-page summary.
+- [Breaking Changes](./breaking-changes.md): every change that can break a v4.1.1 dApp, with before and after code.
+- [Migration Guide](./migration-guide.md): the upgrade step by step, and how to operate across the ledger fork.
+- [New Features](./new-features.md): what is new, with examples.
+- [API Changes](./api-changes.md): added, changed, renamed and removed exports, per package.
 
 ## Why this is a major release
 
-v5.0.0 retargets the framework's on-chain protocol bindings from **ledger-v8 / onchain-runtime-v3** to **ledger-v9 / onchain-runtime-v4**, published under the new **`@midnightntwrk`** npm scope. This is a protocol-level break: state serialized under the old protocol is not interchangeable, and the `SigningKey` representation changes from a plain hex string to a structured `{ tag, value }` object throughout the public API.
+v5.0.0 moves the framework from **ledger 8** to **ledger 9**. It is the version a dApp must run
+**before** the network's ledger 8 → ledger 9 hard fork: the same code keeps working on both sides
+of it. A contract deployed before the fork keeps its pre-fork (ledger 8) artifacts and can still be
+found and called after it with them. Contracts deployed after the fork use artifacts recompiled
+with `compactc` 0.36.0.
 
-On top of the protocol work, v5.0.0 adds **cross-contract call support** (multi-contract call trees, artifacts resolved by verifier-key hash), ships the first installment of **MIP-0002 contract events** — the `PublicDataProvider` can now query and stream decoded on-chain contract events — and makes ZK artifact loading **verify against the `compactc` integrity manifest**, fail-closed by default.
-
-## This is the release that crosses the ledger fork
-
-v5.0.0 is the major a dApp must be on **before** the ledger v8 to v9 hard fork. Crossing it costs no code change beyond this migration: the same call sites keep working, a contract deployed before the fork keeps being callable after it, and there is no new API to call at the boundary. What the fork does change is timing and operations — when to release, what counts as a completed transaction, and what to do about contracts your dApp deploys at runtime. [Step 14 of the migration guide](./migration-guide.md#step-14--operating-across-the-ledger-fork) covers all of it.
+To serve two ledgers at once, the framework no longer hands out decoded ledger objects.
+Transactions and on-chain state travel as bytes tagged with their era (`'v8'` or `'v9'`), and your
+dApp decodes them with its own copy of the ledger. This removes a whole class of errors caused by
+two copies of the same WASM package in one bundle.
 
 ## Breaking Changes (high level)
 
-1. **Protocol bindings moved to ledger-v9 / onchain-runtime-v4 under the `@midnightntwrk` scope** — `@midnight-ntwrk/midnight-js-protocol/v9` and `/v9/onchain-runtime` re-export the v9 / v4 packages (#970); the unnamed 4.x subpaths are removed (#1536).
-2. **`SigningKey` is now a structured object** — `{ tag: 'schnorr' | 'ecdsa', value: <hex> }` instead of a plain hex string. Affects `Ledger9ContractExecutableRuntimeOptions.signingKey`, signing-key import/export validation, and the DApp-connector wallet adapter (#970).
-3. **`ContractState` structural version bumped `[v6]` → `[v8]`** — state persisted/serialized under the old protocol is rejected by the version canary (#970).
-4. **`@midnightntwrk/wallet-sdk` 2.0.0-beta** (testkit-js) — keystore and signature/verifying-key APIs adopt the structured key/signature types (#970, #967).
-5. **`platform-js` 3.0.0** — models the signing key as `{ tag, value }`; threaded through the Configuration layer (#970).
-6. **ZK artifact integrity verification is fail-closed** — `FetchZkConfigProvider` / `NodeZkConfigProvider` verify artifacts against `compiler/contract-manifest.json` and throw `ZkArtifactIntegrityError` on a missing/stale manifest or digest mismatch by default (#1015).
-7. **The packages are ESM-only** — CommonJS `require()` of any `midnight-js-*` package no longer resolves; consumers need Node >= 22.12 and TypeScript >= 5.8 with `nodenext` or `bundler` resolution (#1180).
-8. **Transactions are handles, finalized records are era-tagged** — `proveTx`, `balanceTx` and `submitTx` take and return `UnprovenTx` / `UnboundTx` / `FinalizedTx` handles that carry their ledger era, and `watchForTxData` / `watchForDeployTxData` report a `FinalizedTxRead`, an `era`-discriminated record whose `tx` is a handle. Seal with `LedgerTransaction.seal`, read with `LedgerTransaction.unwrap`. External `ProofProvider` / `WalletProvider` / `MidnightProvider` implementations must be updated (#1204, #1533).
-9. **`MidnightProviders.config` is required** — `{ networkId, ttlSeconds }` replaces the global `setNetworkId()` and the fixed one-hour TTL. Every provider literal must add it; `@midnight-ntwrk/midnight-js-network-id` is removed (#982, #1546).
-10. **On-chain state is bytes, decoded by your own runtime** — every state read returns a `*Read` record whose states are `SerializedState` values (bytes plus the `era` that wrote them) instead of decoded objects. Decode with the runtime your contract was compiled against: `read.contractState.deserialize({ v9: ContractState })`. `queryRawContractState`, `rawContractStateObservable` and `getAnyEraContractState` are removed (#1550).
-11. **Protocol subpaths name their ledger** — `@midnight-ntwrk/midnight-js-protocol/v9`, `/v9/compact-runtime`, `/v9/compact-js`, `/v9/compact-js/effect`, `/v9/compact-js/effect/Contract` and `/v9/onchain-runtime` replace the unnamed `/ledger`, `/compact-runtime`, `/compact-js*` and `/onchain-runtime`, which are removed together with the root `ledger`, `compactRuntime`, `compactJs` and `onchainRuntime` namespaces (#1536).
-12. **A name without a ledger prefix is valid for every era** — `AnyContract` is a contract of either era, and `FinalizedMaintenanceTxData` is the union of both eras' maintenance results (#1566).
-13. **One error class per fault** — every failed transaction is one `TxFailedError` with an `operation`, in both eras; a wrong-era fault is one `EraMismatchError` with a `reason`; the `Ledger8` namespace is removed and its errors are five flat `Ledger8*` classes (#1557).
-14. **Every name bound to ledger 9 carries the ledger number** — `Ledger9CallOptions`, `createLedger9WalletProvider`, `deserializeLedger9ContractState` and the rest; the low-level functions keep their names and route on the era; the barrel subpath `./protocol` is `./protocol/v9` (#1574).
+1. **Ledger 9 is the current ledger.** Keep your v4.1.1 build as a ledger 8 contract for contracts deployed before the fork; recompile with `compactc` 0.36.0 for contracts deployed after it. Protocol subpaths name their ledger (`/v9`, `/v9/compact-runtime`, ...).
+2. **ESM-only packages.** Node >=22.12 and TypeScript >=5.8.
+3. **`MidnightProviders.config` is required.** `{ networkId, ttlSeconds }` replaces `setNetworkId()`; the network-id package is removed.
+4. **ZK artifacts ship their `compiler/` directory.** The integrity manifest is checked, and the runtime version picks the ledger.
+5. **Transactions are `LedgerTransaction` handles** at `proveTx`, `balanceTx` and `submitTx`.
+6. **Providers declare `supportedEras`.** `createProofProvider` is now `createLedger9ProofProvider`.
+7. **Private state is reached per contract** with `forContract(address)`.
+8. **On-chain state is bytes.** `SerializedContractState`, `SerializedLedgerParameters`, `SerializedZswapChainState`, decoded by your runtime.
+9. **Streams emit `PositionedRecord<T>`.**
+10. **Finalized records are era-tagged** (`FinalizedTxRead`).
+11. **Ledger-9-only type names carry `Ledger9`.**
+12. **One coded error model.** `MidnightJsError`, one `TxFailedError`, `ProviderFailedError`.
+13. **Custom `PublicDataProvider`s** need four new members.
+14. **Indexer >=4.4.0-rc.6.**
 
-See [breaking-changes.md](./breaking-changes.md) for full rationale and before/after snippets.
+[breaking-changes.md](./breaking-changes.md) lists all of them, including the smaller ones.
 
 ## Headline Features
 
-- **Cross-contract call support** — assemble/prove/submit call trees spanning multiple deployed contracts; `ZKConfigRegistry` resolves per-contract artifacts by verifier-key hash (no address registration), plus a new `PublicDataProvider.queryBlock()` "as-of" endpoint (#967).
-- **MIP-0002 contract events, two surfaces** — off-chain on `PublicDataProvider` via `queryContractEvents()` (paged point-in-time read), `contractEventsObservable()` (replay-from-cursor then live tail), and the `getAllContractEvents()` async-iterator helper, backed by an 11-variant `ContractEvent` discriminated union (#988); and on the local-execution path via `Ledger9CallResultPublic.logEvents` with a `contracts.Ledger9ContractLog.decodeAll()` helper (#1083).
-- **Uniform `provider(options)` factories** — `httpClientProofProvider({ url, zkConfigProvider, ... })` and `nodeZkConfigProvider(options)` / `fetchZkConfigProvider(options)`; additive and backward-compatible, positional forms retained as `@deprecated` (#1078).
-- **ZK artifact integrity verification** — providers verify artifacts against the `compactc` `contract-manifest.json`; fail-closed by default with an optional `expectedManifestHash` pin (#1015).
-- **Deflate-compressed subscriptions** — `graphql-transport-ws+deflate` negotiation with transparent inflation and a 16 MiB compression-bomb cap (#977).
-- **Disposable `IndexerPublicDataProvider`** — the inner factory is now a class with a structured `IndexerProviderConfig` (`{ queryURL, subscriptionURL, ... }`), fail-fast config validation, and an explicit `dispose()` that releases the underlying WebSocket connection (#961).
-- **Classified deserialization / versioning errors** — cryptic ledger/runtime deserialization failures are now wrapped in a structured `DeserializationError` with classification (version-mismatch, generic-param-mismatch, format-mismatch) and actionable mitigation hints (#955).
+1. **Ledger 8 contracts and the hard fork:** one API for contracts of both ledgers, and clear errors when the fork happens during an operation.
+2. **Cross-contract calls**, including dynamic calls through `contractModuleProvider`.
+3. **MIP-0002 contract events** on the public data provider, and log events on call results.
+4. **Predefined network endpoints** (`networks.preview()`, `networks.preprod()`, `networks.mainnet()`).
+5. **DApp Connector providers:** `dappConnectorWalletProviders` and `dappConnectorNetwork`.
+6. **Error codes and categories** on every framework error.
+7. **Bounded waits** with `maxWaitMs` on the `watchFor*` methods.
 
-## Pre-release protocol note
+## Requirements
 
-The v9 / v4 protocol packages this release targets are themselves release candidates (`@midnightntwrk/ledger-v9@1.0.0-rc.3`, `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3`), paired with `compact-runtime 0.18.0-rc.1`, `compact-js 2.5.5-rc.7`, and `compactc 0.33.0-rc.1`. The testkit wallet stack is on the `2.0.0-beta.2` line. Pin transitive copies to a single version to avoid duplicate-major type clashes (the migration guide covers the resolutions).
+| Item | Version |
+|---|---|
+| Node.js | >=22.12 |
+| TypeScript | >=5.8 (`module: nodenext`, or `preserve` + `moduleResolution: bundler`); >=5.9 with `module: node20` for a CommonJS project |
+| Indexer | >=4.4.0-rc.6 |
+| Proof server | 9.0.0 (9.0.0-rc.7 cannot prove circuits compiled by `compactc` 0.36) |
+| `compactc` | 0.36.0 (runtime 0.21.0) for ledger 9 contracts |
+| `@midnightntwrk/ledger-v9` | 1.0.0 |
+| `@midnight-ntwrk/compact-js` | 3.0.0 |
+
+## Protocol package versions
+
+Pin the protocol package versions given in the [migration guide](./migration-guide.md)
+(`@midnightntwrk/ledger-v9` 1.0.0, `@midnightntwrk/onchain-runtime-v4` 4.0.0,
+`@midnight-ntwrk/platform-js` 3.0.0) so your dApp and the framework load one copy of each.
+
+One dependency is still a pre-release: `@midnightntwrk/dapp-connector-api` 4.1.0-beta.1 (a beta,
+used by the DApp Connector providers).
+
+---
+
+**License:** Apache-2.0

@@ -1,0 +1,47 @@
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [contracts](../README.md) / Ledger8InitialStateResult
+
+# Interface: Ledger8InitialStateResult\<PS\>
+
+What a ledger 8 artifact's own `initialState` returns: a plain object,
+NOT a `Promise`.
+
+A declaration OF THE ARTIFACT, not a framework result. It is the shape
+[Ledger8Contract.initialState](Ledger8Contract.md#initialstate) is read through, and it is what makes
+the era discriminable at the type level -- the current era's `initialState`
+answers with a `Promise`.
+
+Deliberately NOT the ledger 8 counterpart of `Ledger9ContractConstructorResult`,
+which is a framework result carrying `era` and `next*` members. There is no
+ledger 8 counterpart of that type: the constructor output a ledger 8 deploy
+would publish is spread across `Ledger8DeployedContract`'s `initial*`
+members, and nothing constructs one today. This type was called
+`Ledger8ConstructorResult`, which put a false pairing next to
+`Ledger9ContractConstructorResult` on the published surface.
+
+## Type Parameters
+
+### PS
+
+`PS` = `unknown`
+
+## Properties
+
+### currentContractState
+
+> `readonly` **currentContractState**: `unknown`
+
+***
+
+### currentPrivateState
+
+> `readonly` **currentPrivateState**: `PS`
+
+***
+
+### currentZswapLocalState
+
+> `readonly` **currentZswapLocalState**: `unknown`

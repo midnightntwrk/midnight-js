@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   ChargedState,
   communicationCommitmentRandomness,
@@ -30,32 +30,32 @@ import {
   UnshieldedOffer,
   type UtxoOutput,
   type ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import type { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
 import {
   type AlignedValue,
   type ContractAddress,
   type ContractState,
   type QueryContext,
-  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+  type ZswapLocalState} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   encodeContractKeyLocation,
   hashVerifierKey,
   type MidnightConfig
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   assertDefined,
   decodeLedger9StateValue,
   deserializeLedger9CompactContractState,
   deserializeLedger9ContractState,
   intentTtl
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import { BlankVerifierKeySlotError, ZswapOutputResolutionError } from '../../errors';
 import { type EncryptionPublicKeyResolver, zswapCallsToSegmentedOffer, zswapStateToOffer } from './zswap-utils';
 
-const PKG = '@midnight-ntwrk/midnight-js-contracts';
+const PKG = '@midnightntwrk/midnight-js-contracts';
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
   deserializeLedger9ContractState(contractState.serialize(), { caller: `${PKG}:toLedgerContractState` });

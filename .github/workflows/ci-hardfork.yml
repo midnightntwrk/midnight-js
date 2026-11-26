@@ -35,21 +35,15 @@ on:
       should_run:
         required: true
         type: string
-    # Declared rather than inherited, so a caller hands over these three
+    # Declared rather than inherited, so a caller hands over these two
     # credentials instead of the whole repository's secrets. The Docker Hub pair
     # is optional because this repository has none configured -- the toolkit
     # login step is guarded on the username being non-empty.
     secrets:
-      MIDNIGHTCI_PACKAGES_WRITE:
-        required: true
       DOCKERHUB_USERNAME:
         required: false
       DOCKERHUB_TOKEN:
         required: false
-
-concurrency:
-  group: hardfork-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   fork-crossing:
@@ -92,19 +86,21 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
+      - name: Pull the e2e prover keys from Git LFS
+        uses: ./.github/actions/pull-lfs
+
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           cache-key-prefix: 'turbo-hardfork'
 
       - name: Install dependencies
         run: yarn install --immutable
 
       - name: Build
-        run: yarn build --cache-dir ./turbo
+        run: yarn build
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Pack the framework
         run: node consumer-e2e/pack-framework.mjs
@@ -112,7 +108,7 @@ jobs:
       # `compactc` 0.31.1 is fetched at run time and is the same download for every
       # shard, so it is cached on the version alone.
       - name: Cache the retained-era compiler
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v4.4.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
         with:
           path: packages/compact/managed/0.31.1
           key: fork-compactc-0.31.1
@@ -125,7 +121,7 @@ jobs:
       # Skipped for `events`, which has no retained twin to cache.
       - name: Cache this shard's retained twin
         if: matrix.contract != 'events'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v4.4.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
         with:
           path: consumer-e2e/.retained/${{ matrix.contract }}
           key: >-
@@ -133,35 +129,12 @@ jobs:
               hashFiles(format('testkit-js/testkit-js-e2e/src/contract/{0}.compact', matrix.contract))
             }}
 
-      # The personas resolve `@midnight-ntwrk/compact-runtime` from GitHub
-      # Packages, and neither pnpm nor a PnP install inherits Yarn's own scope
-      # configuration, so each needs the credential written where it looks.
-      - name: Authorize the persona installs
-        run: |
-          {
-            echo "@midnight-ntwrk:registry=https://npm.pkg.github.com"
-            echo "//npm.pkg.github.com/:_authToken=${MIDNIGHTCI_PACKAGES_WRITE}"
-          } >> "$HOME/.npmrc"
-        env:
-          MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      # Every image in `compose-fork.yml` comes from ghcr except the toolkit, and
-      # none of them are in the image cache the e2e lane restores, so this login
-      # is unconditional here.
-      - name: Log in to GitHub Container registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
-        with:
-          registry: 'https://ghcr.io'
-          username: MidnightCI
-          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      # The node toolkit is published on Docker Hub, not ghcr, so the login above
-      # does not authorize it. No Docker Hub credentials are configured for this
-      # repository, and an empty login is a hard failure in the action, so this
-      # step is inert until someone adds them. The anonymous pull it falls back on
-      # is rate-limited from shared runner IPs, and it fails inside `enactFork()`
-      # where it reads as a governance failure rather than a registry one.
-      # Mirroring the toolkit to ghcr would remove this hazard entirely.
+      # Every image in `compose-fork.yml` comes from Docker Hub. No Docker Hub
+      # credentials are configured for this repository, and an empty login is a
+      # hard failure in the action, so this step is inert until someone adds
+      # them. The anonymous pull it falls back on is rate-limited from shared
+      # runner IPs, and it fails inside `enactFork()` where it reads as a
+      # governance failure rather than a registry one.
       - name: Log in to Docker Hub
         if: env.DOCKERHUB_USERNAME != ''
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
@@ -177,17 +150,12 @@ jobs:
       - name: Run the fork-crossing scenario
         run: node consumer-e2e/fork-matrix-smoke.mjs pnp --contracts=${{ matrix.contract }}
         env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       # AFTER the step above, `env:` block included, and that placement is the
       # whole of this step's history. Inserting it between that step's `run:` and
       # its `env:` re-parents the block onto THIS step -- which needs no
-      # credentials -- and leaves the scenario without `YARN_NPM_AUTH_TOKEN`. The
-      # persona install then resolves the `@midnight-ntwrk` scope anonymously
-      # against GitHub Packages and every shard fails alike on
-      # `YN0041: Invalid authentication (as an anonymous user)`. That took the
+      # credentials -- and leaves the scenario without its own. That took the
       # lane from 6/7 to 0/7 once, and the diff read as innocent because the
       # `env:` lines never appeared in it.
       #
@@ -202,7 +170,7 @@ jobs:
       # found with the provided path: consumer-e2e/.logs/".
       - name: Upload the stack's container logs
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # ratchet:actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         with:
           name: fork-stack-logs-${{ matrix.contract }}
           path: consumer-e2e/stack-logs/

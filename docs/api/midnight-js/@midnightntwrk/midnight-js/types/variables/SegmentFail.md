@@ -1,0 +1,11 @@
+[**Midnight.js API Reference v5.0.3**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [types](../README.md) / SegmentFail
+
+# Variable: SegmentFail
+
+> `const` **SegmentFail**: `"SegmentFail"`
+
+Indicates that the segment update is invalid.

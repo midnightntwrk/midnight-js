@@ -14,8 +14,8 @@ implementations consult their sources in the order they do.
 
 The reader is `parseZkArtifactRuntimeVersion`
 (`packages/utils/src/zk-artifact-contract-info.ts`). The providers that call it
-are `@midnight-ntwrk/midnight-js-node-zk-config-provider` and
-`@midnight-ntwrk/midnight-js-fetch-zk-config-provider`.
+are `@midnightntwrk/midnight-js-node-zk-config-provider` and
+`@midnightntwrk/midnight-js-fetch-zk-config-provider`.
 
 ## Only the runtime version is read
 
@@ -50,7 +50,7 @@ must not be the one who decides it.
 
 `compiler/contract-info.json` is the fallback, for bundles that carry no manifest
 at all: `compactc` only began emitting one in 0.33, which is exactly the
-retained-era case. It goes through the same integrity gate as every verifier key
+ledger 8 case. It goes through the same integrity gate as every verifier key
 and ZKIR, so under the default `require` mode an unvouched-for description is
 refused rather than trusted.
 

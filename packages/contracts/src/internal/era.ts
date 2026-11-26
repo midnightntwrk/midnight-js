@@ -19,14 +19,14 @@ import {
   loadLedgerEra,
   protocolVersionToLedger,
   UnknownLedgerEraError
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { LedgerParameters, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   LEDGER_ERAS,
   type StateKind
-} from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/version';
 import {
   ArtifactRuntimeVersionUnavailableError,
   type ContractStateRead,
@@ -43,14 +43,14 @@ import {
   type TransactionMethod,
   type TransactionStage,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   assertNever,
   deserializeLedger9CompactContractState,
   deserializeLedger9Parameters,
   deserializeLedger9ZswapChainState,
   ZkArtifactContractInfoError
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 
 import {
   EraInvariantViolationError,
@@ -95,7 +95,7 @@ export function requireProviderResult<S extends TransactionStage>(
   return handle;
 }
 
-const CONTRACTS_PACKAGE = '@midnight-ntwrk/midnight-js-contracts';
+const CONTRACTS_PACKAGE = '@midnightntwrk/midnight-js-contracts';
 
 const describeEraTag = (era: unknown): string =>
   (typeof era === 'object' && era !== null) || typeof era === 'function'
@@ -194,13 +194,17 @@ export const requireLedger9ContractStateRead = (
   servedBy: StateReadMethod
 ): SerializedContractState<'v9'> => {
   const state = requireContractStateRead(read, servedBy);
-  if (state.era === 'v8') {
-    throw new EraMismatchError('ledger8-contract-state-unsupported', {
-      detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
-      contractAddress
-    });
+  switch (state.era) {
+    case 'v8':
+      throw new EraMismatchError('ledger8-contract-state-unsupported', {
+        detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
+        contractAddress
+      });
+    case 'v9':
+      return SerializedContractState.fromBytes('v9', state.serialize());
+    default:
+      return assertNever(state.era, 'requireLedger9ContractStateRead');
   }
-  return SerializedContractState.fromBytes('v9', state.serialize());
 };
 
 const requireLedger9Companion = <T extends { readonly era: LedgerEra }>(
@@ -217,6 +221,7 @@ const requireLedger9Companion = <T extends { readonly era: LedgerEra }>(
   if (state === undefined) {
     throw new UnknownLedgerEraError(eraTagOf(served), 'queryZSwapAndContractState');
   }
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 9 path refuses every other era
   if (state.era !== 'v9') {
     throw new PublicStatesEraMismatchError(contractAddress, field, 'v9', state.era);
   }
@@ -342,6 +347,7 @@ export const requireStateOption = <T extends { readonly era: LedgerEra }>(
 };
 
 const requireLedger9OptionEra = <T extends { readonly era: LedgerEra }>(state: T, option: keyof Ledger9InitialStates): T => {
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 9 path refuses every other era
   if (state.era !== 'v9') {
     throw new InvalidArgumentError(
       `options.${option} was written by the ${state.era} ledger, but a ledger 9 call runs on v9 states. ` +
@@ -376,11 +382,16 @@ export const decodeLedger9InitialStates = (
     'initialContractState',
     'SerializedContractState'
   );
-  if (contractState.era === 'v8') {
-    throw new EraMismatchError('ledger8-contract-state-unsupported', {
-      detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
-      contractAddress
-    });
+  switch (contractState.era) {
+    case 'v8':
+      throw new EraMismatchError('ledger8-contract-state-unsupported', {
+        detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
+        contractAddress
+      });
+    case 'v9':
+      break;
+    default:
+      return assertNever(contractState.era, 'decodeLedger9InitialStates');
   }
   const zswapChainState = requireLedger9OptionEra(
     requireStateOption(states.initialZswapChainState, ownZswapChainState, 'initialZswapChainState', 'SerializedZswapChainState'),
@@ -410,7 +421,7 @@ const requireRecordHandle = <R extends FinalizedTxRead>(
  * whose `tx` is not a handle of that era, accepting either variant.
  *
  * The counterpart to {@link requireLedger9Record}, for the paths where BOTH tags
- * are legitimate answers and there is therefore no era to refuse: the retained
+ * are legitimate answers and there is therefore no era to refuse: the ledger 8
  * path, and the current-era attach, which must accept a contract deployed before
  * the fork. A contract found on chain was deployed in whichever era was current
  * then, so its deploy record is genuinely either variant. What is still refusable
@@ -529,8 +540,8 @@ export type HeadVersionSource = Pick<PublicDataProvider, 'queryLatestProtocolVer
 
 // The `constructor.name` values that appear on the two eras' generated code. `ASYNC_FUNCTION`
 // REFUSES; `PLAIN_FUNCTION` admits a candidate and decides nothing. A build step targeting below
-// ES2017 rewrites an `AsyncFunction` into a plain one, so reading `PLAIN_FUNCTION` as proof of the
-// retained era let a transpiled current-era contract into the retained pipeline. The rewrite runs
+// ES2017 rewrites an `AsyncFunction` into a plain one, so reading `PLAIN_FUNCTION` as proof of
+// ledger 8 let a transpiled current-era contract into the ledger 8 pipeline. The rewrite runs
 // in one direction only -- a build can erase `async`, never fabricate it -- which is what makes the
 // async reading sound as a refusal and the plain reading unsound as a route.
 const PLAIN_FUNCTION = 'Function';
@@ -550,7 +561,7 @@ const ASYNC_FUNCTION = 'AsyncFunction';
  */
 const RUNTIME_VERSION_TO_ERA = Object.freeze({
   '0.16': 'v8',
-  '0.20': 'v9'
+  '0.21': 'v9'
 } as const satisfies Readonly<Record<`${number}.${number}`, LedgerEra>>);
 
 // Compile-time gate: every pipeline era must be reachable from some declared runtime version.
@@ -663,7 +674,7 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
 };
 
 /**
- * Whether a contract has the retained toolchain's SHAPE: the raw generated instance rather than the
+ * Whether a contract has the ledger 8 toolchain's SHAPE: the raw generated instance rather than the
  * current toolchain's `CompiledContract` container.
  *
  * Shape only, with no artifact read, so it is synchronous. It is for enumerating the circuits a
@@ -672,7 +683,7 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
  * one era decision, and every operation reached after this check makes it.
  *
  * @param compiledContract The contract a caller passed.
- * @returns `true` for the retained toolchain's shape.
+ * @returns `true` for the ledger 8 toolchain's shape.
  * @throws EraMismatchError if the object belongs to neither toolchain's shape.
  */
 export const hasLedger8ContractShape = <L extends Ledger8Contract>(compiledContract: object | L): compiledContract is L =>
@@ -732,8 +743,8 @@ export const resolveArtifactEra = async (
   }
   if (era !== ERA_OF_SHAPE[shape]) {
     // A container whose artifacts declare ledger 8 is served another contract's artifacts. A
-    // retained SHAPE whose artifacts declare ledger 9 is a ledger 9 contract passed raw, with its
-    // `async` erased by the caller's build: it reads as retained and is not.
+    // ledger 8 SHAPE whose artifacts declare ledger 9 is a ledger 9 contract passed raw, with its
+    // `async` erased by the caller's build: it reads as ledger 8 and is not.
     throw shape === 'ledger9-container'
       ? new EraMismatchError('ledger8-artifacts-in-ledger9-container', {
           detail: `The artifacts declare compact-runtime ${runtimeVersion}.`
@@ -762,6 +773,7 @@ export const requireLedger9Contract = async (
   functionName: string
 ): Promise<void> => {
   const era = await resolveArtifactEra(compiledContract, source);
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 9 path refuses every other era
   if (era !== 'v9') {
     throw unsupportedContractEra(functionName, era);
   }
@@ -779,6 +791,7 @@ export const requireLedger8Contract = async (
   functionName: string
 ): Promise<void> => {
   const era = await resolveArtifactEra(compiledContract, source);
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 8 path refuses every other era
   if (era !== 'v8') {
     throw unsupportedContractEra(functionName, era);
   }
@@ -794,11 +807,12 @@ export const requireLedger8Contract = async (
  *
  * @param _options The options a router received. Read by the type system only.
  * @param era The era {@link resolveArtifactEra} resolved for that object's contract.
- * @returns Whether this is a retained-era request.
+ * @returns Whether this is a ledger 8 request.
  */
 const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract }>(
   _options: { readonly compiledContract: unknown } | L,
   era: LedgerEra
+// eslint-disable-next-line no-restricted-syntax -- type predicate called only inside the exhaustive era switch of resolveEraRequest
 ): _options is L => era === 'v8';
 
 /**
@@ -807,11 +821,12 @@ const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract
  *
  * @param _compiledContract The contract a router received. Read by the type system only.
  * @param era The era {@link resolveArtifactEra} resolved for that contract.
- * @returns Whether this is a retained-era contract.
+ * @returns Whether this is a ledger 8 contract.
  */
 const isLedger8Contract = <C extends object>(
   _compiledContract: C | Ledger8Contract,
   era: LedgerEra
+// eslint-disable-next-line no-restricted-syntax -- type predicate called only inside the exhaustive era switch of resolveContractEraRequest
 ): _compiledContract is Ledger8Contract => era === 'v8';
 
 /** A router's options, tagged with the era their contract's artifacts declare. */
@@ -918,7 +933,7 @@ export const readHeadEra = async (pdp: HeadVersionSource): Promise<HeadEraReadin
  *
  * @param reading The head reading to bind an era to.
  * @returns The reading, with the era facade bound to it.
- * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
+ * @throws Ledger8RuntimeMissingError if the ledger 8 runtime cannot be acquired.
  */
 export const acquireHeadEra = async (reading: HeadEraReading): Promise<ResolvedOperationEra> => ({
   ...reading,
@@ -1017,7 +1032,7 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
 /**
  * Refuses an operation whose artifact era and network head era cannot be run together.
  *
- * Rules every cell of {@link ERA_PAIRING} rather than letting one fall through. A retained-era
+ * Rules every cell of {@link ERA_PAIRING} rather than letting one fall through. A ledger 8
  * DEPLOY or MAINTENANCE update on a post-fork head is the one cell where the operation kinds differ,
  * and the `'call-only'` verdict is where that difference lives.
  *
@@ -1031,8 +1046,8 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
  * which is a refusing side.
  * @throws EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a
  * current-era artifact on a pre-fork head.
- * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` for a retained-era deploy on a post-fork head.
- * @throws EraMismatchError with reason `'ledger8-maintenance-on-ledger9-network'` for a retained-era maintenance update on a post-fork head.
+ * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` for a ledger 8 deploy on a post-fork head.
+ * @throws EraMismatchError with reason `'ledger8-maintenance-on-ledger9-network'` for a ledger 8 maintenance update on a post-fork head.
  * @throws UnknownLedgerEraError carrying whichever argument has no cell here, if an era is
  * added without extending the table -- and also from the closing case, carrying a verdict rather
  * than an era, if a verdict is ever added without one. The class does not distinguish the three;
@@ -1103,21 +1118,21 @@ export const assertEraCompatible = (
  *
  * The reported **`protocolVersion`** dates the READ, not the bytes. The node translates every
  * contract's state at the fork, and indexer `4.4.0-rc.6` serves the translated state on an
- * unpinned read. A retained-era envelope under a post-fork head is still served by a read pinned to
+ * unpinned read. A ledger 8 envelope under a post-fork head is still served by a read pinned to
  * a pre-fork block, by a record of one action's own state, and by an indexer older than
  * `4.4.0-rc.6` (midnight-indexer #1605). That is legitimate, and it is what keep-state operates on.
  * Only the reverse — an envelope NEWER than the block dating it — is impossible and therefore
  * reported.
  *
  * DO NOT REINTRODUCE AN EQUALITY CHECK BETWEEN `head` AND THE ENVELOPE. It reads as symmetry and
- * costs the whole keep-state path: every post-fork call that meets a retained envelope is refused,
+ * costs the whole keep-state path: every post-fork call that meets a ledger 8 envelope is refused,
  * and the error blames the read surface for serving exactly what it is supposed to serve.
  *
  * The envelope's era is `state.contractState.era`: `SerializedContractState.fromBytes` refuses bytes whose
  * tag does not match it, so it is the era of these exact bytes.
  *
  * Do not declare the tag-to-era mapping here — it lives once, as `LEDGER_STATE_TAGS` in
- * `@midnight-ntwrk/midnight-js-protocol`.
+ * `@midnightntwrk/midnight-js-protocol`.
  *
  * @see {@link EraDispatch} for what each step buys and what breaks if it moves.
  *
@@ -1129,7 +1144,7 @@ export const assertEraCompatible = (
  * @param state The contract-state read the operation fetched.
  * @param pdp The read surface, for the fresh head read the impossible case needs.
  * @param logger The optional logger the encoding and re-read breadcrumbs are written to.
- * @returns The era whose decoder owns these bytes: `'v8'` for a retained envelope, `'v9'` for a
+ * @returns The era whose decoder owns these bytes: `'v8'` for a ledger 8 envelope, `'v9'` for a
  * current-era one.
  * @throws NetworkVersionReadFailedError, carrying the transport failure on `cause`, if the fresh head read rejects — so the
  * disagreement that was under investigation is not lost behind a bare transport error.
@@ -1154,27 +1169,32 @@ export const resolveContractStateEra = async (
   // decoded a state is the fact an operator needs when the state decodes but
   // the call behaves oddly, and only the accepted path reaches a decoder.
   emitEncoding(logger, stateEra);
-  // The retained ledger wrote it, which is the only thing this pipeline can
+  // Ledger 8 wrote it, which is the only thing this pipeline can
   // read -- under EITHER head. Pre-fork this is a native call; post-fork it is
   // keep-state. Both are ordinary, and neither involves the head.
-  if (stateEra === 'v8') {
-    return stateEra;
+  switch (stateEra) {
+    case 'v8':
+      return stateEra;
+    case 'v9':
+      break;
+    default:
+      return assertNever(stateEra, 'resolveContractStateEra');
   }
 
   // From here the state carries a CURRENT-era envelope.
   //
   // Under a post-fork head that is ORDINARY, and it is what makes keep-state
   // more than a single call: the fork migrates the contract's envelope from
-  // retained to current-era, and the ledger carries the retained VERIFIER KEYS
+  // ledger 8 to current-era, and the ledger carries the ledger 8 VERIFIER KEYS
   // across unchanged. So the bytes are the current decoder's to
-  // read while the artifacts that fit the contract are still the retained ones.
+  // read while the artifacts that fit the contract are still the ledger 8 ones.
   //
   // The envelope answers ONE question -- which decoder may read these bytes --
   // and it is not the question of whether the caller's artifacts fit this
   // contract. The key check
   // answers it, against the keys this state actually declares; see
   // `assertSnapshotVerifierKey`.
-  if (head === 'v9') {
+  if (head === stateEra) {
     return stateEra;
   }
 

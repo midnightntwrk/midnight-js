@@ -18,8 +18,8 @@ import type {
   ContractEventQueryFilter,
   ContractEventsPage,
   ContractEventSubscriptionFilter,
-  ContractEventType} from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+  ContractEventType} from '@midnightntwrk/midnight-js-types';
+import { assertIsContractAddress } from '@midnightntwrk/midnight-js-utils';
 
 import { IndexerProviderConfigError } from './errors';
 import type {

@@ -6,18 +6,18 @@ Public data provider implementation based on the Midnight Pub-sub Indexer. Provi
 
 Indexer `4.4.0-rc.6` or later. This provider selects `stateAt` on every
 contract-state read, and older indexers do not serve that field. The framework's
-own test environments pin the build tag `4.4.0-rc.6-68702121`.
+devnet and v8era test environments pin `4.4.101`.
 
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-indexer-public-data-provider
+yarn add @midnightntwrk/midnight-js-indexer-public-data-provider
 ```
 
 ## Quick Start
 
 ```typescript
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { indexerPublicDataProvider } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 const provider = indexerPublicDataProvider(
   'https://indexer.example.com/graphql',     // Query URL (HTTP/HTTPS)
@@ -82,7 +82,7 @@ queryLatestProtocolVersion(): Promise<number>
 
 Every state read returns bytes, never a decoded object. A contract state,
 ledger parameters and a zswap chain state are each a serialized state from
-`@midnight-ntwrk/midnight-js-types` — `SerializedContractState`,
+`@midnightntwrk/midnight-js-types` — `SerializedContractState`,
 `SerializedLedgerParameters` and `SerializedZswapChainState`: the bytes exactly
 as the network sent them, plus `era`, the ledger that wrote them. The class
 names the kind. Decode one with the
@@ -195,7 +195,7 @@ if (read !== null) {
 ```
 
 `read.contractState.era` is the era that **wrote the bytes**, the same
-answer `ledgerVersionOfContractState` from `@midnight-ntwrk/midnight-js-utils`
+answer `ledgerVersionOfContractState` from `@midnightntwrk/midnight-js-utils`
 gives for them. `protocolVersion` is a statement about the **block**, and can
 be newer.
 
@@ -217,10 +217,10 @@ what keeps a wrong-era payload away from the decoder either way.
 Contract events carry the same dating: every `ContractEvent` has a
 `protocolVersion`, so a consumer decoding the opaque `raw` payload can tell
 which runtime wrote it. Resolve it with `versionOfRecord` from
-`@midnight-ntwrk/midnight-js-protocol`:
+`@midnightntwrk/midnight-js-protocol`:
 
 ```typescript
-import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
+import { versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
 
 const era = versionOfRecord(event); // 'v8' | 'v9'
 ```
@@ -272,8 +272,8 @@ with `WatchTimeoutError` (code `MIDNIGHT_JS_PR_WATCH_TIMED_OUT`, category
 stops:
 
 ```typescript
-import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 
 try {
   const record = await provider.watchForTxData(txId, { maxWaitMs: 120_000 });
@@ -324,13 +324,13 @@ own block.
 after an error:
 
 ```typescript
-import { IndexerError, IndexerQueryError } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { IndexerError, IndexerQueryError } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 import type {
   ContractStateObservableConfig,
   ContractStateRead,
   PositionedRecord
-} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, UTILS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 
 const recursOnResume = (error: unknown): boolean =>
   (error instanceof IndexerError && !(error instanceof IndexerQueryError)) ||
@@ -466,7 +466,7 @@ custom payload arrives with the future compact-js decoder.
 ### Example — watch my contract's events with resumption
 
 ```typescript
-import { getAllContractEvents } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { getAllContractEvents } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 // Tail live events, resuming after the last event the app persisted.
 const sub = provider
@@ -571,7 +571,7 @@ import {
   toUnshieldedUtxos,
   toUnshieldedBalances,
   type IndexerUtxo
-} from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+} from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 ```
 
 ## Architecture Documents
