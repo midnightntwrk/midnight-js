@@ -1,26 +1,26 @@
-# Retained-era coverage outside the fork lane
+# Ledger 8 coverage outside the fork lane
 
-Covers `testkit-js/testkit-js-e2e/test/retained-call.v8era.it.test.ts`, the twin artifacts under
-`testkit-js/testkit-js-e2e/src/contract/compiled-retained/`, the build step that finishes them
-(`testkit-js/testkit-js-e2e/scripts/rewrite-retained-runtime.mjs`), and the ledger instance
-`testkit-js/testkit-js/src/wallet/wallet-transaction.ts` deserializes retained payloads with.
+Covers `testkit-js/testkit-js-e2e/test/ledger8-call.v8era.it.test.ts`, the twin artifacts under
+`testkit-js/testkit-js-e2e/src/contract/compiled-ledger8/`, the build step that finishes them
+(`testkit-js/testkit-js-e2e/scripts/rewrite-ledger8-runtime.mjs`), and the ledger instance
+`testkit-js/testkit-js/src/wallet/wallet-transaction.ts` deserializes ledger 8 payloads with.
 
 ## Purpose
 
-Exercise the retained-era call pipeline against a live pre-fork chain from the default testkit
+Exercise the ledger 8 call pipeline against a live pre-fork chain from the default testkit
 suite, rather than only from the `Hard fork` lane in `consumer-e2e`.
 
 The fork lane is sharded, outside the default matrix and minutes per shard. That cost shapes what
-happens when it goes red: #1345 was a real defect in the retained pipeline, it did turn that lane
+happens when it goes red: #1345 was a real defect in the ledger 8 pipeline, it did turn that lane
 red, and the failing assertion was removed in favour of a write-based workaround rather than
 debugged. Coverage that is cheap to run and cheap to read changes that incentive.
 
 ## Which contracts earn a twin
 
-A retained twin says something only where the retained pipeline **reconstructs** state the current
+A ledger 8 twin says something only where the ledger 8 pipeline **reconstructs** state the current
 pipeline receives intact — the `QueryContext` the 0.16 glue builds from `.data` plus the contract
 address, and the `CallContext` hanging off it. Anything a circuit computes from its own arguments
-and its own ledger fields is era-independent and already pinned by unit goldens, so a retained
+and its own ledger fields is era-independent and already pinned by unit goldens, so a ledger 8
 `counter` or `simple` adds nothing.
 
 Two twins are built:
@@ -38,17 +38,17 @@ its own clock while leaving `balance` an empty map for a `ChargedState` input. T
 takes the execution clock as an input (`Ledger8CircuitOptions.nowSeconds`).
 
 So `block-time` is not a second reading of the same plumbing. It is a smoke test for a second
-retained artifact set, and it exercises the circuit-`assert` rejection path. It still earns its
-place — a single twin cannot distinguish "this contract works" from "retained contracts work" — but
+ledger 8 artifact set, and it exercises the circuit-`assert` rejection path. It still earns its
+place — a single twin cannot distinguish "this contract works" from "ledger 8 contracts work" — but
 no pipeline regression can move the field it reads.
 
 `shielded`, `shielded-fallible` and `fee-mint` are deliberately deferred: they add `comIndices`,
 the transcript partition and the heaviest effects shape, at 31 MiB, 73 MiB and 146 MiB of prover
-keys respectively. `events` can never have a retained twin — `emit` is not a language-0.23 form.
+keys respectively. `events` can never have a ledger 8 twin — `emit` is not a language-0.23 form.
 
 ### What the assertions have to be
 
-Circuit **return values**, not admission alone. A retained pipeline that hands the circuit the wrong
+Circuit **return values**, not admission alone. A ledger 8 pipeline that hands the circuit the wrong
 state produces a transcript the node re-runs and disagrees with, so the failure surfaces as an
 opaque submit rejection. The value a circuit hands back is what distinguishes "the pipeline lied"
 from "the network refused".
@@ -69,9 +69,9 @@ is **accepted** when the recipient is the contract itself — nothing moves outw
 the ledger compare the amount against the standing balance. The assertion names the wallet as
 recipient for that reason.
 
-That control is still only half a pair. A pipeline where *every* retained send failed would refuse
+That control is still only half a pair. A pipeline where *every* ledger 8 send failed would refuse
 the oversized one too, for the wrong reason, and stay green — so the file also sends a part of the
-balance successfully and reads the remainder back. The retained result carries no `unshielded`
+balance successfully and reads the remainder back. The ledger 8 result carries no `unshielded`
 movement summary (a current-era member), so the balance delta is what shows the send reached the
 chain rather than merely being accepted.
 
@@ -91,10 +91,10 @@ house pattern and needs no CI change — every job checks the repository out.
 They live in a **sibling** directory rather than under `compiled/` because the build job uploads
 `src/contract/compiled` as the `e2e-tests-contracts` artifact, which all 26 shards of the default
 matrix download, and `testkit-js/*/dist/` as `testkit-dist`. Twins in either path would be paid for
-by every shard that will never read them. For the same reason the retained `zkConfigPath` points at
+by every shard that will never read them. For the same reason the ledger 8 `zkConfigPath` points at
 `src/`, not at `dist/`.
 
-`yarn compact-retained` rebuilds them with `compactc` 0.31.1 (language 0.23, Compact runtime
+`yarn compact-ledger8` rebuilds them with `compactc` 0.31.1 (language 0.23, Compact runtime
 0.16.0). The framework reads the era from `compiler/contract-info.json`, so a twin built with the
 current toolchain would be routed to the current-era pipeline and pass while proving nothing; the
 build step refuses an artifact set whose declared `runtime-version` is not `0.16.0`, and the test
@@ -116,7 +116,7 @@ framework's own imports — `packages/protocol` re-exports the current runtime f
 from the `/compact-runtime` subpath, which the e2e suite uses.
 
 So the redirection is done in the **artifact**, at build time, to `compact-runtime-ledger8` — this
-repository's alias for the retained runtime, and the same one-line rewrite already applied to the
+repository's alias for the ledger 8 runtime, and the same one-line rewrite already applied to the
 committed `counter-016` fixture's declaration file. The twin is then self-contained: no mock, and
 the current runtime keeps resolving normally in the same module graph.
 
@@ -136,18 +136,18 @@ other.
 
 The testkit wallet provider hands every transaction to the wallet SDK through `adoptInWallet` and reads
 the finalized answer back through `finalizedFromWallet` (`testkit-js/testkit-js/src/wallet/wallet-transaction.ts`).
-Before they existed, the provider inflated the retained payload's bytes with protocol's copy and handed
+Before they existed, the provider inflated the ledger 8 payload's bytes with protocol's copy and handed
 that object straight to the SDK, where it died inside the SDK's balancer:
 
 ```
-Ledger8ProviderFailedError: balanceTx rejected a retained-era transaction (circuit 'initialState')
+Ledger8ProviderFailedError: balanceTx rejected a ledger 8 transaction (circuit 'initialState')
 Caused by: expected instance of LedgerParameters
   at _assertClass  @midnightntwrk/ledger-v8/midnight_ledger_wasm_bg.js
   at Transaction.feesWithMargin
   at TransactingCapabilityImplementation.calculateFee
 ```
 
-This is not a fork defect and not specific to the pre-fork lane. It is reached by any retained
+This is not a fork defect and not specific to the pre-fork lane. It is reached by any ledger 8
 deploy or call made from inside the workspace, on either side of the boundary, and it had never been
 observed because nothing in the workspace had ever made one. The `Hard fork` lane is not a
 counter-example: `consumer-e2e` personas install outside the repository under an isolated linker,
@@ -160,10 +160,10 @@ decodes it with the SDK's copy, in both eras; `finalizedFromWallet` returns the 
 answer, and the wallet provider factory seals them in the era the transaction was handed over in and
 decodes them once (ADR 0024). The SDK's v8 copy is loaded through the SDK's own `./ledger/v8` subpath — by definition
 whichever copy the installed SDK uses, so it cannot drift if the SDK finishes the scope migration.
-`packages/protocol`'s copy stays where it belongs: retained execution, which never hands a ledger
+`packages/protocol`'s copy stays where it belongs: ledger 8 execution, which never hands a ledger
 object to the wallet SDK.
 
-Repointing protocol's `v8` re-export at the SDK's copy took the retained e2e file from every deploy
+Repointing protocol's `v8` re-export at the SDK's copy took the ledger 8 e2e file from every deploy
 refused to fully green, which is what identified the cause; the shipped fix is the narrower one
 above.
 

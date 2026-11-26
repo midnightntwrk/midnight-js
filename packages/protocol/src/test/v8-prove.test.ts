@@ -56,14 +56,14 @@ const errorChainText = (error: unknown): string => {
 };
 
 describe('proveLedger8Transaction', () => {
-  let retainedEraTx: LedgerTransactionTypes['v8']['Unproven'];
+  let ledger8Tx: LedgerTransactionTypes['v8']['Unproven'];
   let circuitDrivingTx: LedgerTransactionTypes['v8']['Unproven'];
   let ledger8Module: Awaited<ReturnType<typeof loadLedger8Protocol>>;
 
   beforeAll(async () => {
     const v8 = await loadLedger8Protocol();
     ledger8Module = v8;
-    retainedEraTx = v8.Transaction.fromParts(NETWORK_ID);
+    ledger8Tx = v8.Transaction.fromParts(NETWORK_ID);
 
     // A transaction carrying one Zswap output. Unlike the empty one above it
     // has something to prove, so `prove()` actually drives the proving
@@ -79,10 +79,10 @@ describe('proveLedger8Transaction', () => {
   });
 
   it('returns an Unbound transaction object of the framework v8 module', async () => {
-    // The retained ledger ships its OWN `CostModel` class and its `prove()`
+    // Ledger 8 ships its OWN `CostModel` class and its `prove()`
     // type-checks the argument across the WASM boundary, so this passing is the
-    // check that the retained cost model is used.
-    const proven = await proveLedger8Transaction(retainedEraTx, inertProvingProvider);
+    // check that the ledger 8 cost model is used.
+    const proven = await proveLedger8Transaction(ledger8Tx, inertProvingProvider);
 
     // An unproven transaction serializes as `proof-preimage`, a proven one as
     // `proof`: the flip is what distinguishes "proved" from "something came back".
@@ -111,7 +111,7 @@ describe('proveLedger8Transaction', () => {
     });
 
     it('refuses an unbound v8 transaction as already proven', async () => {
-      const unbound = await proveLedger8Transaction(retainedEraTx, inertProvingProvider);
+      const unbound = await proveLedger8Transaction(ledger8Tx, inertProvingProvider);
 
       // @ts-expect-error an unbound transaction is not an unproven one
       const rejection = await proveLedger8Transaction(unbound, inertProvingProvider).catch((error: unknown) => error);
@@ -175,7 +175,7 @@ describe('proveLedger8Transaction', () => {
         (error: unknown) => error
       );
 
-      // The provider handed in is the one the retained runtime consults, and
+      // The provider handed in is the one the ledger 8 runtime consults, and
       // WHICH member it consults is part of the claim -- labelled, so this
       // cannot pass on `check` when it says `prove`.
       expect(consulted, `proveLedger8Transaction rejected with: ${String(rejection)}`).toEqual([

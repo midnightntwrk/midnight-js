@@ -2,12 +2,12 @@
 title: KeepStatePipeline
 ---
 
-# Running a retained-era contract
+# Running a ledger 8 contract
 
 A contract compiled by the previous Compact toolchain keeps working across the
-ledger fork. Before the fork its call is composed as a retained-era transaction;
+ledger fork. Before the fork its call is composed as a ledger 8 transaction;
 after it, the same call is composed as an ordinary current-era transaction that
-carries a retained-era call — the keep-state path. This document records how that
+carries a ledger 8 call — the keep-state path. This document records how that
 one operation is ordered, which parts touch the outside world, and the handful
 of places where getting it wrong loses money silently rather than raising an
 error.
@@ -22,23 +22,23 @@ Three modules implement it, and the split is deliberate:
 
 Which pipeline an operation is allowed to take at all is a separate thread — see
 [EraDispatch](./era-dispatch.md). The verifier-key check it performs is
-[VerificationPath](./verification-path.md). How the retained flow sits behind
+[VerificationPath](./verification-path.md). How the ledger 8 flow sits behind
 one router per role, and what happens to it when an era is added or removed, is
 [ADR 0021](../../../docs/adr/0021-mirror-per-era-functions-and-route-each-role-once.md).
 
-## No retained-runtime dependency, not even in development
+## No ledger 8 runtime dependency, not even in development
 
 Every era-specific step is a call onto a `LedgerEraFacade` or a
 `Ledger8ExecutionEngine`, both of which arrive as values. This package holds no
-retained-runtime dependency of any kind, because the engine's own construction
-guard exists to detect a SECOND acquisition path for the retained runtime, and
+ledger 8 runtime dependency of any kind, because the engine's own construction
+guard exists to detect a SECOND acquisition path for the ledger 8 runtime, and
 an alias here would create one by construction.
 
 That constraint shapes the engine type. The execution result carries live
-retained-runtime state handles, and nothing in this package may construct one,
+ledger 8 runtime state handles, and nothing in this package may construct one,
 so the slice is GENERIC in that state: the pipeline receives the handles on the
 transcript and passes them on without looking inside. The real engine satisfies
-the slice at the retained runtime's own state type, while a test replaying a
+the slice at the ledger 8 runtime's own state type, while a test replaying a
 committed recording satisfies it at plain marker types.
 
 What goes IN is one value, not two. The pipeline used to pass the balance as a
@@ -46,12 +46,12 @@ second option beside the state, which meant a caller could hand the engine two
 halves of different reads and nothing could tell — the defect that produced
 #1345. `Ledger8ExecuteRequest.contractState` is now the DECODED
 `ContractStatePojo`, state and balances together, and the engine rebuilds a
-whole retained `ContractState` from both halves; there is no second argument
+whole ledger 8 `ContractState` from both halves; there is no second argument
 left to get wrong.
 
 The engine's members are declared with method syntax deliberately — their
 parameters are then compared bivariantly, which is what lets the real engine
-satisfy the slice even though its own request type names the retained runtime's
+satisfy the slice even though its own request type names the ledger 8 runtime's
 concrete contract and state shapes.
 
 The transcript is narrowed the same way, to the members the pipeline actually
@@ -70,12 +70,12 @@ it on `partitionInputs` and the fork-crossing re-partition in
 `assemble-call.ts` reads it.
 
 `postContractState` was dropped for the same reason until ADR-0010 reversed the
-rule it rested on. It carries a live retained-runtime handle, and such a handle
+rule it rested on. It carries a live ledger 8 runtime handle, and such a handle
 may now cross this boundary provided it travels with a plain-data twin — so it
 is carried, generically, alongside `postContractStateEncoded`.
 
 `result` used to be a third. It is plain data, and it is now carried: the
-retained-era result types report the circuit's own return value on
+ledger 8 result types report the circuit's own return value on
 `private.result`, exactly as the current era does. `zswapLocalState` is carried
 for the same reason, and the caller's own new coins are filtered out of it — see
 the era-neutral result bases in `midnight-js-types` and ADR-0009 for the rule
@@ -85,8 +85,8 @@ that keeps the two eras' surfaces in step.
 
 | path | head | era object | what it produces |
 | ---- | ---- | ---------- | ---------------- |
-| keep-state | `v9` | the current era | a current-era transaction carrying a retained-era call |
-| retained-native | `v8` | the retained era | a retained-era transaction |
+| keep-state | `v9` | the current era | a current-era transaction carrying a ledger 8 call |
+| ledger-8-native | `v8` | ledger 8 | a ledger 8 transaction |
 
 There is no second composition branch. Both paths end at
 `LedgerEraFacade.composeCallTx`, handing it the transcript as `kind: 'unpartitioned'`,
@@ -117,7 +117,7 @@ decodes it; the key is checked after.
 
 A deploy has no snapshot and no head read of its own — there is no deployed
 contract to read yet — so `runLedger8DeployPipeline` executes the constructor on
-the retained runtime, serializes the state it built, and composes the deploy
+the ledger 8 runtime, serializes the state it built, and composes the deploy
 against the era. The `(artifact era, head era)` pairing a deploy is allowed on is
 settled by the caller before it gets there.
 
@@ -162,7 +162,7 @@ because the name lined up.
 with an output of the same call is a transient, and the offer builder assembles
 it from the pair alone; an input with no such pairing has to be located in the
 chain's Merkle tree of commitments, which needs the contract's Zswap CHAIN state
-— and the retained-era pipeline reads none. Such a call is refused with
+— and the ledger 8 pipeline reads none. Such a call is refused with
 `Ledger8CallUnsupportedError` with reason `'shielded-spend'`.
 
 The check shares the offer builder's own SERIALIZERS, so the two agree on coin
@@ -207,14 +207,14 @@ telling the caller to add the recipient to
 `additionalCoinEncPublicKeyMappings`. A refusal is the one answer that cannot
 lose a recipient's coin.
 
-The retained contract handle — from `deployContract` or `findDeployedContract`,
+The ledger 8 contract handle — from `deployContract` or `findDeployedContract`,
 both built by `createLedger8CircuitCallTxInterface` — has no place to carry
 mappings, so a circuit that pays a third party must be called through
 `submitCallTx` or `submitCallTxAsync`.
 
-A retained-era DEPLOY builds its resolver WITHOUT mappings:
+A ledger 8 DEPLOY builds its resolver WITHOUT mappings:
 `Ledger8DeployContractOptions` has no `additionalCoinEncPublicKeyMappings`
-member, by decision. Retained deploys run only before the fork, so no contract
+member, by decision. Ledger 8 deploys run only before the fork, so no contract
 that must keep its state after the fork depends on them, and widening the
 deploy options belongs with the first constructor that needs it. Until then a
 constructor that pays a third party is refused with the same
@@ -227,7 +227,7 @@ a message that names the constructor and says the deploy takes no mappings.
 `undefined`:
 
 - **No id at all.** Not an error. A contract with no private state is the normal
-  case for the retained-era fixtures, and an absent id is the caller saying the
+  case for the ledger 8 fixtures, and an absent id is the caller saying the
   circuit reads none.
 - **An id, with nothing stored under it.** An ERROR, and the same one the
   current era raises at `get-states.ts`, with a remediation appended. Naming an id is the caller saying there
@@ -235,7 +235,7 @@ a message that names the constructor and says the deploy takes no mappings.
   been written yet, or the id is a typo.
 
 The second case is failed fast rather than passed through, because passing
-`undefined` down is silent and expensive. The retained runtime's witnesses would
+`undefined` down is silent and expensive. The ledger 8 runtime's witnesses would
 receive `currentPrivateState: undefined`, and a defensively written witness
 (`state?.counter ?? 0n`) produces a perfectly valid proof against a DEFAULT state
 instead of the caller's real one. `submitLedger8CallTx` then writes the result
@@ -246,19 +246,19 @@ untouched. Nothing errors at any stage.
 ## Passing the transaction to the providers
 
 The era of a transaction handle names the ledger runtime that produced the
-transaction — NOT the toolchain that produced the contract. A retained-era
+transaction — NOT the toolchain that produced the contract. A ledger 8
 contract's call is composed against whichever era the network head is on, so the
 two heads hand the providers genuinely different things:
 
 | head | composed by | sealed as | provider answers checked with |
 | ---- | ----------- | --------- | ----------------------------- |
-| `v8` | the retained ledger | a `v8` `UnprovenTx` | `requireProviderResult(…, 'v8', …)` |
+| `v8` | ledger 8 | a `v8` `UnprovenTx` | `requireProviderResult(…, 'v8', …)` |
 | `v9` | the current ledger | a `v9` `UnprovenTx` | `requireProviderResult(…, 'v9', …)` |
 
 On a post-fork head the transaction is an ORDINARY current-era transaction that
-happens to carry a retained-era call, so it is passed to the providers exactly as every
+happens to carry a ledger 8 call, so it is passed to the providers exactly as every
 current-era transaction is — as a v9 handle. Sealing it as `'v8'` would say the
-retained runtime produced it, which is false, and would send a current-era-only
+ledger 8 runtime produced it, which is false, and would send a current-era-only
 provider looking for a runtime it does not need.
 
 The composition returns bytes either way. `sealComposed` reads them back with
@@ -338,7 +338,7 @@ still byte-matches the local verifier key against the slot the chain holds —
 exactly the checks that make a later call against this contract safe, done once
 at attach time so a mis-dispatch is caught there instead of at the first call.
 
-The deploy record is returned era-tagged rather than narrowed: a retained-era
+The deploy record is returned era-tagged rather than narrowed: a ledger 8
 contract's deployment record belongs to whichever era was current when it was
 deployed, and refusing the pre-fork variant here would refuse every contract this
 pipeline exists to keep callable.
@@ -353,28 +353,28 @@ this is not the artifact on chain.
 
 The cost: a contract that had a verifier key REMOVED by a maintenance update can
 no longer be attached to at all, because the removed slot now reads as
-never-deployed. That is not a retained-era quirk — the current era refuses the
+never-deployed. That is not a ledger 8 quirk — the current era refuses the
 same contract for the same reason — so by default the two eras behave alike, which is what
 makes it the right default here. On the current era, a caller that must attach
 to such a contract passes `circuitIds` to `findDeployedContract`: only the named
-circuits are checked, and a call to any other circuit is refused. This retained-era
+circuits are checked, and a call to any other circuit is refused. This ledger 8
 path has no such option and still checks every circuit.
 
 The names come off the ARTIFACT rather than off the state, so a circuit the
 caller can call but the chain never registered is reported as a blank slot
 rather than silently skipped.
 
-## The retained-era deploy
+## The ledger 8 deploy
 
-`deployContract`, called with a retained-era contract, composes, submits and waits, and hands back a
-`Ledger8DeployedContract`. It is reachable only on a PRE-FORK head: the retained
-era has no post-fork deployment, so the era pairing table refuses a retained
+`deployContract`, called with a ledger 8 contract, composes, submits and waits, and hands back a
+`Ledger8DeployedContract`. It is reachable only on a PRE-FORK head: ledger 8
+has no post-fork deployment, so the era pairing table refuses a ledger 8
 artifact against a post-fork head with `EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`), raised before
 the constructor runs.
 
 ### The maintenance authority
 
-Left alone, a retained-era deployment carries whatever authority the retained
+Left alone, a ledger 8 deployment carries whatever authority the ledger 8
 constructor left behind, and what it leaves behind is an EMPTY committee with a
 threshold of ONE (`committee: []`, `threshold: 1`, `counter: 0n`). A rule change
 on such a contract needs one signature from a set of zero keys, which nothing can
@@ -382,15 +382,15 @@ ever satisfy: no verifier key could be inserted, removed or replaced on it, and
 the authority itself could never be updated either, because updating it is a rule
 change.
 
-So `executeConstructor`, in `packages/protocol` — which is where the retained
+So `executeConstructor`, in `packages/protocol` — which is where the ledger 8
 runtime is reachable from, and so where this belongs if `packages/contracts` is
-to keep taking no retained-runtime dependency — writes a one-key committee onto
-the constructor's own state before anything serializes it. The retained runtime
+to keep taking no ledger 8 runtime dependency — writes a one-key committee onto
+the constructor's own state before anything serializes it. The ledger 8 runtime
 exposes everything needed: `sampleSigningKey()`, `signatureVerifyingKey(sk)`, a
 public `ContractMaintenanceAuthority(committee, threshold, counter?)` whose own
 documentation states that `counter` must be `0n` at deployment, and a MUTABLE
 `ContractState.maintenanceAuthority`. An authority written there survives
-serialization, the bridge into the retained ledger's `ContractState`, and
+serialization, the bridge into ledger 8's `ContractState`, and
 `ContractDeploy` — it is readable off the composed `initialContractStateBytes` afterwards,
 which `packages/protocol/src/test/v8-deploy.test.ts` measures at both ends. The
 era boundary needed no new field: `ComposeDeployOptions` already carries the
@@ -402,27 +402,27 @@ stored against the minted address through `privateStateProvider.setSigningKey`,
 which is where the current era's deploy writes its own key too.
 
 One store holds both eras' keys, and its key type is the current era's
-`{ tag, value }` where the retained era's is a bare hex string. They are the same
+`{ tag, value }` where ledger 8's is a bare hex string. They are the same
 thing: both runtimes sample a 32-byte Schnorr key written as 64 hex characters,
-and `{ tag: 'schnorr', value: <retained key> }` satisfies `isValidSigningKey`.
-(The retained runtime's `signatureVerifyingKey` also accepts a current-era key's
+and `{ tag: 'schnorr', value: <ledger 8 key> }` satisfies `isValidSigningKey`.
+(The ledger 8 runtime's `signatureVerifyingKey` also accepts a current-era key's
 `value` verbatim. That was measured by hand once, is asserted nowhere, and
-nothing in this pipeline depends on it -- the retained-era path only ever hands the
-retained runtime a key the retained era produced.) So
+nothing in this pipeline depends on it -- the ledger 8 path only ever hands the
+ledger 8 runtime a key ledger 8 produced.) So
 `internal/ledger8-signing-key.ts` adds the wrapper on the way in and strips it on
 the way out, and nothing in `packages/types`, in the provider interface, or in
 the export/import format changes. That last agreement is the one a future change
 is most likely to break without noticing, so
-`src/test/ledger8-signing-key.test.ts` samples a key from a retained runtime,
+`src/test/ledger8-signing-key.test.ts` samples a key from a ledger 8 runtime,
 wraps it and puts it through `isValidSigningKey` on every run: a rule that
 tightened would fail there rather than losing keys on a restore.
 
 The wrapper cannot say WHICH era wrote an entry. Both eras sample `schnorr`, and
 both paths write one address-keyed slot, so a current-era attach that sampled a
-fresh key into an empty slot would leave the retained-era path reporting that key as
+fresh key into an empty slot would leave the ledger 8 path reporting that key as
 the chain's authority. What prevents it today is ordering rather than a guard:
 `findDeployedContract` runs `verifyContractState` before it reaches the
-signing-key rule, so a current-era artifact pointed at a retained contract's
+signing-key rule, so a current-era artifact pointed at a ledger 8 contract's
 address fails verification first. Changing the stored record's shape to separate
 the eras would change what `exportSigningKeys`/`importSigningKeys` round-trip,
 so it is recorded here rather than done alongside the persistence change.
@@ -431,7 +431,7 @@ On the way OUT, an entry is used only if it is one this framework could have
 written: `'schnorr'`, and a value `isValidSigningKey` admits. A current-era
 entry at the same address may legitimately be `ecdsa`, and unwrapped blindly
 that value would build an authority whose verifying key nobody holds. Anything
-else reads as ABSENT rather than failing the read — nothing on the retained-era path
+else reads as ABSENT rather than failing the read — nothing on the ledger 8 path
 consumes the key, so a circuit call must not stop working over a value it never
 looks at — and each such case leaves a `ledger8-signing-key-entry` breadcrumb,
 which is what keeps absent from meaning silent.
@@ -443,7 +443,7 @@ they say so.
 
 ### The verifier keys
 
-A retained constructor builds every entry-point slot BLANK, and the retained
+A ledger 8 constructor builds every entry-point slot BLANK, and the ledger 8
 deploy registers no keys of its own, so the key map is not optional on this path:
 a deploy composed without it puts a contract on chain that nothing can ever call.
 The map is built from every entry point the ARTIFACT declares —
@@ -480,9 +480,9 @@ engine's own `initialize` would refuse it too — it registers a key against eve
 declared entry point — but its refusal arrives untyped, and this path's
 documented contract is a coded error a consumer can switch on.
 
-## Seeding a retained-era private state
+## Seeding a ledger 8 private state
 
-Two of the three retained-era entry points can CREATE a private state. The third still
+Two of the three ledger 8 entry points can CREATE a private state. The third still
 only reads one, and that asymmetry is the whole of what a caller has to know.
 
 A DEPLOY seeds through `Ledger8DeployContractOptionsWithPrivateState`, which
@@ -497,8 +497,8 @@ the chain has recorded the deployment, in the order above.
 An ATTACH seeds through `Ledger8FindDeployedContractOptions.initialPrivateState`,
 by the CURRENT era's own rule rather than a second copy of it: both eras reach
 `setOrGetInitialPrivateState` in `find-deployed-contract.ts`, because
-client-side storage is era-independent and there is nothing about the retained
-ledger for the rule to differ on. It runs AFTER the attach has checked every
+client-side storage is era-independent and there is nothing about ledger 8
+for the rule to differ on. It runs AFTER the attach has checked every
 declared circuit's key, so a state seeded for a contract whose keys turn out not
 to match does not outlive the find that failed.
 
@@ -519,7 +519,7 @@ two.
 It diverges from the current era in THREE cases, each deliberate.
 
 **1. Nothing is sampled.** Where `setOrGetInitialSigningKey` samples a fresh key
-when the store holds none, the retained-era path reports `undefined`. A key sampled at
+when the store holds none, the ledger 8 path reports `undefined`. A key sampled at
 attach time bears no relation to the authority the chain already holds for a
 contract this caller did not deploy, so a maintenance update signed with it is
 refused (`MaintenanceAuthorityMismatchError`). Storing one would put a key on
@@ -551,12 +551,12 @@ framework cannot use.
 
 ### One key shape on the public surface
 
-A retained-era key is published as the current era's `SigningKey`,
+A ledger 8 key is published as the current era's `SigningKey`,
 `{ tag: 'schnorr', value }`, on every member a caller reads or writes: the
 deploy and find options, `deployTxData.private.signingKey`, and the deploy
 errors that carry the key. That is the shape the store already holds it in, so
 a key read off a handle can be written back, exported or passed to the other
-era unchanged. The bare hex string the retained runtime signs with stays
+era unchanged. The bare hex string the ledger 8 runtime signs with stays
 inside: `requireLedger8SigningKey` unwraps a supplied key at the entry, and
 refuses one that is not `schnorr` or not 64 hex characters, before anything is
 composed or stored.
@@ -586,16 +586,16 @@ the same three cases are a refusal, `Ledger8SigningKeyError` with reason `'unava
 before anything is composed: a maintenance update cannot proceed without the key.
 An unreadable store is carried on that error's `cause`.
 
-## Contract maintenance on the retained era
+## Contract maintenance on ledger 8
 
 `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx` and
-`submitReplaceAuthorityTx`, and the interfaces built on them, take a retained-era
+`submitReplaceAuthorityTx`, and the interfaces built on them, take a ledger 8
 artifact through the same overloads the current era's artifact takes, and dispatch on
-the artifact's era like `deployContract` and `submitCallTx`. The retained path is
+the artifact's era like `deployContract` and `submitCallTx`. The ledger 8 path is
 `submitLedger8MaintenanceTx`, in this order:
 
-1. Refuse a circuit the artifact does not declare, and a replacement key the
-   retained era cannot sign with (`Ledger8SigningKeyError`, reason `'unusable'`). No head, state
+1. Refuse a circuit the artifact does not declare, and a replacement key
+   ledger 8 cannot sign with (`Ledger8SigningKeyError`, reason `'unusable'`). No head, state
    or key is read yet.
 2. Acquire the era. A post-fork head is refused with
    `EraMismatchError` (reason `'ledger8-maintenance-on-ledger9-network'`) before the signing key is read.
@@ -606,7 +606,7 @@ the artifact's era like `deployContract` and `submitCallTx`. The retained path i
 5. The engine builds and signs the update through compact-js, after checking the
    authority can be signed for the way compact-js signs: one signature, by its first
    committee member (`MaintenanceAuthorityMismatchError` otherwise). See
-   `packages/protocol/docs/retained-era-execution.md`.
+   `packages/protocol/docs/ledger8-execution.md`.
 6. Prove, balance and submit as a v8 `UnprovenTx` handle, with
    `kind: 'maintenance'` for the fork-crossing diagnosis.
 7. Refuse a record from any era but ledger 8, then a non-success status with

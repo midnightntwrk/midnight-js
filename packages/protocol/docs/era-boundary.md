@@ -6,7 +6,7 @@ title: EraBoundary
 
 `@midnightntwrk/midnight-js-protocol` puts one boundary between a caller and
 the two ledger eras it supports. On one side a caller holds a `LedgerEraFacade`
-object, or — for the operations only the retained pre-fork era can perform — a
+object, or — for the operations only ledger 8 can perform — a
 `Ledger8Engine`. On the other side sit two WASM toolchains that must never be
 mixed. This document records why that boundary is shaped the way it is: how the
 surface is split between the two objects, and how each side is acquired.
@@ -51,7 +51,7 @@ a caller can reach them without knowing which era it holds.
 
 ## What sits on `Ledger8Engine` instead
 
-`Ledger8Engine` is scoped to what only the retained era can do. What is left
+`Ledger8Engine` is scoped to what only ledger 8 can do. What is left
 there after the era-symmetric operations have moved to the facade is the
 fork-crossing work:
 
@@ -63,8 +63,8 @@ fork-crossing work:
 | `reexpressOperationsForLedger9` | Re-expresses a ledger 8 contract's entry points as a ledger 9 state. |
 
 `Ledger8Engine` is the public surface `createLedger8Engine` builds: the
-retained pre-fork EXECUTION capabilities. No method there takes a runtime or
-module parameter — the retained toolchain is reached by the execution layer
+ledger 8 EXECUTION capabilities. No method there takes a runtime or
+module parameter — the ledger 8 toolchain is reached by the execution layer
 itself rather than captured in closure when the engine is built.
 
 ## Why the engine does not acquire the v8 ledger module
@@ -80,7 +80,7 @@ resolving. That property is gated by `v8-load-engine-laziness.test.ts`.
 
 ## One memo slot per era
 
-`loadLedgerEra` is memoised per era, so the retained pre-fork WASM is
+`loadLedgerEra` is memoised per era, so the ledger 8 WASM is
 instantiated at most once per process. `loadLedger8Protocol` and `loadLedger8Engine`
 memoise their own imports for the same reason, one slot each.
 
@@ -109,7 +109,7 @@ convert a repairable environment problem into a process-lifetime one.
 
 ## Acquisition is hoisted, so the era methods stay synchronous
 
-`createLedger8Era` acquires the retained pre-fork ledger through `loadLedger8Protocol` — the
+`createLedger8Era` acquires ledger 8 through `loadLedger8Protocol` — the
 only sanctioned runtime path to it — and binds it into closure, so the era's
 own methods stay synchronous.
 
@@ -119,7 +119,7 @@ asking for the v8 era IS the observation of v8, and nothing reaches that
 function until someone does.
 
 `Ledger8Engine` is built the same way. Every method on it is synchronous
-because the object is handed over only after the retained toolchain has been
+because the object is handed over only after the ledger 8 toolchain has been
 acquired, so there is nothing left to await — the acquisition happens once, in
 `createLedger8Engine`, and the runtime instance it obtained is captured in
 closure.
@@ -142,13 +142,13 @@ string chosen by hand.
 ## The v8 era composes exactly one call
 
 The two eras are not equivalent in `composeCallTx`, and the difference is
-deliberate rather than hidden: the retained pre-fork era composes exactly one
+deliberate rather than hidden: ledger 8 composes exactly one
 call. One shape the facade allows is not expressible on that era and is refused
 rather than silently narrowed — a call tree with more than one entry.
 
 The limit is not a missing feature of this package. A cross-contract call is a
 ledger-9-only feature that a pre-fork contract cannot emit at all, so the
-retained era has no call tree to compose, and composing only the first entry
+ledger 8 has no call tree to compose, and composing only the first entry
 would drop the rest without a word. The refusal is raised
 (`ComposeOptionError` on `'calls'`), never worked around.
 

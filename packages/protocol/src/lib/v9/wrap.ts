@@ -61,15 +61,15 @@ export interface WrapKeepStateCallOptions {
  * registers no operation for the circuit, and at `'call-verifier-key'` if the
  * registered operation carries no verifier key — rather than falling back to a
  * blank, unverifiable operation.
- * @see {@link RetainedEraExecution}
+ * @see {@link Ledger8Execution}
  */
 export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.ContractCallPrototype => {
   const { transcript, contractAddress, contractState, ledgerParametersBytes } = options;
   const { prototype } = assembleCallPrototype(ledgerV9, {
     circuitId: transcript.circuitId,
     contractAddress,
-    // The retained execution leg partitions nothing: it always submits the raw
-    // op sequence as `'unpartitioned'` -- see RetainedEraExecution.
+    // The ledger 8 execution leg partitions nothing: it always submits the raw
+    // op sequence as `'unpartitioned'` -- see Ledger8Execution.
     transcript: {
       kind: 'unpartitioned',
       preState: transcript.preContractState.encode(),

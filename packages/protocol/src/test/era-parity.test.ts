@@ -756,7 +756,7 @@ describe('the two ledger eras run the same scenario', () => {
   });
 
   // Both eras hand the offer factory the same split for the same call, and
-  // answer with it. The retained CALL pipeline depends on exactly this: it can
+  // answer with it. The ledger 8 CALL pipeline depends on exactly this: it can
   // only route a Zswap coin once it holds the split, and the factory is the
   // only place that split is ever offered.
   it.each(ERAS)('hands %s the same partition to route against, and answers with it', async (version) => {

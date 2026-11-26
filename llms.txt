@@ -73,7 +73,7 @@ MidnightProviders
 - `FailEntirely` - Transaction invalid
 
 ### Ledger Eras and the Fork Window
-- **Ledger era**: which ledger runtime produced a payload — `'v8'` (retained, pre-fork) or `'v9'` (current). `LedgerEra` is the union; `LEDGER_ERAS` is the tuple. compact-js names the same era by number: `Ledger.Era['ledger']` is `8` for `'v8'` and `9` for `'v9'`.
+- **Ledger era**: which ledger runtime produced a payload — `'v8'` (ledger 8, pre-fork) or `'v9'` (ledger 9, current). `LedgerEra` is the union; `LEDGER_ERAS` is the tuple. compact-js names the same era by number: `Ledger.Era['ledger']` is `8` for `'v8'` and `9` for `'v9'`.
 - **`versionOfRecord(record)`**: the era a record was produced in, from its own `protocolVersion` (read path).
 - **`latestNetworkLedgerVersion(source)`**: the era of the network's latest block, read fresh on every call — never cached, never latched (ADR 0007). This is the construct path.
 - **Transaction handles**: the `proveTx` / `balanceTx` / `submitTx` methods carry `UnprovenTx` / `UnboundTx` / `FinalizedTx` — `LedgerTransaction<Stage>` from `@midnightntwrk/midnight-js-types`. The handle holds the transaction's bytes and carries its era (`handle.era`, `'v8'` or `'v9'`); the stage is in the type. Make one with `LedgerTransaction.fromBytes(era, stage, bytes)`, which checks the header that era's ledger writes for that stage, or with `LedgerTransaction.seal(era, stage, tx)` (= `fromBytes(era, stage, tx.serialize())`, an object of any ledger copy). Decode it with your own ledger copy: `handle.deserialize({ v9: Transaction })`, with `Transaction` from `@midnightntwrk/ledger-v9` (or `{ v8: Transaction }` from `@midnightntwrk/ledger-v8`); it decodes at the handle's own stage and returns your type. A refused value is an `InvalidTransactionHandleError`; a missing decoder is `TransactionDecoderMissingError`, a body that does not decode is `TransactionDecodeFailedError`.
@@ -281,7 +281,7 @@ const provenTx = await proofProvider.proveTx(unprovenTx);
 const ledgerProvenTx = provenTx.deserialize({ v9: Transaction });
 ```
 
-### Proving a Retained-Era (v8) Transaction
+### Proving a Ledger 8 (v8) Transaction
 
 `httpClientProofProvider` and `dappConnectorProofProvider` serve BOTH ledger eras. A v8 transaction
 is a v8 handle, passed the same way as a v9 one, and comes back in the era it was sent in:
@@ -295,7 +295,7 @@ To seal a v8 transaction yourself, pass `LedgerTransaction.seal('v8', stage, tx)
 ledger 8 copy, or pass its bytes to `LedgerTransaction.fromBytes('v8', stage, bytes)`. Neither needs
 `loadLedger8Protocol()` to have run.
 
-Three things to know before wiring a retained-era flow:
+Three things to know before wiring a ledger 8 flow:
 
 - `createLedger9ProofProvider`, `createLedger9WalletProvider` and `createLedger9MidnightProvider` in
   `@midnightntwrk/midnight-js-types` all refuse a v8 handle with `ProviderEraUnsupportedError`.
@@ -303,7 +303,7 @@ Three things to know before wiring a retained-era flow:
   interface, so refusing is the adapter reporting what it wraps. Each declares `supportedEras:
   ['v9']` to say so up front.
 - The proof, wallet and midnight providers each carry a required `supportedEras`, and the framework reads all three BEFORE an
-  operation starts. So a retained-era transaction wired through the wallet and midnight adapters is
+  operation starts. So a ledger 8 transaction wired through the wallet and midnight adapters is
   now refused with `ProviderEraUnsupportedError` (`MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`) naming
   `balanceTx`, before any proving happens — not, as previously, after a full proving cycle.
 - To run one end to end, serve both eras on all three providers. Use
@@ -360,7 +360,7 @@ as are bytes `deserializeTransactionAtStage` cannot read at the requested era an
 
 The proving function itself is `proveLedger8Transaction`, published from the leaf subpath
 `@midnightntwrk/midnight-js-protocol/prove` for anyone implementing a `ProofProvider` that serves
-the retained era. Importing it does not load the v8 WASM: the runtime stays behind the dynamic
+ledger 8. Importing it does not load the v8 WASM: the runtime stays behind the dynamic
 import inside `loadLedger8Protocol`.
 
 ### DApp Connector Proof Generation
@@ -521,7 +521,7 @@ try {
 To discriminate on a stable string instead of a class, every error here also
 carries a `code`: `utils.hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)`.
 
-The retained pre-fork (`v8`) pipeline raises its own errors, whose classes the
+The ledger 8 (`v8`, pre-fork) pipeline raises its own errors, whose classes the
 barrel also publishes so a consumer can read their payload without a cast:
 `Ledger8RuntimeMissingError` (`subpath`), `ComposeFailedError` (`version`,
 `stage`, `circuitId`), `ComposeOptionError` (`version`, `option`),
@@ -529,7 +529,7 @@ barrel also publishes so a consumer can read their payload without a cast:
 (`requestedVersion`). `PayloadNotATransactionError` is published alongside them
 for the `proveTx` rejection path.
 
-The retained pre-fork ledger runtime itself is **not** re-exported from the
+The ledger 8 (pre-fork) runtime itself is **not** re-exported from the
 barrel and is absent from its static import graph, loaded only on demand when a
 `v8` contract is actually touched. Importing the barrel does pull the `v9`
 ledger and onchain-runtime, because `contracts` needs them.

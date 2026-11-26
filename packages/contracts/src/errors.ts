@@ -71,9 +71,9 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * {@link EraInvariantViolationError.expected} names the only era this flow can
  * accept back, and so which direction the violation went. For the current
  * era's flows that is the era they submit, which is always `'v9'` — the
- * default, so call sites that predate the retained-era pipelines read exactly
- * as they did before it existed. The retained era's finalizing path passes the
- * network's ledger version instead: it composes retained-era transactions but is
+ * default, so call sites that predate the ledger 8 pipelines read exactly
+ * as they did before it existed. The ledger 8 finalizing path passes the
+ * network's ledger version instead: it composes ledger 8 transactions but is
  * recorded by whichever ledger the network is on, so the network, not the pipeline, is what
  * the record has to agree with.
  *
@@ -567,10 +567,10 @@ export interface SubmittedTransaction {
 export type SubmittedOperation = SubmittedContractOperation | SubmittedTransaction;
 
 // The remediation, written once per operation kind. The kinds do NOT share one
-// text, and the reason is not tone: after the network has crossed, a retained-era
+// text, and the reason is not tone: after the network has crossed, a ledger 8
 // CALL can simply be run again -- it lands on the keep-state pipeline with no
-// change to the caller's code -- while a retained-era DEPLOY or MAINTENANCE
-// update cannot be run again at all, because the retained era has neither after
+// change to the caller's code -- while a ledger 8 DEPLOY or MAINTENANCE
+// update cannot be run again at all, because ledger 8 has neither after
 // the fork. Telling a deployer or a maintainer to re-run would send them at a refusal.
 //
 // Every text opens with the same first step, and its position is load-bearing:
@@ -581,8 +581,8 @@ export type SubmittedOperation = SubmittedContractOperation | SubmittedTransacti
 //
 // Every kind is reachable in production: `call` through `submitCallTx`,
 // `deploy` through `deployContract`'s, `submitDeployTx`'s and `submitLedger8DeployTx`'s
-// retained-era paths, and `maintenance`
-// through the retained-era overloads of the governance functions. `kind: 'deploy'`
+// ledger 8 paths, and `maintenance`
+// through the ledger 8 overloads of the governance functions. `kind: 'deploy'`
 // is set at exactly one place, inside `deployLedger8Contract`, and `kind: 'maintenance'`
 // inside `submitLedger8MaintenanceTx`.
 const FORK_CROSSED_MESSAGES: Readonly<
@@ -1263,7 +1263,7 @@ export class VerifierKeyMismatchError extends MidnightJsError {
 }
 
 /**
- * The sentence a post-submission retained-era deploy refusal ends on.
+ * The sentence a post-submission ledger 8 deploy refusal ends on.
  *
  * One text rather than one per condition: the conditions below differ in WHY
  * the deployment could not be confirmed, and not at all in what the caller has
@@ -1310,9 +1310,9 @@ export class Ledger8AmbiguousEntryPointError extends MidnightJsError {
 
 export const LEDGER8_CONSTRUCTOR_ENTRY_POINT = 'initialState';
 
-/** Why a retained-era signing key could not be used. */
+/** Why a ledger 8 signing key could not be used. */
 export type Ledger8SigningKeyReason =
-  /** A key the caller supplied in this call is not one the retained era can sign with. */
+  /** A key the caller supplied in this call is not one ledger 8 can sign with. */
   | 'unusable'
   /** A maintenance update found no usable key held for the contract it targets. */
   | 'unavailable';
@@ -1336,18 +1336,18 @@ const LEDGER8_SIGNING_KEY_MESSAGES: Readonly<Record<Ledger8SigningKeyReason, (co
   });
 
 /**
- * An error indicating that a signing key is not usable by the retained era.
+ * An error indicating that a signing key is not usable by ledger 8.
  *
- * `reason` is `'unusable'` when a key the caller supplied in this call - on a retained-era deploy, an
- * attach, or an authority replacement - is not one the retained era can sign with. It is refused
+ * `reason` is `'unusable'` when a key the caller supplied in this call - on a ledger 8 deploy, an
+ * attach, or an authority replacement - is not one ledger 8 can sign with. It is refused
  * BEFORE anything is composed or stored. Stored unchecked, a key the read rejects is reported on the
  * attach that supplied it and read as ABSENT on every later one, and the bad entry has by then
  * already replaced whatever was held there. The caller can correct it, because the value came from
  * the caller, in this call.
  *
- * `reason` is `'unavailable'` when a retained-era maintenance update found no signing key it can
+ * `reason` is `'unavailable'` when a ledger 8 maintenance update found no signing key it can
  * sign with for the contract it targets: nothing is stored for the address, the stored entry is not
- * a retained-era key, or the store could not be read, in which case the read failure is on `cause`.
+ * a ledger 8 key, or the store could not be read, in which case the read failure is on `cause`.
  * Raised before anything is composed or proven. Unlike an attach, which reports an unusable entry as
  * absent, a maintenance update cannot proceed without the key.
  *
@@ -1375,7 +1375,7 @@ export class Ledger8SigningKeyError extends MidnightJsError {
   }
 }
 
-/** The retained-era operation a submitted transaction belongs to. */
+/** The ledger 8 operation a submitted transaction belongs to. */
 export type Ledger8KeyedOperation = 'deploy' | 'replace-authority';
 
 const LEDGER8_UNCONFIRMED_MESSAGES: Readonly<
@@ -1400,7 +1400,7 @@ const LEDGER8_UNCONFIRMED_MESSAGES: Readonly<
 });
 
 /**
- * An error indicating that a retained-era transaction carrying a signing key was submitted, but what
+ * An error indicating that a ledger 8 transaction carrying a signing key was submitted, but what
  * the chain did with it could not be confirmed.
  *
  * `operation` `'deploy'`: covers the read surface rejecting, a record whose version tag is missing or
@@ -1479,7 +1479,7 @@ const LEDGER8_NOT_STORED_MESSAGES: Readonly<
 });
 
 /**
- * An error indicating that a retained-era operation was CONFIRMED on chain, but the private-state
+ * An error indicating that a ledger 8 operation was CONFIRMED on chain, but the private-state
  * provider refused to record it locally.
  *
  * `operation` `'deploy'`: distinct from {@link Ledger8UnconfirmedError}, which covers the window where
@@ -1540,7 +1540,7 @@ export class Ledger8NotStoredError extends MidnightJsError {
   }
 }
 
-/** Why a retained-era call cannot be composed. */
+/** Why a ledger 8 call cannot be composed. */
 export type Ledger8CallUnsupportedReason =
   /** The call would spend a shielded coin the contract already holds on chain. */
   | 'shielded-spend'
@@ -1574,7 +1574,7 @@ const LEDGER8_CALL_UNSUPPORTED_MESSAGES: Readonly<
 });
 
 /**
- * An error indicating that a retained-era call cannot be composed, refused BEFORE the offer is built.
+ * An error indicating that a ledger 8 call cannot be composed, refused BEFORE the offer is built.
  *
  * `reason` `'shielded-spend'`: the call would spend a shielded coin the contract already holds on
  * chain, which this pipeline structurally cannot compose. A coin the same call produced is NOT
@@ -1583,15 +1583,15 @@ const LEDGER8_CALL_UNSUPPORTED_MESSAGES: Readonly<
  *
  * `reason` `'unmappable-recipient'`: the call would pay a shielded coin to a user-owned recipient
  * whose encryption public key it cannot resolve: not the calling wallet, not the burn address, and
- * not a key in the caller's `additionalCoinEncPublicKeyMappings`. Raised by a retained-era deploy
+ * not a key in the caller's `additionalCoinEncPublicKeyMappings`. Raised by a ledger 8 deploy
  * too, whose options carry no mappings, with `circuitId` set to `'initialState'`; the message then
  * names the constructor and gives the deploy-specific advice. Refusal rather than a best effort is the
  * only answer that cannot lose a coin: encrypting the output to the caller's own key would compose,
  * prove, balance and submit, and leave the recipient owning a coin it could never discover.
  *
- * @see {@link ErrorTaxonomy} for what the retained-era path is missing and why this refuses before
+ * @see {@link ErrorTaxonomy} for what the ledger 8 path is missing and why this refuses before
  * the offer is built.
- * @see {@link KeepStatePipeline} for how the retained-era path resolves each recipient's encryption key.
+ * @see {@link KeepStatePipeline} for how the ledger 8 path resolves each recipient's encryption key.
  */
 export class Ledger8CallUnsupportedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_CALL_UNSUPPORTED;

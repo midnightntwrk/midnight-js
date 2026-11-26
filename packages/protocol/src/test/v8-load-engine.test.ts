@@ -32,7 +32,7 @@ const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 
 
 // Redirects the ported spike fixture's bare `@midnight-ntwrk/compact-runtime`
-// import to this package's own `compact-runtime-ledger8` (the real retained
+// import to this package's own `compact-runtime-ledger8` (the real ledger 8
 // 0.16 instance) — see v8-executable.test.ts for the full rationale. Scoped
 // to this test file's module registry only.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
@@ -147,7 +147,7 @@ describe('createLedger8Engine', () => {
     const transcript = await engine.executeCircuit(options);
 
     // circuitId alone is echoed straight back from the options, so it proves
-    // nothing about execution; the round advance is what shows the retained
+    // nothing about execution; the round advance is what shows the ledger 8
     // 0.16 stack actually ran the circuit through the facade.
     expect(transcript.circuitId).toBe('increment');
     expect(ledger(transcript.postContractState).round).toBe(1n);

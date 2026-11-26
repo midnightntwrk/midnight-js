@@ -358,13 +358,13 @@ describe('Node ZK config Provider', () => {
 
 describe('NodeZkConfigProvider.getArtifactRuntimeVersion', () => {
   // A bundle carrying only what this member reads: the compiler's own description of the artifact
-  // set. `contract-info.json` is emitted by every compactc, including the retained toolchain that
+  // set. `contract-info.json` is emitted by every compactc, including the ledger 8 toolchain that
   // emits no integrity manifest, which is why the era is read from it rather than from the manifest.
-  // A bundle with NO integrity manifest is the retained (pre-compactc-0.33) case, so every provider
+  // A bundle with NO integrity manifest is the ledger 8 (pre-compactc-0.33) case, so every provider
   // over one is constructed with the mode the manifest documentation names for exactly that:
   // `require-if-present`. Under the default `require` the absence is itself a refusal, which is
   // asserted separately below.
-  const RETAINED_BUNDLE_OPTIONS = { verify: 'require-if-present' } as const;
+  const LEDGER8_BUNDLE_OPTIONS = { verify: 'require-if-present' } as const;
 
   const buildInfoDir = async (contractInfo?: string): Promise<string> => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'node-zk-info-'));
@@ -380,7 +380,7 @@ describe('NodeZkConfigProvider.getArtifactRuntimeVersion', () => {
   it('reports the runtime version the compiler recorded', async () => {
     // Arrange
     const dir = await buildInfoDir(JSON.stringify({ 'compiler-version': '0.31.1', 'runtime-version': '0.16.0' }));
-    const provider = new NodeZkConfigProvider(dir, RETAINED_BUNDLE_OPTIONS);
+    const provider = new NodeZkConfigProvider(dir, LEDGER8_BUNDLE_OPTIONS);
 
     // Act
     const runtimeVersion = await provider.getArtifactRuntimeVersion();
@@ -390,14 +390,14 @@ describe('NodeZkConfigProvider.getArtifactRuntimeVersion', () => {
   });
 
   it('refuses a bundle that ships no compiler description, naming the file it looked for', async () => {
-    const provider = new NodeZkConfigProvider(await buildInfoDir(), RETAINED_BUNDLE_OPTIONS);
+    const provider = new NodeZkConfigProvider(await buildInfoDir(), LEDGER8_BUNDLE_OPTIONS);
 
     await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
     await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(/contract-info\.json/);
   });
 
   it('refuses a compiler description that is not readable as one', async () => {
-    const provider = new NodeZkConfigProvider(await buildInfoDir('<!doctype html>'), RETAINED_BUNDLE_OPTIONS);
+    const provider = new NodeZkConfigProvider(await buildInfoDir('<!doctype html>'), LEDGER8_BUNDLE_OPTIONS);
 
     await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
   });
@@ -411,7 +411,7 @@ describe('NodeZkConfigProvider.getArtifactRuntimeVersion', () => {
       path.join(dir, 'compiler', 'contract-manifest.json'),
       JSON.stringify({ 'manifest-version': '1', 'runtime-version': '0.19.0' })
     );
-    const provider = new NodeZkConfigProvider(dir, RETAINED_BUNDLE_OPTIONS);
+    const provider = new NodeZkConfigProvider(dir, LEDGER8_BUNDLE_OPTIONS);
 
     await expect(provider.getArtifactRuntimeVersion()).resolves.toBe('0.19.0');
   });
@@ -451,7 +451,7 @@ describe('NodeZkConfigProvider.getArtifactRuntimeVersion', () => {
     const dir = await buildInfoDir();
     await fs.mkdir(path.join(dir, 'compiler'));
     await fs.mkdir(path.join(dir, 'compiler', 'contract-info.json'));
-    const provider = new NodeZkConfigProvider(dir, RETAINED_BUNDLE_OPTIONS);
+    const provider = new NodeZkConfigProvider(dir, LEDGER8_BUNDLE_OPTIONS);
 
     // Asserted POSITIVELY: `not.toBeInstanceOf` alone would pass for any unrelated fault, including
     // one that never reached the file at all, so it would not test what this test is named for.
@@ -462,7 +462,7 @@ describe('NodeZkConfigProvider.getArtifactRuntimeVersion', () => {
   it('reads the description once and answers later calls from that reading', async () => {
     // Arrange: a bundle that answers, then loses the file underneath the provider.
     const dir = await buildInfoDir(JSON.stringify({ 'runtime-version': '0.16.0' }));
-    const provider = new NodeZkConfigProvider(dir, RETAINED_BUNDLE_OPTIONS);
+    const provider = new NodeZkConfigProvider(dir, LEDGER8_BUNDLE_OPTIONS);
     await provider.getArtifactRuntimeVersion();
     await fs.rm(path.join(dir, 'compiler', 'contract-info.json'));
 
@@ -472,7 +472,7 @@ describe('NodeZkConfigProvider.getArtifactRuntimeVersion', () => {
 
   it('retries after a failed read rather than caching the failure', async () => {
     const dir = await buildInfoDir();
-    const provider = new NodeZkConfigProvider(dir, RETAINED_BUNDLE_OPTIONS);
+    const provider = new NodeZkConfigProvider(dir, LEDGER8_BUNDLE_OPTIONS);
     await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
 
     await fs.mkdir(path.join(dir, 'compiler'));

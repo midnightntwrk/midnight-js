@@ -14,10 +14,10 @@
  */
 
 /**
- * Retained-era (ledger 8) contract maintenance: compact-js's own maintenance
+ * Ledger 8 contract maintenance: compact-js's own maintenance
  * operations, wrapped into an unproven transaction.
  *
- * @see {@link RetainedEraExecution}
+ * @see {@link Ledger8Execution}
  */
 
 import * as PlatformContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
@@ -175,7 +175,7 @@ const brandedAddress = (
  *   compact-js or the ledger refuses the update, with that failure on `cause`.
  *   A failure that already carries a coded midnight-js error is rethrown as
  *   that error instead.
- * @see {@link RetainedEraExecution}
+ * @see {@link Ledger8Execution}
  */
 export const composeLedger8MaintenanceTx = async (request: Ledger8MaintenanceRequest): Promise<Uint8Array> => {
   const { contract, contractAddress, contractStateBytes, coinPublicKey, signingKey, networkId, ttl, update } = request;

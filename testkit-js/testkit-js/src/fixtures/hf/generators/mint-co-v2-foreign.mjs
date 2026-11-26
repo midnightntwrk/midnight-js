@@ -25,7 +25,7 @@
 // so the mis-dispatch only surfaces later, deterministically, when execution
 // actually tries to use that slot (a typed key mismatch), not at decode time.
 //
-// "Foreign" here means genuinely NOT built from the retained counter
+// "Foreign" here means genuinely NOT built from the ledger 8 counter
 // artifacts: the key is borrowed from the real migrated golden
 // (state-migrated-v9.hex)'s own `post` operation -- bboard's real,
 // pre-fork-compiled, migrated verifier key (DECISIONS.md: "copies the

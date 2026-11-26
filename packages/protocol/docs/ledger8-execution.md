@@ -1,10 +1,10 @@
 ---
-title: RetainedEraExecution
+title: Ledger8Execution
 ---
 
-# Running a contract on the retained pre-fork era
+# Running a contract on ledger 8
 
-A contract compiled before the fork keeps running on the retained pre-fork
+A contract compiled before the fork keeps running on the pre-fork ledger 8
 execution engine (`compact-runtime@0.16` and `@midnight-ntwrk/onchain-runtime-v3`)
 after the fork. It runs through compact-js's own era-pinned entry rather than
 through a layer this package maintains: `lib/v8/executable.ts` builds the state
@@ -16,7 +16,7 @@ no later re-bind.
 This document collects the rationale behind that path: what the state a circuit
 executes against is built from and what is refused while building it, why the
 Merkle walk that used to sit there did not come back, what pins the execution
-to the retained era, what the execution result has to carry, and what reaches
+to ledger 8, what the execution result has to carry, and what reaches
 compact-js as configuration rather than as an argument.
 
 The hand-maintained layer this replaced — `lib/v8/execute.ts`, which drove the
@@ -34,12 +34,12 @@ on the composition legs is in [ComposeRefusalOrder](./compose-refusal-order.md).
 
 `executableStateFrom` (`packages/protocol/src/lib/v8/executable.ts`) takes the
 decoded `ContractStatePojo` the envelope's own reader produced and builds the
-retained-era `ContractState` the runtime executes against. It refuses twice
+ledger 8 `ContractState` the runtime executes against. It refuses twice
 before it builds anything:
 
 1. **The balance**, by `isContractBalance`, described below.
 2. **The primary state**, by `decodeExecutableStateValue`: decode through the
-   retained runtime's `StateValue.decode`, re-encode the result, and refuse a
+   ledger 8 runtime's `StateValue.decode`, re-encode the result, and refuse a
    value that did not come back as `StateConversionFailedError` at stage
    `'state conversion'`.
 
@@ -51,11 +51,11 @@ silently wrong data.
 
 It is CROSS-CODEC in production, which is the point. A contract the fork
 translated carries a current-era envelope while still executing on
-the retained toolchain, so `readLedger8Snapshot`
+the ledger 8 toolchain, so `readLedger8Snapshot`
 (`packages/contracts/src/internal/ledger8-pipeline.ts`) reads it with the HEAD
 era's reader — the state is then encoded by ledger-v9 and decoded here by the
-retained runtime. A retained-era envelope is encoded by ledger-v8 and decoded
-by the same retained runtime, which is still a different physical copy. Either
+ledger 8 runtime. A ledger 8 envelope is encoded by ledger-v8 and decoded
+by the same ledger 8 runtime, which is still a different physical copy. Either
 way a shape one side writes and the other merely tolerates would decode without
 complaint.
 
@@ -66,13 +66,13 @@ in non-canonical order decodes and re-encodes canonicalised, and a value
 carrying a member the decoder does not declare loses it. Both are refused.
 
 A WHOLE `ContractState` is built, not the bare `ChargedState` its predecessor
-produced. The retained runtime fills `block.balance` only when it is handed a
+produced. The ledger 8 runtime fills `block.balance` only when it is handed a
 whole contract state and substitutes an empty map for anything less, so writing
 the balance onto the state here is what makes it reach the circuit at all. It
 used to be injected into the query context after the fact, which is what #1345
 was; the substitution is now unreachable rather than detected.
 
-`StateValue`, `ChargedState` and `ContractState` all come from the retained
+`StateValue`, `ChargedState` and `ContractState` all come from the ledger 8
 glue rather than from compact-js's `CompactRuntime`, which re-exports none of
 the three as a VALUE (midnightntwrk/midnight-sdk, spec finding E9). Building
 them through ledger-v8's own same-named classes instead would be the dual
@@ -165,7 +165,7 @@ together with its code, because nothing could raise it.
 
 ## What the round trip does not cover
 
-Anything the retained encoder re-derives rather than carries. A bounded Merkle
+Anything the ledger 8 encoder re-derives rather than carries. A bounded Merkle
 tree encodes as its height and leaves, never its node hashes, so a tree whose
 internal hashes were re-materialized differently across the fork boundary still
 re-encodes byte-identically here — which is the same vendor property the
@@ -175,7 +175,7 @@ at the envelope.
 
 ## The era pin
 
-Nothing in this module names the retained runtime by a version. Two things pin
+Nothing in this module names the ledger 8 runtime by a version. Two things pin
 it, and neither is a runtime check:
 
 - **The import specifier.** `compact-runtime-ledger8` is an alias this package
@@ -184,7 +184,7 @@ it, and neither is a runtime check:
   resolution rather than by assertion.
 - **compact-js's own era entry.** `@midnightntwrk/compact-js/v8/effect`
   supplies `ContractExecutable`, `CompiledContract` and `ZKConfiguration` for
-  the retained era; the current era has its own entry, and the two cannot be
+  ledger 8; the current era has its own entry, and the two cannot be
   mixed up by a member name.
 
 The construction-time guard that used to sit beside them
@@ -210,7 +210,7 @@ era's callers hold an instance whose witnesses are already bound. `containerFor`
 adapts one to the other here, in one place, so the adaptation does not
 land on every consumer — and it is the single type assertion the module needs.
 
-The retained era has no cross-contract call, so its execution adapter
+Ledger 8 has no cross-contract call, so its execution adapter
 synthesises a single-entry trace. `soleCall` reads that one entry by name
 rather than indexing `[0]` and carrying an `undefined` into a composition.
 
@@ -233,7 +233,7 @@ plus every artifact `wrapKeepStateCall`
 (`packages/protocol/src/lib/v9/wrap.ts`) needs to assemble a v9-native
 `ContractCallPrototype`.
 
-`preContractState` and `postContractState` are LIVE HANDLES from the retained
+`preContractState` and `postContractState` are LIVE HANDLES from the ledger 8
 runtime — the state the call bound to and the state it left. They are valid
 only while the runtime that produced them is loaded, so they survive neither a
 clone, a worker transfer nor storage. `postContractStateEncoded` is published
@@ -258,7 +258,7 @@ runtime's public shape: the coins the circuit spent and produced. A caller turns
 it into the transaction's segmented Zswap offer (`zswapStateToSegmentedOffer`,
 `packages/contracts/src/internal/utils/zswap-utils.ts`) and hands that offer to whichever
 composition leg it targets. Carrying it is what makes a coin-moving circuit
-composable on the retained era at all — omitting it would leave the caller
+composable on ledger 8 at all — omitting it would leave the caller
 composing a transaction that is missing the coin movements the circuit recorded,
 and the node rejects that as unbalanced on submission.
 
@@ -266,7 +266,7 @@ and the node rejects that as unbalanced on submission.
 
 ## Constructor execution
 
-`runLedger8Constructor` runs a retained contract's constructor through the
+`runLedger8Constructor` runs a ledger 8 contract's constructor through the
 same `ContractExecutable`, as `initialize`.
 
 It FAILS EARLIER AND HARDER than the leg it replaced. `initialize` registers a
@@ -277,13 +277,13 @@ that ever checked coverage. That is why this entry point takes a
 `VerifierKeyReader` at all, and why it is required rather than optional.
 
 A malformed signing key is refused BEFORE the constructor runs, as
-`ComposeOptionError` naming option `'signingKey'`. The retained runtime's own
+`ComposeOptionError` naming option `'signingKey'`. The ledger 8 runtime's own
 refusals name neither the option, the era nor the caller — a short key reads
 back as `failed to fill whole buffer`, a non-hex one as `Invalid character 'z'
 at position 0` — and the refusal never renders the key itself, which on the
 sampled path is the only copy in existence.
 
-`contractState` on the result is a retained-era HANDLE, so it does not go
+`contractState` on the result is a ledger 8 HANDLE, so it does not go
 straight into a deploy: both `composeLedger8DeployTx` and the era facade's
 `composeDeployTx` take the state as bytes, which is what `.serialize()` on that
 handle produces. The deploy-side consequences — and why the address cannot be
@@ -355,10 +355,10 @@ made against the same state, and is not checked here.
 `wrapKeepStateCall` wraps a `TranscriptPojo` into a v9-native
 `ContractCallPrototype`, ready for `Intent.new(ttl).addCall(...)`, via
 `assembleCallPrototype` against the ledger-v9 module. This is the "keep-state"
-leg: execution stays on the retained pre-fork engine, but the call it produces
+leg: execution stays on the ledger 8 engine, but the call it produces
 is bound natively against the current ledger-v9 axis from the start.
 
-The retained execution leg partitions nothing. It hands over the raw op
+The ledger 8 execution leg partitions nothing. It hands over the raw op
 sequence the circuit emitted, against the state it ran on, plus the context it
 recorded while running which the state bytes do not carry — so it always
 submits its transcript as `kind: 'unpartitioned'` and lets the ledger module do
@@ -379,7 +379,7 @@ when no operation is registered for the circuit at all, and
 
 ## What reaches compact-js as configuration
 
-Three things a retained execution needs are not arguments to it. They reach
+Three things a ledger 8 execution needs are not arguments to it. They reach
 compact-js as Effect services, assembled in this module so no `Effect` value
 touches a caller.
 
