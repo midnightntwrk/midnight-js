@@ -243,8 +243,10 @@ ahead of it is raised with no key having been sampled.
 `TxFailedError.signingKey` (after a failed deploy or replacement),
 `Ledger8UnconfirmedError.signingKey` and `Ledger8NotStoredError.signingKey` are
 referenced in their classes' documentation but never interpolated into a
-message. An error message reaches logs and issue trackers, and each may be the
-only copy of the authority over a deployment or a replacement that landed.
+message. An error message reaches logs and issue trackers. The two `Ledger8*`
+keys may be the only copy of the authority over a deployment or a replacement
+that landed. The `TxFailedError` key authorizes nothing, because the deploy or
+replacement was not applied: do not store it.
 
 The key is not enumerable either. `Object.keys`, object spread, `JSON.stringify`
 and a logger that serializes the properties of an error leave it out; the
@@ -255,9 +257,8 @@ caller reads it as `error.signingKey`.
 A failed deploy and a failed call are the same class, `TxFailedError`, but the
 remediation in the message differs by `operation` — the same reason
 `ForkCrossedDuringOperationError` writes a deploy's remediation separately. A failed call can simply be run again. A failed deploy
-cannot be retried blindly: a deploy mints a fresh nonce, so a second attempt
-lands at a DIFFERENT address, and repeating one that in fact finalized leaves two
-copies of the contract on chain.
+left no contract, and a new attempt mints a fresh nonce, so it lands at a
+different address.
 
 ## Messages state the consequence per status
 

@@ -925,12 +925,9 @@ const txFailedFollowUp = (operation: TxFailedOperation, fallible: boolean, circu
         ? undefined
         : 'No private state was stored, and no effect of this call landed on chain, so the local state still matches it.';
     case 'deploy':
-      return (
-        (fallible
-          ? 'A contract deployment runs in the fallible phase, so the contract was not deployed.'
-          :"Nothing was deployed and no private state was stored. This error's 'signingKey' carries the key this attempt would have used, so an address that turns out to hold a contract after all is still maintainable.") +
-        ' Check the contract address before deploying again: a deploy mints a fresh nonce, so a second attempt lands at a different address and would leave two copies of the contract on chain.'
-      );
+      return fallible
+        ? 'A contract deployment runs in the fallible phase, so the contract was not deployed.'
+        : 'Nothing was deployed and no private state was stored.';
     case 'insert-verifier-key':
     case 'remove-verifier-key':
       return fallible

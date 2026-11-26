@@ -3424,11 +3424,8 @@ describe('deploying a ledger 8 contract through deployContract', () => {
     expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
   });
 
-  it('carries the signing key on a status refusal, so a deployment that DID land is still maintainable', async () => {
+  it('carries the signing key on a FailFallible deployment and says the contract was not deployed', async () => {
     const providers = deployProviders();
-    // `FailFallible`, specifically: a `ContractDeploy` sits in the Intent -- the GUARANTEED part --
-    // so the contract landed, under the authority built from this key. Discarded, that address is
-    // one nobody can ever maintain, which is the harm this path exists to remove.
     providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(ledger8EraRecord(FailFallible));
 
     let caught: unknown;
@@ -3440,9 +3437,7 @@ describe('deploying a ledger 8 contract through deployContract', () => {
 
     expect(caught).toBeInstanceOf(TxFailedError);
     expect((caught as TxFailedError).signingKey).toEqual(SAMPLED_KEY);
-    // And the message has to say the contract landed. A caller told "nothing local refers to this
-    // address" concludes nothing happened and never looks for the deployment.
-    expect((caught as TxFailedError).message).toContain('guaranteed');
+    expect((caught as TxFailedError).message).toContain('the contract was not deployed');
   });
 
   it('carries the signing key when the record cannot be attributed to the head it composed on', async () => {

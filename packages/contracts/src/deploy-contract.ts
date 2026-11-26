@@ -294,8 +294,7 @@ export async function deployContract<C extends Contract.Any>(
  *
  * @throws TxFailedError If the transaction is submitted successfully but produces an error
  *                       when executed by the node, in either era. Carries the contract address and
- *                       the signing key. The contract was not deployed: deployment runs in the
- *                       fallible phase.
+ *                       the signing key. On either status the contract was not deployed.
  * @throws EraMismatchError If `options.compiledContract` belongs to neither Compact era, is
  *                                  a raw current-era contract instance passed instead of its
  *                                  `CompiledContract` container, or its artifacts declare no

@@ -500,13 +500,10 @@ export const assertLedger8TxSucceeded = (record: FinalizedTxRead, circuitId: str
  * status.
  *
  * Its own refusal rather than {@link assertLedger8TxSucceeded} because the
- * remediation differs: a failed call can be run again unchanged, while a deploy
- * mints a fresh nonce, so repeating one that in fact finalized leaves two
- * copies of the contract on chain.
+ * error carries the address and the signing key of the deployment.
  *
  * @param record The finalized record the read surface reported.
- * @param contractAddress The address this deployment composed, which is the
- * one thing a caller has to reconcile before deploying again.
+ * @param contractAddress The address this deployment composed.
  * @param signingKey The key the deployment's maintenance authority was built
  * from, carried onto the refusal.
  * @throws TxFailedError if the recorded status is not `SucceedEntirely`.
