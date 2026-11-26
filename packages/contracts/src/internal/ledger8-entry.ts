@@ -508,9 +508,7 @@ export const assertLedger8TxSucceeded = (record: FinalizedTxRead, circuitId: str
  * @param contractAddress The address this deployment composed, which is the
  * one thing a caller has to reconcile before deploying again.
  * @param signingKey The key the deployment's maintenance authority was built
- * from. Carried onto the refusal because a `FailFallible` deployment LANDED -
- * a contract deployment sits in the guaranteed phase - and a sampled key
- * discarded there leaves an address nobody can maintain.
+ * from, carried onto the refusal.
  * @throws TxFailedError if the recorded status is not `SucceedEntirely`.
  */
 const assertLedger8DeploySucceeded = (

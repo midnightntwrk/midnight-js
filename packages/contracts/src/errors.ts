@@ -927,22 +927,21 @@ const txFailedFollowUp = (operation: TxFailedOperation, fallible: boolean, circu
     case 'deploy':
       return (
         (fallible
-          ? "A contract deployment sits in the guaranteed phase, so the contract may exist on chain, under the maintenance authority built from this error's 'signingKey'. Keep that key: nothing else holds a copy, and without it the contract can never be maintained."
-          : "Nothing was deployed and no private state was stored. This error's 'signingKey' carries the key this attempt would have used, so an address that turns out to hold a contract after all is still maintainable.") +
+          ? 'A contract deployment runs in the fallible phase, so the contract was not deployed.'
+          :"Nothing was deployed and no private state was stored. This error's 'signingKey' carries the key this attempt would have used, so an address that turns out to hold a contract after all is still maintainable.") +
         ' Check the contract address before deploying again: a deploy mints a fresh nonce, so a second attempt lands at a different address and would leave two copies of the contract on chain.'
       );
     case 'insert-verifier-key':
     case 'remove-verifier-key':
       return fallible
-        ? `Read the contract's verifier key for ${circuits} before retrying: the update may have landed.`
+        ? `A maintenance update runs in the fallible phase, so the update for ${circuits} was not applied.`
         : undefined;
     case 'replace-authority':
       return (
-        "The new key was NOT stored; the store still holds the old one. Keep this error's 'signingKey': if the " +
-        'replacement landed after all, it is the only key that authorizes the contract. To find out, read the ' +
-        "contract state with `publicDataProvider.queryContractState(address)` and compare its " +
-        "`maintenanceAuthority` committee with `signatureVerifyingKey(error.signingKey)`. If the new key is " +
-        'there, store it with `privateStateProvider.setSigningKey(address, error.signingKey)`.'
+        (fallible
+          ? 'A maintenance update runs in the fallible phase, so the replacement was not applied.'
+          : 'Nothing landed, so the replacement was not applied.') +
+        ' The contract and the store still hold the old key, which still authorizes the contract.'
       );
   }
 };
@@ -983,8 +982,7 @@ const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead
  * with your own ledger copy: `record.tx.deserialize({ v9: Transaction })`.
  *
  * {@link TxFailedError.signingKey} is NAMED in the message but never rendered
- * into it: after a failed deploy or replacement it may be the only copy of the
- * authority over a contract that landed. It is not enumerable, so a logger that
+ * into it, because it is key material. It is not enumerable, so a logger that
  * serializes an error's properties does not write it out.
  *
  * Branch on the registered code rather than `instanceof` where more than one

@@ -611,9 +611,9 @@ the artifact's era like `deployContract` and `submitCallTx`. The ledger 8 path i
    `kind: 'maintenance'` for the fork-crossing diagnosis.
 7. Refuse a record from any era but ledger 8, then a non-success status with
    `TxFailedError` (`operation` `'insert-verifier-key'`, `'remove-verifier-key'`
-   or `'replace-authority'`). A maintenance update sits
-   in the guaranteed part of the transaction, so the messages say what to read
-   before retrying, and a replacement's error carries the new key on `signingKey`.
+   or `'replace-authority'`). A maintenance update runs in the fallible phase, so
+   on either status it was not applied. A replacement's error carries the new key
+   on `signingKey`.
    For a REPLACEMENT, every failure after the transaction may have landed — a
    submission rejected while the head moved (`ForkCrossedDuringOperationError`,
    `SubmitRejectionUndiagnosedError`), a record that cannot be read back, carries

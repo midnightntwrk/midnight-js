@@ -163,24 +163,31 @@ describe('TxFailedError', () => {
   );
 
   it.each(['insert-verifier-key', 'remove-verifier-key'] as const)(
-    'says the update may have landed when the status is FailFallible (%s)',
+    'says the update was not applied when the status is FailFallible (%s)',
     (operation) => {
       const error = buildTxFailed(operation, failedRecord('v9', FailFallible));
 
-      expect(error.message).toContain('may have landed');
+      expect(error.message).toContain('was not applied');
+      expect(error.message).not.toContain('may have landed');
     }
   );
 
-  it.each(TX_FAILED_ERAS)(
-    'tells a failed replacement to compare the chain authority with the new key, in words true for every era (%s)',
-    (era) => {
-      const error = buildTxFailed('replace-authority', failedRecord(era, FailFallible));
+  it.each(TX_FAILED_ERAS)('says a FailFallible deployment did not deploy the contract (%s)', (era) => {
+    const error = buildTxFailed('deploy', failedRecord(era, FailFallible));
 
-      expect(error.message).not.toContain('MaintenanceAuthorityMismatchError');
-      expect(error.message).toContain('queryContractState');
-      expect(error.message).toContain('maintenanceAuthority');
-      expect(error.message).toContain('signatureVerifyingKey');
-      expect(error.message).toContain('privateStateProvider.setSigningKey(address, error.signingKey)');
+    expect(error.message).toContain('the contract was not deployed');
+    expect(error.message).not.toContain('may exist on chain');
+  });
+
+  it.each(TX_FAILED_ERAS.flatMap((era) => [FailFallible, FailEntirely].map((status) => [era, status] as const)))(
+    'says a failed replacement was not applied and the old key still authorizes the contract (%s, %s)',
+    (era, status) => {
+      const error = buildTxFailed('replace-authority', failedRecord(era, status));
+
+      expect(error.message).toContain('the replacement was not applied');
+      expect(error.message).toContain('still hold the old key');
+      expect(error.message).not.toContain('landed after all');
+      expect(error.message).not.toContain('setSigningKey');
     }
   );
 

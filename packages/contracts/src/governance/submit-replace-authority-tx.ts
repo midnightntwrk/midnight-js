@@ -101,7 +101,7 @@ const ledger9ReplaceAuthorityFlow = async <C extends Contract.Any>(
  * - Transaction is recorded on-chain with non-`SucceedEntirely` status
  * - `TxFailedError` is thrown with transaction data
  * - Signing key in private state provider is NOT updated (remains as current authority)
- * - Contract authority on-chain may be partially updated but inconsistent
+ * - Contract authority on-chain remains unchanged: maintenance runs in the fallible phase
  * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers to use to manage the transaction lifecycle.

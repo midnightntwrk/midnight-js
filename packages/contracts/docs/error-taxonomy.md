@@ -269,12 +269,10 @@ failure, every guaranteed effect is kept — and this pipeline places every
 movement it makes in the guaranteed segment, so the chain moved while the private
 state was not stored.
 
-For a deploy the difference *is* the remediation. A `ContractDeploy` sits in the
-Intent, which is the guaranteed part, so on `FailFallible` the contract DID land,
-under the maintenance authority built from the error's signing key. A single
-message saying nothing local refers to the address would let that caller conclude
-nothing happened, and never go looking for a deployment it owns and cannot
-maintain.
+Contract deployment and maintenance updates are the exception. The ledger applies
+them only in the fallible phase, and a failed fallible segment is dropped whole, so
+on `FailFallible` the contract was not deployed and the maintenance update was not
+applied. Only the guaranteed effects, such as fees, are kept.
 
 ## When no diagnosis can be made
 
