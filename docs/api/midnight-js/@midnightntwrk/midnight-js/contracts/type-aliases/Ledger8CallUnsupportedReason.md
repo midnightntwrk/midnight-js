@@ -8,4 +8,4 @@
 
 > **Ledger8CallUnsupportedReason** = `"shielded-spend"` \| `"unmappable-recipient"`
 
-Why a retained-era call cannot be composed.
+Why a ledger 8 call cannot be composed.

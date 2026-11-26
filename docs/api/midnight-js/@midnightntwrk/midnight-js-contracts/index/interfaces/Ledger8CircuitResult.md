@@ -6,7 +6,7 @@
 
 # Interface: Ledger8CircuitResult
 
-What a retained-era circuit member returns: a plain object, NOT a `Promise`.
+What a ledger 8 circuit member returns: a plain object, NOT a `Promise`.
 
 The absence of `Promise` here is the load-bearing half of the era
 discriminator — a current-era circuit's `Promise<CircuitResults<...>>` has

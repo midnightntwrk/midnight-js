@@ -67,7 +67,7 @@
 - [PartitionedCallTranscript](type-aliases/PartitionedCallTranscript.md)
 - [ProtocolErrorCode](type-aliases/ProtocolErrorCode.md)
 - [ProtocolVersionUnknownReason](type-aliases/ProtocolVersionUnknownReason.md)
-- [RetainedLedgerEra](type-aliases/RetainedLedgerEra.md)
+- [~~RetainedLedgerEra~~](type-aliases/RetainedLedgerEra.md)
 - [StateConversionStage](type-aliases/StateConversionStage.md)
 - [StateKind](type-aliases/StateKind.md)
 - [TransactionStage](type-aliases/TransactionStage.md)
@@ -89,7 +89,7 @@
 - [NO\_CIRCUIT](variables/NO_CIRCUIT.md)
 - [PROTOCOL\_ERROR\_CATEGORIES](variables/PROTOCOL_ERROR_CATEGORIES.md)
 - [PROTOCOL\_ERROR\_CODES](variables/PROTOCOL_ERROR_CODES.md)
-- [RETAINED\_LEDGER\_ERAS](variables/RETAINED_LEDGER_ERAS.md)
+- [~~RETAINED\_LEDGER\_ERAS~~](variables/RETAINED_LEDGER_ERAS.md)
 - [TRANSACTION\_STAGES](variables/TRANSACTION_STAGES.md)
 - [TRANSACTION\_TAG\_PREFIX](variables/TRANSACTION_TAG_PREFIX.md)
 

@@ -19,9 +19,9 @@ other era.
 [EraInvariantViolationError.expected](#expected) names the only era this flow can
 accept back, and so which direction the violation went. For the current
 era's flows that is the era they submit, which is always `'v9'` — the
-default, so call sites that predate the retained-era pipelines read exactly
-as they did before it existed. The retained era's finalizing path passes the
-network's ledger version instead: it composes retained-era transactions but is
+default, so call sites that predate the ledger 8 pipelines read exactly
+as they did before it existed. The ledger 8 finalizing path passes the
+network's ledger version instead: it composes ledger 8 transactions but is
 recorded by whichever ledger the network is on, so the network, not the pipeline, is what
 the record has to agree with.
 

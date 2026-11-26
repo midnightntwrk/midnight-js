@@ -87,21 +87,21 @@ When transaction fails in either guaranteed or fallible phase.
 
 ### Throws
 
-with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
+with reason `'ledger8-maintenance-on-ledger9-network'` When a ledger 8 artifact is used after the fork.
 
 ### Throws
 
-with reason `'unavailable'` When the retained-era overload finds no usable key.
+with reason `'unavailable'` When the ledger 8 overload finds no usable key.
 
 ### Throws
 
-When the retained-era overload holds a key that is not
+When the ledger 8 overload holds a key that is not
         the contract's maintenance authority. Raised before anything is proven.
 
 ### Throws
 
 When the circuit's verifier key slot already holds a key, or the
-        retained-era artifact declares no such circuit. Raised before anything is composed.
+        ledger 8 artifact declares no such circuit. Raised before anything is composed.
 
 TODO: We'll likely want to modify ZKConfigProvider provider so that the verifier keys are
       automatically rotated in this function. This likely involves storing key versions
@@ -189,21 +189,21 @@ When transaction fails in either guaranteed or fallible phase.
 
 ### Throws
 
-with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
+with reason `'ledger8-maintenance-on-ledger9-network'` When a ledger 8 artifact is used after the fork.
 
 ### Throws
 
-with reason `'unavailable'` When the retained-era overload finds no usable key.
+with reason `'unavailable'` When the ledger 8 overload finds no usable key.
 
 ### Throws
 
-When the retained-era overload holds a key that is not
+When the ledger 8 overload holds a key that is not
         the contract's maintenance authority. Raised before anything is proven.
 
 ### Throws
 
 When the circuit's verifier key slot already holds a key, or the
-        retained-era artifact declares no such circuit. Raised before anything is composed.
+        ledger 8 artifact declares no such circuit. Raised before anything is composed.
 
 TODO: We'll likely want to modify ZKConfigProvider provider so that the verifier keys are
       automatically rotated in this function. This likely involves storing key versions

@@ -8,7 +8,7 @@
 
 > **Ledger8CallTxOptions**\<`C`, `PCK`\> = [`Ledger8CallTxOptionsBase`](Ledger8CallTxOptionsBase.md)\<`C`, `PCK`\> \| [`Ledger8CallTxOptionsWithPrivateStateId`](Ledger8CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
 
-Retained-era call transaction configuration.
+Ledger 8 call transaction configuration.
 
 ## Type Parameters
 
