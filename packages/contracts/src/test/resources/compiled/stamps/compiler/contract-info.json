@@ -1,0 +1,124 @@
+{
+  "compiler-version": "0.36.1",
+  "compiler-commit": "7fa3a117c5e7efe9d2c51da04263e5f0b3509144",
+  "language-version": "0.28.0",
+  "runtime-version": "0.21.0",
+  "circuits": [
+    {
+      "name": "step",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "count",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Uint",
+        "maxval": 18446744073709551615
+      }
+    },
+    {
+      "name": "fillOne",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "seed",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "fillTwo",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "seed",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "fillThree",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "seed",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    }
+  ],
+  "witnesses": [
+    {
+      "name": "nextStamp",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Uint",
+        "maxval": 18446744073709551615
+      }
+    }
+  ],
+  "contracts": [
+  ],
+  "ledger": [
+    {
+      "name": "last",
+      "index": 0,
+      "exported": true,
+      "storage": "Cell",
+      "type": {
+        "type-name": "Uint",
+        "maxval": 18446744073709551615
+      }
+    },
+    {
+      "name": "stamps",
+      "index": 1,
+      "exported": true,
+      "storage": "MerkleTree",
+      "depth": 20,
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    }
+  ]
+}

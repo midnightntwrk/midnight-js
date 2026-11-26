@@ -21,6 +21,7 @@ import * as CompiledCounterClone from './compiled/counter-clone/contract/index.j
 import * as CompiledDoubleCounter from './compiled/double-counter/contract/index.js';
 import * as CompiledEvents from './compiled/events/contract/index.js';
 import * as CompiledFeeMint from './compiled/fee-mint/contract/index.js';
+import * as CompiledScopeShapes from './compiled/scope-shapes/contract/index.js';
 import * as CompiledShielded from './compiled/shielded/contract/index.js';
 import * as CompiledShieldedFallible from './compiled/shielded-fallible/contract/index.js';
 import * as CompiledSimple from './compiled/simple/contract/index.js';
@@ -87,6 +88,11 @@ export const CompiledFeeMintContract = CompiledContract.make<CompiledFeeMint.Con
   CompiledFeeMint.Contract
 ).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('./compiled/fee-mint'));
 
+export const CompiledScopeShapesContract = CompiledContract.make<CompiledScopeShapes.Contract>(
+  'ScopeShapes',
+  CompiledScopeShapes.Contract
+).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('./compiled/scope-shapes'));
+
 export const CompiledVaultContract = CompiledContract.make<CompiledVault.Contract>(
   'Vault',
   CompiledVault.Contract
@@ -103,6 +109,7 @@ export * as CompiledCounterClone from './compiled/counter-clone/contract/index.j
 export * as CompiledDoubleCounter from './compiled/double-counter/contract/index.js';
 export * as CompiledEvents from './compiled/events/contract/index.js';
 export * as CompiledFeeMint from './compiled/fee-mint/contract/index.js';
+export * as CompiledScopeShapes from './compiled/scope-shapes/contract/index.js';
 export * as CompiledShielded from './compiled/shielded/contract/index.js';
 export * as CompiledShieldedFallible from './compiled/shielded-fallible/contract/index.js';
 export * as CompiledSimple from './compiled/simple/contract/index.js';

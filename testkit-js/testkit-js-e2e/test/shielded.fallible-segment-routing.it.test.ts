@@ -13,9 +13,17 @@
  * limitations under the License.
  */
 
-import { createUnprovenCallTx, deployContract } from '@midnightntwrk/midnight-js-contracts';
+import {
+  type CallTxOptions,
+  createUnprovenCallTx,
+  deployContract,
+  Ledger9ScopeOutsideTimeToDismissError,
+  submitCallTx,
+  withContractScopedTransaction
+} from '@midnightntwrk/midnight-js-contracts';
 import { Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
-import { type ContractAddress, sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { type ContractAddress, ContractState, sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { type ProofProvider } from '@midnightntwrk/midnight-js-types';
 import {
   type ContractConfiguration,
   createLogger,
@@ -29,8 +37,12 @@ import {
 import path from 'path';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
-import { CompiledShieldedFallibleContract } from '../src/contract';
 import {
+  CompiledShieldedFallible,
+  CompiledShieldedFallibleContract
+} from '../src/contract';
+import {
+  type ShieldedFallibleContract,
   type ShieldedFallibleContractCircuit,
   type ShieldedFallibleContractProviders
 } from '../src/types/shielded-fallible-types';
@@ -153,5 +165,52 @@ describe('Shielded segment routing — regression #876', () => {
     );
     expect(matchedSpend).toBeDefined();
     expect(unprovenTx.guaranteedOffer).toBeUndefined();
+  });
+
+  // A scope of two or more calls lands whole or not at all: a call the partitioner placed wholly in
+  // the fallible half is moved whole into the guaranteed half before anything is proven.
+  const SCOPE_CALLS_OVER_TIME_TO_DISMISS = 3;
+  let nextNonce = 100;
+
+  const heavyCall = (): CallTxOptions<ShieldedFallibleContract, 'heavyCheckpointMintAndSend'> => ({
+    compiledContract: CompiledShieldedFallibleContract,
+    contractAddress,
+    circuitId: 'heavyCheckpointMintAndSend',
+    args: [
+      DOMAIN_SEPARATOR,
+      MINT_AMOUNT,
+      new Uint8Array(32).fill(nextNonce++),
+      { bytes: new Uint8Array(Buffer.from(wallet.getCoinPublicKey(), 'hex')) },
+      MINT_AMOUNT
+    ]
+  });
+
+  const countersSize = async () => {
+    const state = await providers.publicDataProvider.queryContractState(contractAddress);
+    return CompiledShieldedFallible.ledger(state!.contractState.deserialize({ v9: ContractState }).data).counters.size();
+  };
+
+  test('refuses a scope over the time to dismiss before any proof is made, and submits nothing [@slow]', async () => {
+    const sizeBefore = await countersSize();
+    let proofs = 0;
+    const countingProofProvider: ProofProvider = {
+      supportedEras: providers.proofProvider.supportedEras,
+      proveTx: (unprovenTx, config) => {
+        proofs += 1;
+        return providers.proofProvider.proveTx(unprovenTx, config);
+      }
+    };
+    const countingProviders: ShieldedFallibleContractProviders = { ...providers, proofProvider: countingProofProvider };
+
+    await expect(
+      withContractScopedTransaction<ShieldedFallibleContract>(countingProviders, async (txCtx) => {
+        for (let call = 0; call < SCOPE_CALLS_OVER_TIME_TO_DISMISS; call += 1) {
+          await submitCallTx(countingProviders, heavyCall(), txCtx);
+        }
+      })
+    ).rejects.toBeInstanceOf(Ledger9ScopeOutsideTimeToDismissError);
+
+    expect(proofs).toBe(0);
+    expect(await countersSize()).toEqual(sizeBefore);
   });
 });

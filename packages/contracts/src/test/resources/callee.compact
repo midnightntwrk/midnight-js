@@ -1,0 +1,10 @@
+import CompactStandardLibrary;
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+    receiveShielded(disclose(coin));
+}
+
+export circuit mintAndSend(domainSep: Bytes<32>, mintValue: Uint<64>, mintNonce: Bytes<32>, publicKey: ZswapCoinPublicKey, sendValue: Uint<128>): ShieldedSendResult {
+    const coin = mintShieldedToken(disclose(domainSep), disclose(mintValue), disclose(mintNonce), right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
+    return sendImmediateShielded(coin, left<ZswapCoinPublicKey, ContractAddress>(disclose(publicKey)), disclose(sendValue));
+}
