@@ -27,6 +27,7 @@ import {
   type ZKConfigProvider,
   ZKConfigRegistry,
   type ZKIR} from '@midnightntwrk/midnight-js-types';
+import { ZkArtifactIntegrityError } from '@midnightntwrk/midnight-js-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { httpClientProvingProvider } from '../http-client-proving-provider';
@@ -422,6 +423,25 @@ describe('httpClientProvingProvider', () => {
       // Assert
       expect(error).toBe(unavailable);
       expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('surfaces a refused-manifest integrity error instead of proving without keys', async () => {
+      // Arrange: the flat provider's keys read fine but its manifest was refused (403), which
+      // the fetch provider now reports as an integrity error with the fetch failure on cause.
+      // Proving without the key material would mask that, so the error must surface here and
+      // no proof-server request may be made.
+      const refusedManifest = new ZkArtifactIntegrityError('ZK artifact manifest could not be loaded', {
+        cause: new ZkArtifactFetchError('Failed to fetch ZK artifact: 403 Forbidden', 403)
+      });
+      mockZkConfigProvider.get = vi.fn().mockRejectedValue(refusedManifest);
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      // Act
+      const error = await provider.prove(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+
+      // Assert
+      expect(error).toBe(refusedManifest);
+      expect(mockFetchRetry).not.toHaveBeenCalled();
     });
 
     it('still proves without keys when the flat provider does not serve the circuit', async () => {
