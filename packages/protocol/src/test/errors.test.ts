@@ -32,6 +32,7 @@ import {
   UnknownLedgerEraError,
   UnknownProtocolVersionError
 } from '../errors';
+import { LEDGER_ERAS, protocolVersionToLedger } from '../version';
 
 // Every scoped package name the message names, so the assertion can be
 // two-directional: a missing name and a leaked extra name both fail.
@@ -96,8 +97,7 @@ describe('UnknownProtocolVersionError', () => {
     expect(error.path).toBe('construct');
     expect(error.reason).toBe('unknown');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT);
-    expect(error.message).toMatch(/v8/);
-    expect(error.message).toMatch(/v9/);
+    expect(error.message).toContain('Supported eras: v8 (node 1.x) and v9 (node 2.x). ');
   });
 
   it('describes a malformed input without the misleading upgrade text', () => {
@@ -206,6 +206,39 @@ describe('StateConversionFailedError', () => {
   });
 });
 
+// The era lists in these messages stay literals: importing the era tables into `errors.ts` moves the
+// error classes out of `dist/errors.js` (dist-error-identity.test.ts), so this test ties them instead.
+describe('supported-era lists in error messages', () => {
+  const NODE_MAJORS_TO_PROBE = 100;
+
+  const supportedEraEntries = (): string[] =>
+    Array.from({ length: NODE_MAJORS_TO_PROBE }, (_, major) => major).flatMap((major) => {
+      try {
+        return [`${protocolVersionToLedger(major * 1_000_000)} (node ${major}.x)`];
+      } catch (error) {
+        if (error instanceof UnknownProtocolVersionError && error.reason === 'unknown') {
+          return [];
+        }
+        throw error;
+      }
+    });
+
+  it('probes a node-major range that reaches every ledger era', () => {
+    const erasWithAMajor = supportedEraEntries().map((entry) => entry.split(' ')[0]);
+
+    expect([...new Set(erasWithAMajor)].sort()).toEqual([...LEDGER_ERAS].sort());
+  });
+
+  it.each([
+    ['UnknownProtocolVersionError', new UnknownProtocolVersionError(3_000_000, 'construct', 'unknown')],
+    ['UnknownLedgerEraError', new UnknownLedgerEraError('v10')]
+  ])('%s names exactly the supported eras with their node majors', (_, error) => {
+    const named = [...error.message.matchAll(/v\d+ \(node \d+\.x\)/g)].map(([entry]) => entry);
+
+    expect(named.sort()).toEqual(supportedEraEntries().sort());
+  });
+});
+
 describe('UnknownLedgerEraError', () => {
   it('carries the UNKNOWN_LEDGER_ERA code and names the supported eras', () => {
     const error = new UnknownLedgerEraError('v10');
@@ -213,8 +246,7 @@ describe('UnknownLedgerEraError', () => {
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe('UnknownLedgerEraError');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA);
-    expect(error.message).toContain('v8');
-    expect(error.message).toContain('v9');
+    expect(error.message).toContain('Supported eras are v8 (node 1.x) and v9 (node 2.x); ');
   });
 
   // The requested value reaches this class from an untyped JS caller, so it is

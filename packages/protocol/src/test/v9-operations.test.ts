@@ -25,10 +25,12 @@
 
 import { readFileSync } from 'node:fs';
 
+import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeOptionError } from '../errors';
+import { decodeContractStateWith } from '../lib/shared/contract-state';
 import { reexpressOperationsForLedger9 } from '../lib/v9/operations';
 import { fixturePath } from './fixtures';
 
@@ -43,6 +45,12 @@ const LEDGER8_VERIFIER_KEY = Uint8Array.from(
 
 /** The envelope the CURRENT ledger writes contract states in. Ledger 8 states carry `[v6]`. */
 const LEDGER9_STATE_TAG = 'midnight:contract-state[v8]:';
+
+const ledger8Operation = (): LedgerV8.ContractOperation => {
+  const operation = new LedgerV8.ContractOperation();
+  operation.verifierKey = LEDGER8_VERIFIER_KEY;
+  return operation;
+};
 
 const tagOf = (bytes: Uint8Array): string => Buffer.from(bytes.subarray(0, 64)).toString('ascii');
 
@@ -128,5 +136,38 @@ describe('reexpressOperationsForLedger9', () => {
     expect(() =>
       reexpressOperationsForLedger9([{ circuitId: 'increment', verifierKey: notAKey, verifierKeyHash: undefined }])
     ).toThrow();
+  });
+
+  it('registers a byte-declared entry point under its text, because ledger-v8 decodes it to a string', () => {
+    // Arrange: the registry is keyed by name, which is safe only because ledger-v8 reads a
+    // UTF-8 byte-set entry point back as a string. See "Resolving an entry point to a name" in
+    // docs/verifier-keys.md and the `entryPointName` suite in v8-deploy.test.ts.
+    const ledger8State = new LedgerV8.ContractState();
+    ledger8State.setOperation(new TextEncoder().encode('increment'), ledger8Operation());
+    const { entryPoints } = decodeContractStateWith(ledger8State.serialize(), 'v8', LedgerV8);
+
+    // Act.
+    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForLedger9(entryPoints));
+
+    // Assert.
+    expect([...state.operations()].map(String)).toEqual(['increment']);
+    expect(state.operation('increment')?.verifierKey).toEqual(LEDGER8_VERIFIER_KEY);
+  });
+
+  it('collapses two entry points whose bytes decode to one name into a single operation', () => {
+    // Arrange: invalid UTF-8 is where the string decoding above stops. ledger-v8 hands both back as
+    // bytes and both resolve to U+FFFD. A deploy refuses such a pair as 'deploy-ambiguous-circuit';
+    // keep-state does not. Pinned as observed, not as intended.
+    const ledger8State = new LedgerV8.ContractState();
+    ledger8State.setOperation(Uint8Array.of(0xff), ledger8Operation());
+    ledger8State.setOperation(Uint8Array.of(0xfe), ledger8Operation());
+    const { entryPoints } = decodeContractStateWith(ledger8State.serialize(), 'v8', LedgerV8);
+
+    // Act.
+    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForLedger9(entryPoints));
+
+    // Assert.
+    expect(entryPoints.map(({ circuitId }) => circuitId)).toEqual(['\uFFFD', '\uFFFD']);
+    expect([...state.operations()].map(String)).toEqual(['\uFFFD']);
   });
 });

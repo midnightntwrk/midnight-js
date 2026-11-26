@@ -13,7 +13,23 @@
  * limitations under the License.
  */
 
+import { NetworkId } from '@midnightntwrk/wallet-sdk';
+
+import { logger } from '../src/logger';
+import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
+import { FluentWalletBuilder } from '../src/wallet/fluent-wallet-builder';
 import { WalletSeeds } from '../src/wallet/wallet-seed';
+
+const testEnvironment: EnvironmentConfiguration = {
+  walletNetworkId: NetworkId.NetworkId.Undeployed,
+  networkId: 'undeployed',
+  indexer: 'http://localhost:8088',
+  indexerWS: 'ws://localhost:8088',
+  node: 'http://localhost:9944',
+  nodeWS: 'ws://localhost:9944',
+  proofServer: 'http://localhost:6300',
+  faucet: undefined
+};
 
 describe('[Unit tests] FluentWalletBuilder seed immutability', () => {
   it('WalletSeeds.generateRandom produces unique seeds each time', () => {
@@ -30,5 +46,20 @@ describe('[Unit tests] FluentWalletBuilder seed immutability', () => {
 
     expect(seeds1.masterSeed).toBe(seeds2.masterSeed);
     expect(seeds1.shielded).toEqual(seeds2.shielded);
+  });
+});
+
+describe('[Unit tests] FluentWalletBuilder seed logging', () => {
+  it('withRandomSeed does not log the generated seed', () => {
+    const info = vi.spyOn(logger, 'info');
+    try {
+      FluentWalletBuilder.forEnvironment(testEnvironment).withRandomSeed();
+
+      const logged = info.mock.calls.flat().map(String).join('\n');
+      // A master seed is 64 hex characters; it must never appear in a log line.
+      expect(logged).not.toMatch(/[0-9a-f]{64}/);
+    } finally {
+      info.mockRestore();
+    }
   });
 });
