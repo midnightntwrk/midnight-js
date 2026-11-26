@@ -71,19 +71,15 @@ const YARN_BIN = path.join(REPOSITORY_ROOT, '.yarn', 'releases', 'yarn-4.14.1.cj
 
 /**
  * Resolved from this repository's own pinned devDependency, not from PATH and not
- * through Corepack. `pnpm` exports only its own `package.json`, so the bin is
- * reached by resolving that and reading the `bin` map rather than by subpath.
+ * through Corepack. Since pnpm 12 the `bin` map points at a native executable,
+ * so Node runs `bin/pnpm.mjs` instead: the JS entry Corepack also uses for
+ * pnpm >= 11, which hands over to the installed native binary.
  */
-const PNPM_BIN = (() => {
-  const require = createRequire(import.meta.url);
-  // `pnpm`'s only export is its own manifest, so "." resolves to package.json.
-  const manifestPath = require.resolve('pnpm');
-  const binRelative = require(manifestPath).bin?.pnpm;
-  if (typeof binRelative !== 'string') {
-    throw new Error('The pinned pnpm package declares no `pnpm` bin');
-  }
-  return path.join(path.dirname(manifestPath), binRelative);
-})();
+const PNPM_BIN = path.join(
+  path.dirname(createRequire(import.meta.url).resolve('pnpm/package.json')),
+  'bin',
+  'pnpm.mjs'
+);
 
 /**
  * The linkers under test. Both isolate: pnpm's default gives each package its own
