@@ -47,3 +47,27 @@ export type LedgerEra = (typeof LEDGER_ERAS)[number];
  */
 export const CURRENT_LEDGER_ERA = 'v9' as const satisfies LedgerEra;
 export type CurrentLedgerEra = typeof CURRENT_LEDGER_ERA;
+
+/**
+ * Every era except {@link CURRENT_LEDGER_ERA}. Today that is only ledger 8 (`'v8'`).
+ *
+ * @deprecated Will be removed in the next major release. Use
+ * `Exclude<LedgerEra, CurrentLedgerEra>` instead.
+ */
+export type RetainedLedgerEra = Exclude<LedgerEra, CurrentLedgerEra>;
+
+/**
+ * Every era except {@link CURRENT_LEDGER_ERA}. Today that is only ledger 8 (`'v8'`).
+ *
+ * @deprecated Will be removed in the next major release. Use
+ * `LEDGER_ERAS.filter((era): era is Exclude<LedgerEra, CurrentLedgerEra> => era !== CURRENT_LEDGER_ERA)`
+ * instead.
+ */
+export const RETAINED_LEDGER_ERAS = Object.freeze(['v8'] as const satisfies readonly RetainedLedgerEra[]);
+
+// A tuple, not a bare `Exclude<...> extends never`, which would hold for any list.
+const _everyOlderEraIsListed: [
+  Exclude<RetainedLedgerEra, (typeof RETAINED_LEDGER_ERAS)[number]>
+] extends [never]
+  ? true
+  : never = true;

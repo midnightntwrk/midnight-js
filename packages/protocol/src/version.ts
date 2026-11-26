@@ -18,7 +18,9 @@ import {
   CURRENT_LEDGER_ERA,
   type CurrentLedgerEra,
   LEDGER_ERAS,
-  type LedgerEra
+  type LedgerEra,
+  RETAINED_LEDGER_ERAS,
+  type RetainedLedgerEra
 } from './lib/shared/ledger-version';
 import { LEDGER_STATE_KINDS, LEDGER_STATE_TAGS, type StateKind } from './lib/shared/state-tags';
 import { LEDGER_TRANSACTION_TAGS, TRANSACTION_STAGES, type TransactionStage } from './lib/shared/transaction-tags';
@@ -33,6 +35,8 @@ export {
   LEDGER_STATE_TAGS,
   LEDGER_TRANSACTION_TAGS,
   type LedgerEra,
+  RETAINED_LEDGER_ERAS,
+  type RetainedLedgerEra,
   type StateKind,
   TRANSACTION_STAGES,
   type TransactionStage

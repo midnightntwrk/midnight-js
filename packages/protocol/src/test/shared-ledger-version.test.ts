@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { CURRENT_LEDGER_ERA, LEDGER_ERAS } from '../lib/shared/ledger-version';
+import { CURRENT_LEDGER_ERA, LEDGER_ERAS, RETAINED_LEDGER_ERAS } from '../lib/shared/ledger-version';
 import * as version from '../version';
 
 // `lib/shared/ledger-version.ts` exists to break a module cycle: `errors.ts` needs
@@ -57,5 +57,29 @@ describe('CURRENT_LEDGER_ERA', () => {
 
   it('is the same value the version module publishes', () => {
     expect(version.CURRENT_LEDGER_ERA).toBe(CURRENT_LEDGER_ERA);
+  });
+});
+
+describe('RETAINED_LEDGER_ERAS', () => {
+  // Equality against the set difference, not `toContain`: the point of this
+  // constant is that it holds EVERY era except the current one, so a member
+  // going missing has to fail here. A one-directional assertion would pass on
+  // an empty list.
+  it('is exactly the era set minus the current era', () => {
+    expect([...RETAINED_LEDGER_ERAS].sort()).toEqual(
+      LEDGER_ERAS.filter((era) => era !== CURRENT_LEDGER_ERA).sort()
+    );
+  });
+
+  it('does not contain the current era', () => {
+    expect(RETAINED_LEDGER_ERAS).not.toContain(CURRENT_LEDGER_ERA);
+  });
+
+  it('is frozen', () => {
+    expect(Object.isFrozen(RETAINED_LEDGER_ERAS)).toBe(true);
+  });
+
+  it('is the same object the version module publishes', () => {
+    expect(version.RETAINED_LEDGER_ERAS).toBe(RETAINED_LEDGER_ERAS);
   });
 });

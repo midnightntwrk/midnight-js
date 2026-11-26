@@ -107,8 +107,8 @@ const eagerClosureOf = (entry: string): string[] => {
 const eagerContents = (entry: string): string => eagerClosureOf(entry).map((chunk) => readDistFile(chunk)).join('\n');
 
 describe('dist laziness gate', () => {
-  // The engine modules reference a ledger 8 runtime only through erased
-  // `import type`s and injected parameters, which is what keeps this green.
+  // The engine modules reference a lazily loaded runtime only through erased
+  // `import type`s, which is what keeps this green.
   const lazyPackages = LAZY_LEDGER_ERAS.flatMap((era) =>
     LAZY_ERA_ARTIFACTS[era].packages.map((pkg) => [era, pkg] as const)
   );
@@ -161,7 +161,7 @@ describe('dist laziness gate', () => {
     expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
   });
 
-  // Every route to each ledger 8 chunk and the engine chunk, in one place.
+  // Every route to each lazily loaded era's chunk and the engine chunk, in one place.
   // The tests above show each chunk is absent from the eager closure and that a dynamic import of it
   // survives; this one closes the remaining gap — that no chunk in that closure
   // reaches any of them by a STATIC specifier under some other name. A static

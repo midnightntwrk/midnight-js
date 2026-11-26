@@ -139,6 +139,8 @@ describe('Protocol type ACL', () => {
       'ProtocolErrorCode',
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
+      // Deprecated, removed in the next major release (ADR 0026).
+      'RetainedLedgerEra',
       'StateConversionStage',
       'StateKind',
       'TransactionStage',
