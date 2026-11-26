@@ -103,7 +103,7 @@ const ledger9InsertVerifierKeyFlow = async <C extends Contract.Any>(
  * **Fallible Phase Failure:**
  * - Transaction is recorded on-chain with non-`SucceedEntirely` status
  * - `TxFailedError` is thrown with transaction data
- * - Verifier key may be partially added but not usable
+ * - Verifier key is NOT added: maintenance runs in the fallible phase
  * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers to use to manage the transaction lifecycle.

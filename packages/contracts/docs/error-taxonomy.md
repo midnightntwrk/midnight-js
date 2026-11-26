@@ -243,8 +243,10 @@ ahead of it is raised with no key having been sampled.
 `TxFailedError.signingKey` (after a failed deploy or replacement),
 `Ledger8UnconfirmedError.signingKey` and `Ledger8NotStoredError.signingKey` are
 referenced in their classes' documentation but never interpolated into a
-message. An error message reaches logs and issue trackers, and each may be the
-only copy of the authority over a deployment or a replacement that landed.
+message. An error message reaches logs and issue trackers. The two `Ledger8*`
+keys may be the only copy of the authority over a deployment or a replacement
+that landed. The `TxFailedError` key authorizes nothing, because the deploy or
+replacement was not applied: do not store it.
 
 The key is not enumerable either. `Object.keys`, object spread, `JSON.stringify`
 and a logger that serializes the properties of an error leave it out; the
@@ -255,9 +257,8 @@ caller reads it as `error.signingKey`.
 A failed deploy and a failed call are the same class, `TxFailedError`, but the
 remediation in the message differs by `operation` — the same reason
 `ForkCrossedDuringOperationError` writes a deploy's remediation separately. A failed call can simply be run again. A failed deploy
-cannot be retried blindly: a deploy mints a fresh nonce, so a second attempt
-lands at a DIFFERENT address, and repeating one that in fact finalized leaves two
-copies of the contract on chain.
+left no contract, and a new attempt mints a fresh nonce, so it lands at a
+different address.
 
 ## Messages state the consequence per status
 
@@ -269,12 +270,10 @@ failure, every guaranteed effect is kept — and this pipeline places every
 movement it makes in the guaranteed segment, so the chain moved while the private
 state was not stored.
 
-For a deploy the difference *is* the remediation. A `ContractDeploy` sits in the
-Intent, which is the guaranteed part, so on `FailFallible` the contract DID land,
-under the maintenance authority built from the error's signing key. A single
-message saying nothing local refers to the address would let that caller conclude
-nothing happened, and never go looking for a deployment it owns and cannot
-maintain.
+Contract deployment and maintenance updates are the exception. The ledger applies
+them only in the fallible phase, and a failed fallible segment is dropped whole, so
+on `FailFallible` the contract was not deployed and the maintenance update was not
+applied. Only the guaranteed effects, such as fees, are kept.
 
 ## When no diagnosis can be made
 

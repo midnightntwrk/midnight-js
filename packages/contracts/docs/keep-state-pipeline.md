@@ -458,11 +458,9 @@ The finalizing step mirrors the call path's exactly: watch
 recorded against the contract it created — attribute the record against the head
 this deploy composed on, refuse a non-success status, and only then store the
 private state. That order is load-bearing. A deploy the chain refused must leave
-no local private state ahead of it, and on this path that matters more than on the
-call path: a deploy mints a fresh nonce, so a second attempt lands at a DIFFERENT
-address, and repeating one that in fact finalized leaves two copies of the
-contract on chain. `TxFailedError` with `operation` `'deploy'` carries that remediation,
-which differs from the one for a failed call.
+no local private state ahead of it. `TxFailedError` with `operation` `'deploy'`
+says the contract was not deployed, which differs from the message for a failed
+call.
 
 The private state is written through `privateStateProvider.forContract(contractAddress)`,
 so it lands under the deployed contract whatever other flows run at the same time.
@@ -611,9 +609,9 @@ the artifact's era like `deployContract` and `submitCallTx`. The ledger 8 path i
    `kind: 'maintenance'` for the fork-crossing diagnosis.
 7. Refuse a record from any era but ledger 8, then a non-success status with
    `TxFailedError` (`operation` `'insert-verifier-key'`, `'remove-verifier-key'`
-   or `'replace-authority'`). A maintenance update sits
-   in the guaranteed part of the transaction, so the messages say what to read
-   before retrying, and a replacement's error carries the new key on `signingKey`.
+   or `'replace-authority'`). A maintenance update runs in the fallible phase, so
+   on either status it was not applied. A replacement's error carries the new key
+   on `signingKey`; it authorizes nothing, and the old key still does.
    For a REPLACEMENT, every failure after the transaction may have landed — a
    submission rejected while the head moved (`ForkCrossedDuringOperationError`,
    `SubmitRejectionUndiagnosedError`), a record that cannot be read back, carries

@@ -590,7 +590,7 @@ try {
 } catch (e) {
   if (e instanceof TxFailedError && e.operation === 'deploy') {
     // e.record.status and e.record.segmentStatusMap say what the chain recorded.
-    // e.signingKey may be the only copy of the contract's authority: store it, never log the error whole.
+    // The contract was not deployed; e.signingKey authorizes nothing. Never log the error whole.
   }
   if (e instanceof EraMismatchError) {
     // e.reason says which era mistake it was, for example 'ledger8-deploy-on-ledger9-network'.

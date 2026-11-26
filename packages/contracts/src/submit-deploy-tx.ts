@@ -88,7 +88,7 @@ export async function submitLedger9DeployTx<C extends Contract.Any>(
  * - Private state (if `privateStateId` provided) is NOT stored
  * - Contract signing key is NOT stored in private state provider
  * - Transaction appears in blockchain history as partial success
- * - Contract may be partially deployed but not functional
+ * - Contract is NOT deployed: deployment runs in the fallible phase
  *
  * @param providers The providers used to manage the deploy lifecycle.
  * @param options Configuration.

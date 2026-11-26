@@ -508,7 +508,7 @@ describe('contract maintenance through a ledger 8 artifact', () => {
       expect((failure as Error).message).toContain(`'${CIRCUIT_ID}'`);
     });
 
-    it('carries the new key on a failed replacement, because a FailFallible replacement may have landed', async () => {
+    it('carries the new key on a FailFallible replacement', async () => {
       // Arrange
       const providers = providersOn(keyedState);
       providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockLedger8FinalizedTxData(FailFallible));

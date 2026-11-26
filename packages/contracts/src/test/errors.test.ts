@@ -139,12 +139,16 @@ describe('TxFailedError', () => {
     expect(error.message).toContain('guaranteed');
   });
 
-  it('tells a caller not to deploy again before checking the address', () => {
-    const error = buildTxFailed('deploy', failedRecord('v9', FailFallible));
+  it.each([FailFallible, FailEntirely])(
+    'names the address of a failed deployment without warning that a retry leaves two copies (%s)',
+    (status) => {
+      const error = buildTxFailed('deploy', failedRecord('v9', status));
 
-    expect(error.message).toContain('before deploying again');
-    expect(error.message).toContain(TX_FAILED_ADDRESS);
-  });
+      expect(error.message).toContain(TX_FAILED_ADDRESS);
+      expect(error.message).not.toContain('two copies');
+      expect(error.message).not.toContain('after all');
+    }
+  );
 
   it('carries the contract address and circuit id it was given', () => {
     const error = buildTxFailed('remove-verifier-key', failedRecord('v8', FailEntirely));
@@ -162,25 +166,37 @@ describe('TxFailedError', () => {
     }
   );
 
-  it.each(['insert-verifier-key', 'remove-verifier-key'] as const)(
-    'says the update may have landed when the status is FailFallible (%s)',
-    (operation) => {
-      const error = buildTxFailed(operation, failedRecord('v9', FailFallible));
+  it.each(
+    (['insert-verifier-key', 'remove-verifier-key'] as const).flatMap((operation) =>
+      TX_FAILED_ERAS.map((era) => [operation, era] as const)
+    )
+  )(
+    'says the update was not applied when the status is FailFallible (%s, %s)',
+    (operation, era) => {
+      const error = buildTxFailed(operation, failedRecord(era, FailFallible));
 
-      expect(error.message).toContain('may have landed');
+      expect(error.message).toContain("the update for 'increment' was not applied");
+      expect(error.message).not.toContain('may have landed');
     }
   );
 
-  it.each(TX_FAILED_ERAS)(
-    'tells a failed replacement to compare the chain authority with the new key, in words true for every era (%s)',
-    (era) => {
-      const error = buildTxFailed('replace-authority', failedRecord(era, FailFallible));
+  it.each(TX_FAILED_ERAS)('says a FailFallible deployment did not deploy the contract (%s)', (era) => {
+    const error = buildTxFailed('deploy', failedRecord(era, FailFallible));
 
-      expect(error.message).not.toContain('MaintenanceAuthorityMismatchError');
-      expect(error.message).toContain('queryContractState');
-      expect(error.message).toContain('maintenanceAuthority');
-      expect(error.message).toContain('signatureVerifyingKey');
-      expect(error.message).toContain('privateStateProvider.setSigningKey(address, error.signingKey)');
+    expect(error.message).toContain('the contract was not deployed');
+    expect(error.message).not.toContain('may exist on chain');
+  });
+
+  it.each(TX_FAILED_ERAS.flatMap((era) => [FailFallible, FailEntirely].map((status) => [era, status] as const)))(
+    'says a failed replacement was not applied and the old key still authorizes the contract (%s, %s)',
+    (era, status) => {
+      const error = buildTxFailed('replace-authority', failedRecord(era, status));
+
+      expect(error.message).toContain('the replacement was not applied');
+      expect(error.message).toContain(status === FailFallible ? 'runs in the fallible phase' : 'Nothing landed');
+      expect(error.message).toContain('still hold the old key');
+      expect(error.message).not.toContain('landed after all');
+      expect(error.message).not.toContain('setSigningKey');
     }
   );
 
