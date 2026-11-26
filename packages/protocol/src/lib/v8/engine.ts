@@ -68,7 +68,8 @@ export interface Ledger8Engine {
    * @throws StateConversionFailedError At stage `'state conversion'` when the
    *   state cannot be decoded, does not re-encode to its source, or carries a
    *   balance the ledger 8 runtime cannot read.
-   * @throws InvalidArgumentError When the contract declares no circuit of that name.
+   * @throws InvalidArgumentError When the contract declares no circuit of that name, or
+   *   `nowSeconds` is not a finite number.
    */
   executeCircuit<C extends Ledger8EngineContract, PS>(
     options: Ledger8CircuitOptions<C, PS>
@@ -103,10 +104,12 @@ export interface Ledger8Engine {
    *
    * @throws ComposeOptionError Naming `'networkId'`, `'ttl'`, `'signingKey'`,
    *   `'newSigningKey'` or `'contractStateBytes'` when that option is unusable.
-   * @throws MaintenanceAuthorityMismatchError When the signing key is not the
-   *   committee's first member.
-   * @throws ComposeFailedError At stage `'maintenance-update'` when compact-js
-   *   refuses to build or sign the update; a coded cause is rethrown as itself.
+   * @throws MaintenanceAuthorityMismatchError When the authority has no
+   *   committee, needs more than one signature, or the signing key is not its
+   *   first member.
+   * @throws ComposeFailedError At stage `'maintenance-update'` when the address,
+   *   compact-js or the ledger refuses the update, with that failure on `cause`;
+   *   a coded cause is rethrown as itself.
    * @throws InvalidArgumentError When an untyped caller names an unknown update kind.
    */
   composeMaintenanceTx(request: Ledger8MaintenanceRequest): Promise<Uint8Array>;
@@ -121,7 +124,7 @@ export interface Ledger8Engine {
 }
 
 /**
- * Builds a {@link Ledger8Engine}. Acquires nothing; reach it through
+ * Builds a {@link Ledger8Engine} without acquiring the v8 ledger module; reach it through
  * `loadLedger8Engine` so the ledger 8 WASM stays off the root module graph.
  *
  * @returns The engine surface.

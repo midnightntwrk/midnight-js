@@ -113,9 +113,9 @@ On ledger 8 the constructor registers the keys itself, inside compact-js's
 with its own configuration error. `runLedger8Constructor` re-codes that refusal
 as the same `ComposeFailedError` at `'deploy-verifier-key-blob'`, so both eras
 report the fault alike. Only a refusal that carries the ledger's error on
-`cause` is re-coded: compact-js attaches one only when a key it was handed was
-rejected, and leaves it absent for a key that was never served, which stays
-compact-js's own refusal.
+`cause` and whose message names the circuit is re-coded: compact-js attaches a
+cause only when a key it was handed was rejected, and leaves it absent for a key
+that was never served, which stays compact-js's own refusal.
 
 ## Resolving an entry point to a name
 

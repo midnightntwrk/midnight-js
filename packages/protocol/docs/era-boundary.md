@@ -119,8 +119,8 @@ what makes the two eras symmetrical. It costs a v9-only consumer nothing:
 asking for the v8 era IS the observation of v8, and nothing reaches that
 function until someone does.
 
-`Ledger8Engine` is not built this way. `createLedger8Engine` acquires nothing
-(see above), and the members that run compact-js — `executeCircuit`,
+`Ledger8Engine` is not built this way. `createLedger8Engine` does not acquire
+the v8 ledger module (see above), and the members that run compact-js — `executeCircuit`,
 `executeConstructor` and `composeMaintenanceTx` — are asynchronous, because
 compact-js builds them on `Effect.tryPromise`, which `runSync` cannot discharge.
 No `Effect` reaches a caller: every value crossing the surface is plain data or

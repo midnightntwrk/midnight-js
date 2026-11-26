@@ -95,8 +95,10 @@ export type PartitionedCallTranscript = [
  * Builds the transaction's Zswap offers once the composer holds every call's
  * partition, in `calls` order. Returns serialized offer bytes per segment; an
  * absent member is the normal shape of a segment that moves no shielded coin.
+ * There is no way to supply an offer without being handed the partition.
  *
  * @see {@link ComposeRefusalOrder}
+ * @see {@link EraBoundary}
  */
 export type ZswapOfferFactory = (partitions: readonly PartitionedCallTranscript[]) => {
   readonly guaranteedBytes?: Uint8Array;

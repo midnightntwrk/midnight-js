@@ -39,7 +39,8 @@ export interface LedgerEraFacade {
    *
    * @param raw The serialized contract-state envelope.
    * @returns The primary state read out of the envelope.
-   * @throws StateDecodeFailedError if this era's decoder rejects `raw`.
+   * @throws StateDecodeFailedError if this era's decoder rejects `raw`,
+   * including an envelope the other era wrote; the decoder's diagnosis is on `cause`.
    * @see {@link FailClosedDecoding}
    */
   extractState(raw: Uint8Array): EncodedStateValue;
@@ -63,11 +64,13 @@ export interface LedgerEraFacade {
   /**
    * Composes an UNPROVEN call transaction and serializes it. Ledger 8 composes
    * exactly one call. A call's Zswap offer is a factory that receives the
-   * transcript split this method resolves.
+   * transcript split this method resolves; an offer is refused on neither era.
    *
    * @param options The calls to compose and the transaction-wide envelope.
    * @returns The serialized UNPROVEN transaction and each call's partition.
-   * @throws ComposeOptionError if an option is unusable on this era; `option` names it.
+   * @throws ComposeOptionError if an option is unusable on this era: an empty
+   * `networkId`, an invalid `ttl`, unreadable state or ledger-parameter bytes,
+   * or more than one call on ledger 8. `option` names it.
    * @throws ComposeFailedError if a call cannot be assembled; `stage` names
    * which step refused it.
    * @see {@link ComposeRefusalOrder}
@@ -78,11 +81,12 @@ export interface LedgerEraFacade {
    * Composes an UNPROVEN deploy transaction. Returns the address because a
    * deploy mints a fresh nonce, so the caller cannot recompute it.
    *
-   * @param options The initial state, its verifier keys, and the
-   * transaction-wide envelope.
+   * @param options The initial state, its verifier keys, and the envelope.
    * @returns The serialized UNPROVEN transaction, the address the deployment
    * will have, and the initial state that address was derived from.
-   * @throws ComposeOptionError if an option is unusable on this era; `option` names it.
+   * @throws ComposeOptionError if an option is unusable on this era: an empty
+   * `networkId`, an invalid `ttl`, unreadable state bytes, or `verifierKeys`
+   * omitted for a state that still declares a blank key. `option` names it.
    * @throws ComposeFailedError if the keys do not match the declared entry
    * points or the ledger rejects a key blob; `stage` names which check.
    * @see {@link VerifierKeys}

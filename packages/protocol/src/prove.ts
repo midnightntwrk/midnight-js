@@ -14,8 +14,8 @@
  */
 
 /**
- * The ledger 8 half of `proveTx`, published as a leaf subpath. Importing it
- * does not load the v8 WASM.
+ * The ledger 8 half of `proveTx`, published as a leaf subpath and kept off the
+ * package root on purpose. Importing it does not load the v8 WASM.
  *
  * @see {@link ModuleGraphAndLazyLoading}
  */

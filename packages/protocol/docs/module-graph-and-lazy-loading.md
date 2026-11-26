@@ -46,6 +46,13 @@ takes or returns, and could reach the constant only as a hand-written literal.
 The constant is a plain string in a module that imports nothing at run time, so
 the re-export adds nothing to the eager graph; `dist-laziness.test.ts` holds it.
 
+`./prove`, `./transaction`, `./errors` and `./version` are leaf subpaths and are
+deliberately not on the root barrel: the root links far more, and a consumer that
+needs one of them should not link the rest. `./prove` keeps the ledger 8 runtime
+behind the dynamic import in `loadLedger8Protocol`, so importing it does not load
+the v8 WASM. `dist-laziness.test.ts` checks that `./transaction` links no ledger
+statically; `./prove` has no such check.
+
 ## Where `LEDGER_ERAS` lives, and the cycle it avoids
 
 `LEDGER_ERAS` is declared in `lib/shared/ledger-version.ts`, a leaf module

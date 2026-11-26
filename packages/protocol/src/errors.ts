@@ -319,11 +319,12 @@ export const NO_CIRCUIT = '(none)';
  * - `'call-partition'` — the ledger rejects the transcript while partitioning it (cause).
  * - `'call-prototype'` — the ledger rejects the call's own inputs (cause).
  * - `'call-dust-payout'` — an unshielded spend to a user address in DUST.
- * - `'call-unsupported-payout'` — an unshielded spend in a token type that cannot be paid out.
+ * - `'call-unsupported-payout'` — an unshielded spend to a user address in a token type that
+ *   cannot be paid out as an unshielded UTXO (a shielded token type today).
  * - `'deploy-verifier-key'` — no verifier key for a circuit the state declares.
  * - `'deploy-unknown-circuit'` — the key map names a circuit the state does not declare.
  * - `'deploy-ambiguous-circuit'` — two declared entry points share one name.
- * - `'deploy-verifier-key-blob'` — the ledger rejects the key bytes for a circuit (cause when it came from the ledger).
+ * - `'deploy-verifier-key-blob'` — the ledger rejects the key bytes for a circuit (cause).
  * - `'maintenance-update'` — the update cannot be built, signed or wrapped; names
  *   {@link NO_CIRCUIT} for an authority replacement (cause).
  * - `'wrap-call'` — the keep-state leg finds no operation for the transcript's circuit.
@@ -697,9 +698,10 @@ export class StateDecodeFailedError extends MidnightJsError {
 }
 
 /**
- * Thrown by `decodeContractState` when the era's decoder read the bytes but the state it produced is internally
- * inconsistent: it declares an entry point it resolves no operation for, holds
- * a verifier key that will not hash, or resolves no usable balance.
+ * Thrown by `decodeContractState` when the era's decoder read the bytes but the
+ * state it produced is internally inconsistent: it declares an entry point it
+ * resolves no operation for, holds a verifier key that will not hash, or
+ * resolves no usable balance.
  *
  * Distinct from {@link StateDecodeFailedError}: the bytes were readable by the
  * requested era, so decoding them as the other era cannot help. A caller that

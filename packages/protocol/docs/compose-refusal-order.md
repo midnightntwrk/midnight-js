@@ -231,6 +231,12 @@ and an unreadable contract state, Zswap offer, network id or ttl with
 payout the transaction cannot settle surfaces as `'call-dust-payout'` or
 `'call-unsupported-payout'`.
 
+When no circuit applies — `'call-empty'`, or a `'maintenance-update'` that
+replaces the authority — the error names `NO_CIRCUIT`, whose value is `'(none)'`.
+It is one exported literal so a caller can compare against it, and it is not a
+valid circuit identifier, so it can never be mistaken for a real entry point a
+caller might try to resolve.
+
 Three of those stages exist because the raw failure underneath them starts
 inside wasm. The public transcript is caller data in the ledger's own declared
 algebra, and nothing type-checks an op's operand into range, so the partitioner

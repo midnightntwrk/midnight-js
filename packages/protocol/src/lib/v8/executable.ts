@@ -45,7 +45,7 @@ import { type ContractStatePojo, describeValue, isContractBalance } from '../sha
 // 32 bytes in hex, either case: measured against the pinned runtime (see Ledger8Execution).
 export const LEDGER8_SIGNING_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
 
-// Measured, not chosen: the era reports `supportsCmaSignatureKind` as schnorr=true, ecdsa=false.
+// Measured, not chosen: schnorr only (see Ledger8Execution, "Constructor execution").
 const LEDGER8_SIGNATURE_KIND = 'schnorr' as const;
 
 /** A ledger 8 signing key: 32 bytes of hex. @see {@link LEDGER8_SIGNING_KEY_PATTERN} */
@@ -453,6 +453,7 @@ export const runLedger8Circuit = async <C extends Ledger8EngineContract, PS>(
     partitionContext: {
       block: only.public.partitionInputs.block,
       effects: only.public.partitionInputs.effects,
+      // Not `block.comIndices`: see Ledger8Execution, "What a TranscriptPojo carries".
       comIndices: only.public.partitionInputs.comIndices
     },
     zswapLocalState: call.zswapLocalState
