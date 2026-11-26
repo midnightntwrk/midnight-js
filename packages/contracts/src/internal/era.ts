@@ -552,7 +552,8 @@ const ASYNC_FUNCTION = 'AsyncFunction';
  * `major.minor` because a patch release never moves a toolchain across the fork.
  *
  * Frozen, and the ONE place a toolchain version is turned into an era. Adding an era adds a row
- * here; the gate below refuses to compile if one is added without a row.
+ * here; the gate below refuses to compile if one is added without a row, and a row naming a
+ * removed era fails at that row.
  *
  * The gate has to be a CONSTRAINT, not a bare conditional type: `type X = ... ? true : never` is a
  * legal declaration that nothing reads, so it computes the answer and discards it. Passing the
@@ -561,7 +562,7 @@ const ASYNC_FUNCTION = 'AsyncFunction';
 const RUNTIME_VERSION_TO_ERA = Object.freeze({
   '0.16': 'v8',
   '0.21': 'v9'
-} as const);
+} as const satisfies Readonly<Record<`${number}.${number}`, LedgerEra>>);
 
 // Compile-time gate: every pipeline era must be reachable from some declared runtime version.
 // Without it a third era could be added to `LedgerEra` with no toolchain mapped to it, and every
