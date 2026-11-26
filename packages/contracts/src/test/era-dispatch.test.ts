@@ -246,6 +246,9 @@ const ACCEPTED_CELLS: readonly (DispatchCell & { readonly route: string })[] = [
 const REFUSED_CELLS: readonly (DispatchCell & {
   readonly reason: EraMismatchReason;
 })[] = [
+  // Of the current-era rows on a `v8` head, only `deploy` is enforced in production. `call` and
+  // `maintenance` are reachable from tests alone: the current-era single-call path reads no head.
+  // See "Pairing the two" in packages/contracts/docs/era-dispatch.md.
   {
     artifact: 'current-era (0.18)',
     pipeline: 'v9',
@@ -353,6 +356,9 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   });
 
   it('names the reason on a current-era artifact refused by a pre-fork head', () => {
+    // Exercises the table, not a shipped path: a current-era single call reads no head, so on a
+    // pre-fork head it fails late, at a provider or the node. If that path ever reads the head,
+    // this cell becomes live. See "Pairing the two" in packages/contracts/docs/era-dispatch.md.
     try {
       assertEraCompatible('v9', 'v8', 'call');
       expect.unreachable('a current-era artifact was accepted on a pre-fork head');
