@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { NetworkId } from '@midnightntwrk/wallet-sdk';
 import { pino } from 'pino';
 
 import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
@@ -54,7 +55,7 @@ vi.mock('../src/wallet/wallet-utils', () => ({
 }));
 
 const testEnvironment: EnvironmentConfiguration = {
-  walletNetworkId: 'undeployed' as EnvironmentConfiguration['walletNetworkId'],
+  walletNetworkId: NetworkId.NetworkId.Undeployed,
   networkId: 'undeployed',
   indexer: 'http://localhost:8088',
   indexerWS: 'ws://localhost:8088',

@@ -13,13 +13,15 @@
  * limitations under the License.
  */
 
+import { NetworkId } from '@midnightntwrk/wallet-sdk';
+
 import { logger } from '../src/logger';
 import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
 import { FluentWalletBuilder } from '../src/wallet/fluent-wallet-builder';
 import { WalletSeeds } from '../src/wallet/wallet-seed';
 
 const testEnvironment: EnvironmentConfiguration = {
-  walletNetworkId: 'undeployed' as EnvironmentConfiguration['walletNetworkId'],
+  walletNetworkId: NetworkId.NetworkId.Undeployed,
   networkId: 'undeployed',
   indexer: 'http://localhost:8088',
   indexerWS: 'ws://localhost:8088',
