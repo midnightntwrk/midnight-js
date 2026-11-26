@@ -91,7 +91,7 @@ EraMismatchError If `options.compiledContract` belongs to neither Compact era, o
 
 > **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger8FoundContract`](../interfaces/Ledger8FoundContract.md)\<`C`\>\>
 
-The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
 Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It reads the

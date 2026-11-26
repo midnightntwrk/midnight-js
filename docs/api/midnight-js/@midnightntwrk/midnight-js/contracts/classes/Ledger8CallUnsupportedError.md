@@ -6,7 +6,7 @@
 
 # Class: Ledger8CallUnsupportedError
 
-An error indicating that a retained-era call cannot be composed, refused BEFORE the offer is built.
+An error indicating that a ledger 8 call cannot be composed, refused BEFORE the offer is built.
 
 `reason` `'shielded-spend'`: the call would spend a shielded coin the contract already holds on
 chain, which this pipeline structurally cannot compose. A coin the same call produced is NOT
@@ -15,7 +15,7 @@ previously held coins are.
 
 `reason` `'unmappable-recipient'`: the call would pay a shielded coin to a user-owned recipient
 whose encryption public key it cannot resolve: not the calling wallet, not the burn address, and
-not a key in the caller's `additionalCoinEncPublicKeyMappings`. Raised by a retained-era deploy
+not a key in the caller's `additionalCoinEncPublicKeyMappings`. Raised by a ledger 8 deploy
 too, whose options carry no mappings, with `circuitId` set to `'initialState'`; the message then
 names the constructor and gives the deploy-specific advice. Refusal rather than a best effort is the
 only answer that cannot lose a coin: encrypting the output to the caller's own key would compose,
@@ -23,9 +23,9 @@ prove, balance and submit, and leave the recipient owning a coin it could never 
 
 ## See
 
- - [ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for what the retained-era path is missing and why this refuses before
+ - [ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for what the ledger 8 path is missing and why this refuses before
 the offer is built.
- - [KeepStatePipeline](../../documents/KeepStatePipeline.md) for how the retained-era path resolves each recipient's encryption key.
+ - [KeepStatePipeline](../../documents/KeepStatePipeline.md) for how the ledger 8 path resolves each recipient's encryption key.
 
 ## Extends
 

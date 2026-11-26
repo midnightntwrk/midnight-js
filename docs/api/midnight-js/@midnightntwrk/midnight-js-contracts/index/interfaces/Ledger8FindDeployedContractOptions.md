@@ -6,7 +6,7 @@
 
 # Interface: Ledger8FindDeployedContractOptions\<C\>
 
-Configuration for attaching to an already-deployed retained-era contract.
+Configuration for attaching to an already-deployed ledger 8 contract.
 
 ## Type Parameters
 
@@ -54,7 +54,7 @@ being dropped.
 Where the calls made through [Ledger8FoundContract.callTx](Ledger8FoundContract.md#calltx) read and
 store this contract's private state.
 
-Optional because a retained-era contract may genuinely carry none: OMITTING
+Optional because a ledger 8 contract may genuinely carry none: OMITTING
 the property means nothing is read and nothing is written. Naming one the
 provider holds nothing under is a caller error and is refused, rather than
 executing against a default state — and so is writing the property with an
@@ -69,7 +69,7 @@ undefined value, which is a caller that believes it named an id.
 The key to record as this contract's maintenance authority key, for a
 caller that holds one and deployed the contract somewhere else.
 
-VALIDATED BEFORE IT IS STORED. A retained-era key is a `schnorr` key whose
+VALIDATED BEFORE IT IS STORED. A ledger 8 key is a `schnorr` key whose
 value is exactly 64 hexadecimal characters, which is what that era's
 `sampleSigningKey` produces; this type also admits `ecdsa` and values of any
 length, and those are refused with `Ledger8SigningKeyError` (reason `'unusable'`).

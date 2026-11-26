@@ -8,11 +8,11 @@
 
 > **Ledger8CircuitReturnType**\<`C`, `PCK`\> = `ReturnType`\<`C`\[`"provableCircuits"`\]\[`PCK`\]\> *extends* `object` ? `R` : `unknown`
 
-What a retained-era circuit's own return value narrows to.
+What a ledger 8 circuit's own return value narrows to.
 
 Derived through `infer` with a fallback rather than read off
 [Ledger8CircuitResult](../interfaces/Ledger8CircuitResult.md), whose `result` is `unknown` because that type is
-the ERA DISCRIMINATOR and has to stay wide enough to match any retained
+the ERA DISCRIMINATOR and has to stay wide enough to match any ledger 8
 codegen. A concrete contract type narrows it here; anything that does not
 falls to `unknown` rather than to `never`, so a caller is handed a value it
 has to check instead of one it cannot use.

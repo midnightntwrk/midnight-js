@@ -10,7 +10,7 @@ What a contract maintenance update -- a verifier key inserted or removed, or the
 authority replaced -- resolves with once the chain has recorded it.
 
 Nested like every other `contracts` result, so `era` names the pipeline and `public` carries the
-record. The retained era's counterpart is `Ledger8FinalizedMaintenanceTxData`; the two together
+record. The ledger 8 counterpart is `Ledger8FinalizedMaintenanceTxData`; the two together
 are `FinalizedMaintenanceTxData`.
 
 ## Properties

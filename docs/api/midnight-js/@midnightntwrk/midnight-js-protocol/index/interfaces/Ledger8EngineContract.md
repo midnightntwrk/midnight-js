@@ -6,12 +6,12 @@
 
 # Interface: Ledger8EngineContract
 
-A retained-era contract, as the caller holds it: the CONSTRUCTED artifact the
+A ledger 8 contract, as the caller holds it: the CONSTRUCTED artifact the
 previous toolchain generates.
 
 Deliberately not compact-js's `CompiledContract` container. That container is
 a recipe — a class plus witnesses, instantiated fresh per operation — and the
-retained era's callers hold an instance whose witnesses are already bound.
+ledger 8's callers hold an instance whose witnesses are already bound.
 containerFor adapts one to the other here, which keeps the
 adaptation in one place instead of on every consumer.
 

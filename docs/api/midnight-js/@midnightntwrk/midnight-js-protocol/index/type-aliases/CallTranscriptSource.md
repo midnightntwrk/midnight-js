@@ -11,8 +11,8 @@
 Where a call's public transcript comes from. Two shapes, because neither
 production leg subsumes the other:
 
-- `'unpartitioned'` — the raw op sequence a circuit emitted on the retained
-  pre-fork execution leg, the state it ran against, and the
+- `'unpartitioned'` — the raw op sequence a circuit emitted on the ledger 8
+  execution leg, the state it ran against, and the
   [PartitionContext](../interfaces/PartitionContext.md) that leg recorded.
 - `'partitioned'` — a guaranteed/fallible pair already split by compact-js,
   which is the current production path.
@@ -22,7 +22,7 @@ WASM handle.
 
 ## See
 
- - [RetainedEraExecution](../../documents/RetainedEraExecution.md) for the leg that submits the unpartitioned
+ - [Ledger8Execution](../../documents/Ledger8Execution.md) for the leg that submits the unpartitioned
 shape.
  - [ComposeRefusalOrder](../../documents/ComposeRefusalOrder.md) for why an already-partitioned pair is
 passed through rather than re-derived.

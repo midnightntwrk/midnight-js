@@ -8,7 +8,7 @@
 
 > **Ledger8CircuitId**\<`C`\> = keyof `C`\[`"provableCircuits"`\] & `string`
 
-The name of a callable circuit on a retained-era contract.
+The name of a callable circuit on a ledger 8 contract.
 
 Keyed off `provableCircuits`, NOT `impureCircuits`: `provableCircuits` is the
 map compact-js indexes to run a circuit, and the one the deploy pre-check

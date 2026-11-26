@@ -6,7 +6,7 @@
 
 # Interface: Ledger8Engine
 
-The public surface createLedger8Engine builds: the retained pre-fork
+The public surface createLedger8Engine builds: the pre-fork ledger 8
 EXECUTION capabilities.
 
 The two execution members are ASYNCHRONOUS. They used to be synchronous, and
@@ -96,7 +96,7 @@ options could describe two different blocks.
 
 StateConversionFailedError At stage `'state conversion'` when the
   state cannot be decoded, does not re-encode to its source, or carries a
-  balance the retained runtime cannot read.
+  balance the ledger 8 runtime cannot read.
 
 #### Throws
 
@@ -108,7 +108,7 @@ InvalidArgumentError When the contract declares no circuit of that name.
 
 > **executeConstructor**\<`C`, `PS`\>(`options`): `Promise`\<[`ConstructorResultPojo`](ConstructorResultPojo.md)\>
 
-Runs one retained-era constructor and returns the state it built.
+Runs one ledger 8 constructor and returns the state it built.
 
 ASYNCHRONOUS for the same reason [Ledger8Engine.executeCircuit](#executecircuit) is.
 Stricter than the leg it replaced: compact-js registers a verifier key
@@ -138,7 +138,7 @@ hand-written constructor left every slot blank.
 #### Throws
 
 ComposeOptionError Naming option `'signingKey'` when a supplied key
-  is not the 32 bytes of hex the retained runtime reads.
+  is not the 32 bytes of hex the ledger 8 runtime reads.
 
 #### Throws
 

@@ -6,18 +6,18 @@
 
 # Class: Ledger8SigningKeyError
 
-An error indicating that a signing key is not usable by the retained era.
+An error indicating that a signing key is not usable by ledger 8.
 
-`reason` is `'unusable'` when a key the caller supplied in this call - on a retained-era deploy, an
-attach, or an authority replacement - is not one the retained era can sign with. It is refused
+`reason` is `'unusable'` when a key the caller supplied in this call - on a ledger 8 deploy, an
+attach, or an authority replacement - is not one ledger 8 can sign with. It is refused
 BEFORE anything is composed or stored. Stored unchecked, a key the read rejects is reported on the
 attach that supplied it and read as ABSENT on every later one, and the bad entry has by then
 already replaced whatever was held there. The caller can correct it, because the value came from
 the caller, in this call.
 
-`reason` is `'unavailable'` when a retained-era maintenance update found no signing key it can
+`reason` is `'unavailable'` when a ledger 8 maintenance update found no signing key it can
 sign with for the contract it targets: nothing is stored for the address, the stored entry is not
-a retained-era key, or the store could not be read, in which case the read failure is on `cause`.
+a ledger 8 key, or the store could not be read, in which case the read failure is on `cause`.
 Raised before anything is composed or proven. Unlike an attach, which reports an unusable entry as
 absent, a maintenance update cannot proceed without the key.
 

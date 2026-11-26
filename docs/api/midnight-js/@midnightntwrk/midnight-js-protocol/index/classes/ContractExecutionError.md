@@ -6,7 +6,7 @@
 
 # Class: ContractExecutionError
 
-What a retained-era circuit or constructor execution fails with. A Compact `assert` refusal is the usual
+What a ledger 8 circuit or constructor execution fails with. A Compact `assert` refusal is the usual
 cause, but a key or config read failure or a runtime fault can also arrive this way, so `cause` is the
 source of truth. A failure that is, or carries on its `cause` chain, a midnight-js coded error is not
 wrapped in this class: that coded error surfaces directly.

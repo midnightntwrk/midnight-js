@@ -60,14 +60,14 @@ it.
 
 Era-neutral rather than one era's serialized bytes, because a contract that
 an earlier post-fork call has already migrated carries a CURRENT-era
-envelope while still executing on the retained runtime. Chain bytes would
+envelope while still executing on the ledger 8 runtime. Chain bytes would
 have to be decoded by the era that wrote them; this shape is what both
 envelopes' readers produce, so one path serves a pre-fork contract and a
 migrated one alike.
 
 The balance travels on the same value, so the two halves cannot come off
 different reads. executableStateFrom writes it onto a whole
-`ContractState`, which is the only form the retained runtime reads a
+`ContractState`, which is the only form the ledger 8 runtime reads a
 balance from — handed a bare state value it substitutes an empty map, and a
 circuit reading a balance then executes against nothing with every guard
 green. That substitution is what #1345 was.

@@ -8,11 +8,11 @@
 
 > **Ledger8DeployContractOptions**\<`C`\> = [`Ledger8ConstructorParameters`](Ledger8ConstructorParameters.md)\<`C`\> *extends* \[\] ? [`Ledger8DeployContractOptionsBase`](../interfaces/Ledger8DeployContractOptionsBase.md)\<`C`\> \| [`Ledger8DeployContractOptionsWithPrivateState`](../interfaces/Ledger8DeployContractOptionsWithPrivateState.md)\<`C`\> : ([`Ledger8DeployContractOptionsBase`](../interfaces/Ledger8DeployContractOptionsBase.md)\<`C`\> \| [`Ledger8DeployContractOptionsWithPrivateState`](../interfaces/Ledger8DeployContractOptionsWithPrivateState.md)\<`C`\>) & `object`
 
-Configuration for deploying a retained-era contract.
+Configuration for deploying a ledger 8 contract.
 
 `args` is CONDITIONAL, exactly as [Ledger8CallTxOptionsBase](Ledger8CallTxOptionsBase.md)'s is: a
 constructor that takes no arguments of its own has no `args` member at all.
-A retained constructor CAN take arguments — `Ledger8Contract.initialState`
+A ledger 8 constructor CAN take arguments — `Ledger8Contract.initialState`
 says so, and the pipeline under this overload has always passed them through — so
 denying them here made a zero-argument constructor the only deployable one.
 

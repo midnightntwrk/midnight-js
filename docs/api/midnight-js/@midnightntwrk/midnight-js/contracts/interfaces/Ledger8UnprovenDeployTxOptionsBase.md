@@ -6,7 +6,7 @@
 
 # Interface: Ledger8UnprovenDeployTxOptionsBase\<C\>
 
-Configuration for building a retained-era deploy without submitting it, with
+Configuration for building a ledger 8 deploy without submitting it, with
 `createLedger8UnprovenDeployTx` or `createLedger8UnprovenDeployTxFromVerifierKeys`. A builder
 stores nothing, so the constructor's private state needs no id to be stored under.
 
@@ -51,7 +51,7 @@ The private state the constructor runs against.
 The signing key to register as the deployed contract's maintenance
 authority. If undefined, a fresh one is sampled.
 
-The same `{ tag, value }` shape the current era takes. The retained era
+The same `{ tag, value }` shape the current era takes. Ledger 8
 signs with `schnorr` only, so any other key -- or a value that is not
 exactly 64 hexadecimal characters -- is refused with
 `Ledger8SigningKeyError` (reason `'unusable'`) before anything is composed.

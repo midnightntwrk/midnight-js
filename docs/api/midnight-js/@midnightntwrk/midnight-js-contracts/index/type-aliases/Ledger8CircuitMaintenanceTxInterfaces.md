@@ -8,7 +8,7 @@
 
 > **Ledger8CircuitMaintenanceTxInterfaces**\<`C`\> = `Record`\<[`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>, [`Ledger8CircuitMaintenanceTxInterface`](../interfaces/Ledger8CircuitMaintenanceTxInterface.md)\>
 
-One [Ledger8CircuitMaintenanceTxInterface](../interfaces/Ledger8CircuitMaintenanceTxInterface.md) per circuit the retained-era contract declares.
+One [Ledger8CircuitMaintenanceTxInterface](../interfaces/Ledger8CircuitMaintenanceTxInterface.md) per circuit the ledger 8 contract declares.
 
 ## Type Parameters
 

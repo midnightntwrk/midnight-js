@@ -23,12 +23,12 @@ Which option handed to a composition leg was unusable:
   records as the Unix epoch: a transaction that is already expired when it
   is composed.
 - `'calls'` — the call list is not one the target era can compose. The
-  retained pre-fork era composes exactly one call: a cross-contract call is a
+  ledger 8 composes exactly one call: a cross-contract call is a
   ledger-9-only feature that a pre-fork contract cannot emit, so that era has
   no call tree to express.
 - `'verifierKeys'` — a deploy was requested with no verifier-key map, and the
   state it was given needs one. Raised on BOTH eras, for two different
-  reasons: the retained era's deploy leg has to register the compiled
+  reasons: ledger 8's deploy leg has to register the compiled
   contract's keys itself and so always needs the map, while the current era
   accepts its omission for a state that already carries its keys and refuses
   it only for a state still declaring a blank-keyed entry point.

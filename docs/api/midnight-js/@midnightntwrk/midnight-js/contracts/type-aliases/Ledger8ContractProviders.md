@@ -8,9 +8,9 @@
 
 > **Ledger8ContractProviders**\<`C`, `PCK`\> = [`MidnightProviders`](../../types/interfaces/MidnightProviders.md)\<`PCK`, [`PrivateStateId`](../../types/type-aliases/PrivateStateId.md), [`Ledger8PrivateState`](Ledger8PrivateState.md)\<`C`\>\>
 
-The providers a retained-era call transaction needs.
+The providers a ledger 8 call transaction needs.
 
-The same provider set the current era uses, keyed by the retained-era circuit
+The same provider set the current era uses, keyed by the ledger 8 circuit
 id.
 
 ## Type Parameters
@@ -25,5 +25,5 @@ id.
 
 ## See
 
-[OverloadTyping](../../documents/OverloadTyping.md) for why there is no separate retained-era provider
+[OverloadTyping](../../documents/OverloadTyping.md) for why there is no separate ledger 8 provider
      surface.

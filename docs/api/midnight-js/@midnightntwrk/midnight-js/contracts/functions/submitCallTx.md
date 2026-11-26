@@ -10,11 +10,11 @@
 
 > **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
-The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
 Which pipeline runs is decided by the NETWORK'S LEDGER VERSION, not by this overload: before the fork the
-retained-era-native pipeline runs, after it the keep-state one.
+ledger 8 pipeline runs, after it the keep-state one.
 
 ### Type Parameters
 

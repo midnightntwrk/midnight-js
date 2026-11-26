@@ -52,7 +52,7 @@ must not be the one who decides it.
 
 `compiler/contract-info.json` is the fallback, for bundles that carry no manifest
 at all: `compactc` only began emitting one in 0.33, which is exactly the
-retained-era case. It goes through the same integrity gate as every verifier key
+ledger 8 case. It goes through the same integrity gate as every verifier key
 and ZKIR, so under the default `require` mode an unvouched-for description is
 refused rather than trusted.
 
