@@ -68,6 +68,10 @@ would name a CIRCUIT — the first one looked up and not found — and send a ca
 to audit an entry point that is fine. Raised here it names the real condition:
 the state carried no keys at all.
 
+An entry point WITHOUT a key is skipped rather than refused one by one. A
+contract may declare an entry point this call never touches, and if the circuit
+being called is the one missing a key, the composer names it precisely.
+
 ## Related reading
 
 `packages/contracts/docs/keep-state-pipeline.md` covers the pipeline this sits

@@ -34,31 +34,15 @@ import {
 } from './compose-types';
 import type { LedgerEra } from './ledger-version';
 
-/**
- * The `QueryContext` capability {@link assembleCallPrototype} needs beyond
- * construction: the two settable members and the one method the pre-partition
- * bridge writes a {@link PartitionContext} through.
- *
- * @typeParam TSelf The module's own `QueryContext` type, which
- * `insertCommitment` returns rather than mutating in place.
- * @see {@link ComposeRefusalOrder}
- */
+// `insertCommitment` returns a new context rather than mutating in place.
 export interface PartitionableQueryContext<TSelf> {
   block: CallContext;
   effects: Effects;
   insertCommitment: (commitment: CoinCommitment, index: bigint) => TSelf;
 }
 
-/**
- * The structural surface a ledger module (ledger-v8 or ledger-v9) exposes for
- * assembling a call prototype. Every type parameter is inferred from the
- * module namespace itself, so callers pass the module and never spell out type
- * arguments.
- *
- * @see {@link ComposeRefusalOrder} for why the payload types are declared once
- * against ledger-v9, and why `Transcript` is spelled out rather than left as a
- * type parameter.
- */
+// Type parameters are inferred from the module namespace; payload types are declared once against
+// ledger-v9 (see InjectedVendorSlices).
 export interface CallAssemblyLedger<
   TStateValue,
   TChargedState,
@@ -95,52 +79,24 @@ export interface CallAssemblyLedger<
   ) => TPrototype;
 }
 
-/**
- * The inputs partitioning a call's transcript needs, which are a subset of what
- * assembling the whole call does.
- *
- * Spelled as its own type so the split step names exactly what it reads: no
- * operation registry, no private outputs, no transaction envelope.
- */
+// What the split step reads: no operation registry, no private outputs, no envelope.
 type PartitionCallOptions = Pick<
   AssembleCallOptions<never>,
   'circuitId' | 'contractAddress' | 'transcript' | 'ledgerParametersBytes' | 'version'
 >;
 
-/**
- * The slice of a ledger `ContractState` {@link assembleCallPrototype} reads.
- *
- * @typeParam TOperation The resolved operation, constrained to the one
- * property this module inspects: a registered operation must carry a verifier
- * key for a call against it to be verifiable.
- * @see {@link ComposeRefusalOrder}
- */
 export interface CallOperationRegistry<TOperation> {
   readonly operation: (circuitId: string) => TOperation | undefined;
 }
 
-/** The one property {@link assembleCallPrototype} inspects on a resolved operation. */
 export interface VerifiableOperation {
   readonly verifierKey?: Uint8Array;
 }
 
-/**
- * The stages {@link assembleCallPrototype} can reach on a failed operation
- * lookup — the only stage choice a caller has, and narrower than
- * {@link ComposeStage} for that reason.
- *
- * @see {@link ComposeRefusalOrder}
- */
+// The only stage a caller chooses; see ComposeRefusalOrder.
 export type CallResolutionStage = Extract<ComposeStage, 'wrap-call' | 'call-operation'>;
 
-/**
- * Everything {@link assembleCallPrototype} needs beyond the ledger module.
- *
- * Carries the call's inputs directly rather than a whole execution transcript:
- * a call that arrives already partitioned never ran on this process's execution
- * leg at all, so there is no transcript object to hand over — only the pieces a
- * prototype is built from.
- */
+// The call's inputs, not a transcript: a partitioned call never ran on this process.
 export interface AssembleCallOptions<TOperation> {
   readonly circuitId: string;
   readonly contractAddress: string;
@@ -148,40 +104,17 @@ export interface AssembleCallOptions<TOperation> {
   readonly privateTranscriptOutputs: AlignedValue[];
   readonly input: AlignedValue;
   readonly output: AlignedValue;
-  /**
-   * The randomness the runtime bound a cross-contract callee to its caller
-   * with. Omitted for a root call, which is no one's callee and gets fresh
-   * randomness from the ledger module.
-   */
+  // Omitted for a root call, which gets fresh randomness from the ledger module.
   readonly communicationCommitmentRandomness?: string;
   readonly operations: CallOperationRegistry<TOperation>;
-  /**
-   * The ledger parameters the CHAIN held at the block this call is built against, serialized.
-   *
-   * The partitioner below decides what goes in the guaranteed segment and what goes in the fallible
-   * one, and it decides it from the cost model these carry. They are dynamic (prices adjust per
-   * block) and era-tagged, so the ledger's own `initialParameters()` is not a stand-in for them: it
-   * is the model the chain started with, not the one it is running. Partitioning against it draws
-   * the boundary in the wrong place, and the node then refuses the guaranteed segment with
-   * `Transcript(Execution(OutOfGas))`.
-   *
-   * Required. A caller with no read surface passes {@link INITIAL_LEDGER_PARAMETERS} to select the
-   * compatibility path explicitly -- there is no way to reach it by omission, because that made a
-   * cost model the chain does not run the default for anyone who forgot.
-   */
+  // Required: the partition is drawn from this cost model; see VersionTaggedPayloads (types package).
   readonly ledgerParametersBytes: LedgerParametersOption;
   readonly stage: CallResolutionStage;
   // The era every failure raised here names -- see ComposeRefusalOrder.
   readonly version: LedgerEra;
 }
 
-/**
- * Writes the context a call recorded onto the query context its transcript is
- * about to be partitioned against. Returns the folded context, never the one
- * it started from.
- *
- * @see {@link ComposeRefusalOrder}
- */
+// Returns the folded context, never the one it started from; see ComposeRefusalOrder.
 const bridgePartitionContext = <TQueryContext extends PartitionableQueryContext<TQueryContext>>(
   queryContext: TQueryContext,
   partitionContext: PartitionContext
@@ -195,13 +128,7 @@ const bridgePartitionContext = <TQueryContext extends PartitionableQueryContext<
   return bridged;
 };
 
-/**
- * Resolves a call's guaranteed/fallible transcript pair: a partitioned source
- * is passed through untouched, an unpartitioned one is bridged into the
- * module's own `QueryContext` ({@link bridgePartitionContext}) and split there.
- *
- * @see {@link ComposeRefusalOrder}
- */
+// A partitioned source passes through; an unpartitioned one is bridged and split. See ComposeRefusalOrder.
 const resolvePartition = <
   TStateValue,
   TChargedState,
@@ -241,22 +168,14 @@ const resolvePartition = <
   // The partitioner rejects caller data with a raw error from inside wasm, so
   // it is coded here -- see ComposeRefusalOrder.
   let partitioned: (readonly [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined])[];
-  // Read BEFORE the partitioner runs and reported separately, because a rejected parameter blob is
-  // a bad option and not a failed partition -- reporting it as the latter sends a reader after the
-  // transcript when the fault is in the bytes they passed. See ComposeRefusalOrder.
+  // Read before partitioning: a rejected blob is a bad option, not a failed partition. See ComposeRefusalOrder.
   let parameters: TParams;
   try {
     parameters =
       options.ledgerParametersBytes === INITIAL_LEDGER_PARAMETERS
-        ? // The ledger's INITIAL parameters: a compatibility path for a caller with no read
-          // surface, and not a correct substitute. They are the model the chain started with, not
-          // the one it is running -- prices adjust per block -- so partitioning against them draws
-          // the guaranteed/fallible boundary in the wrong place and the node refuses the guaranteed
-          // segment for running out of gas. Reachable only by naming the sentinel, never by
-          // omission -- see LedgerParametersOption.
+        ? // Reachable only by naming the sentinel; wrong for a running chain.
           ledger.LedgerParameters.initialParameters()
-        : // Deserialized with THIS era's reader, which is right because the bytes came from a block
-          // this era's call is being built against.
+        : // This era's reader: the bytes come from a block this era's call is built against.
           ledger.LedgerParameters.deserialize(options.ledgerParametersBytes);
   } catch (cause) {
     throw new ComposeOptionError(version, 'ledgerParametersBytes', cause);
@@ -277,35 +196,8 @@ const resolvePartition = <
   return first;
 };
 
-/**
- * Assembles one call prototype against the given ledger module — the sequence
- * every composition leg shares: resolve the circuit's registered operation,
- * resolve the call's guaranteed/fallible transcript pair (see
- * {@link resolvePartition}), and construct the module's
- * `ContractCallPrototype`.
- *
- * @typeParam TQueryContext The module's own `QueryContext`. Every other type
- * parameter is inferred from the module namespace, so callers pass the module
- * and never spell out type arguments.
- * @typeParam TOperation The resolved operation, constrained to
- * {@link VerifiableOperation}.
- * @param ledger The ledger module (ledger-v8 or ledger-v9) to assemble
- * against.
- * @param options The call's own inputs, the operation registry to resolve
- * `circuitId` against, and the era to name in a failure.
- * @returns The module's own `ContractCallPrototype` for this call, and the
- * guaranteed/fallible pair it was built from.
- * @throws ComposeFailedError naming `version` and `circuitId`, at
- * `options.stage` when `operations` has no registered operation for
- * `circuitId`; at `'call-verifier-key'` when the resolved operation carries no
- * verifier key; at `'call-transcript-empty'`, `'call-contract-state'`,
- * `'call-partition-context'` or `'call-partition'` from resolving the
- * transcript pair; at `'call-prototype'` when the module rejects the call's
- * own inputs.
- * @throws InvariantViolationError when the module's own partitioner returns no
- * result — its invariant, not a caller fault.
- * @see {@link ComposeRefusalOrder}
- */
+// The sequence every composition leg shares: resolve the operation, resolve the transcript pair,
+// construct the prototype. Refusals and their stages: see ComposeRefusalOrder.
 export const assembleCallPrototype = <
   TStateValue,
   TChargedState,

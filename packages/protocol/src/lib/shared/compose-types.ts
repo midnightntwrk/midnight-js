@@ -30,12 +30,8 @@ import type {
  * `block` and `effects` are the PRE-call values; `comIndices` is the POST-call
  * map. Plain data on every member.
  *
- * @see {@link ComposeRefusalOrder} for why partitioning needs the context the
- * circuit actually ran on, and why `CallContext` and `Effects` are declared
- * once against ledger-v9.
- * @see {@link Ledger8Execution} for why each member is read off the
- * context it is.
- * @see {@link EraBoundary}
+ * @see {@link ComposeRefusalOrder}
+ * @see {@link Ledger8Execution}
  */
 export interface PartitionContext {
   readonly block: CallContext;
@@ -45,23 +41,15 @@ export interface PartitionContext {
 }
 
 /**
- * Where a call's public transcript comes from. Two shapes, because neither
- * production leg subsumes the other:
+ * Where a call's public transcript comes from, as plain data:
  *
- * - `'unpartitioned'` — the raw op sequence a circuit emitted on the ledger 8
- *   execution leg, the state it ran against, and the
- *   {@link PartitionContext} that leg recorded.
- * - `'partitioned'` — a guaranteed/fallible pair already split by compact-js,
- *   which is the current production path.
+ * - `'unpartitioned'` — the op sequence a circuit emitted on the ledger 8
+ *   execution leg, the state it ran against, and its {@link PartitionContext}.
+ * - `'partitioned'` — a guaranteed/fallible pair compact-js already split;
+ *   passed through unchanged.
  *
- * Every member is plain data in the ledger's own declared algebra — no live
- * WASM handle.
- *
- * @see {@link Ledger8Execution} for the leg that submits the unpartitioned
- * shape.
- * @see {@link ComposeRefusalOrder} for why an already-partitioned pair is
- * passed through rather than re-derived.
- * @see {@link EraBoundary}
+ * @see {@link Ledger8Execution}
+ * @see {@link ComposeRefusalOrder}
  */
 export type CallTranscriptSource =
   | {
@@ -79,11 +67,9 @@ export type CallTranscriptSource =
 /**
  * The sentinel that asks for the ledger's own INITIAL cost model instead of the chain's.
  *
- * Spelled out as a value a caller has to name, because the thing it selects is wrong for any chain
- * that has been running: the initial parameters are the model the chain started with, and prices
- * adjust per block. Partitioning against them draws the guaranteed/fallible boundary in the wrong
- * place and the node then refuses the guaranteed segment with `Transcript(Execution(OutOfGas))` --
- * after the caller has already paid to prove it.
+ * Wrong for any chain that has been running: the node then refuses the guaranteed segment with
+ * `Transcript(Execution(OutOfGas))` after the proof is paid for. See the `VersionTaggedPayloads`
+ * document of `@midnightntwrk/midnight-js-types`.
  */
 export const INITIAL_LEDGER_PARAMETERS = 'initial';
 
@@ -91,16 +77,8 @@ export const INITIAL_LEDGER_PARAMETERS = 'initial';
  * What a composer accepts for the block's ledger parameters: the chain's own serialized parameters,
  * or {@link INITIAL_LEDGER_PARAMETERS}.
  *
- * There is deliberately no third option. This used to be optional, and omitting it fell back to the
- * initial parameters silently -- so a caller that simply forgot got the wrong cost model with no
- * signal, and a `PublicDataProvider` that does not serve `ledgerParameters` (the field is optional)
- * degraded every call built through it. Requiring the option keeps the compatibility path reachable
- * only as a decision, never as an oversight.
- *
- * A caller that reads the chain must pass the bytes from the SAME read as the contract state: the
- * parameters are era-tagged and dated per block, so a second read could answer for another block.
- *
- * @see {@link EraBoundary}
+ * Pass the bytes from the SAME read as the contract state: the parameters are era-tagged and dated
+ * per block, so a second read could answer for another block.
  */
 export type LedgerParametersOption = Uint8Array | typeof INITIAL_LEDGER_PARAMETERS;
 
@@ -117,12 +95,10 @@ export type PartitionedCallTranscript = [
  * Builds the transaction's Zswap offers once the composer holds every call's
  * partition, in `calls` order. Returns serialized offer bytes per segment; an
  * absent member is the normal shape of a segment that moves no shielded coin.
+ * There is no way to supply an offer without being handed the partition.
  *
- * A function rather than ready-made bytes: there is deliberately no way to
- * supply an offer without being handed the partition it must be routed against.
- *
- * @see {@link ComposeRefusalOrder} for why the boundary is not known until the
- * composer has split the transcripts.
+ * @see {@link ComposeRefusalOrder}
+ * @see {@link EraBoundary}
  */
 export type ZswapOfferFactory = (partitions: readonly PartitionedCallTranscript[]) => {
   readonly guaranteedBytes?: Uint8Array;
@@ -138,11 +114,8 @@ export type ZswapOfferFactory = (partitions: readonly PartitionedCallTranscript[
  * constructor-built state will not do, because it declares its entry points
  * with blank keys.
  *
- * `communicationCommitmentRandomness` is the randomness the runtime bound a
- * cross-contract callee to its caller with. The root call — being no one's
- * callee — omits it and gets fresh randomness.
- *
- * @see {@link EraBoundary}
+ * `communicationCommitmentRandomness` binds a cross-contract callee to its
+ * caller; the root call omits it.
  */
 export interface ComposeCallEntry {
   readonly contractAddress: string;
@@ -152,8 +125,6 @@ export interface ComposeCallEntry {
    * The ledger parameters the chain held at the block this call is built against, serialized —
    * `ContractStateAndParametersRead.ledgerParameters`, serialized and passed through untouched — or
    * {@link INITIAL_LEDGER_PARAMETERS} to partition against the ledger's initial cost model instead.
-   *
-   * Required, and deliberately so. See {@link LedgerParametersOption}.
    */
   readonly ledgerParametersBytes: LedgerParametersOption;
   readonly transcript: CallTranscriptSource;
@@ -169,14 +140,10 @@ export interface ComposeCallEntry {
  * `calls` is in execution-trace order: cross-contract callees first, the root
  * call last. A circuit with no cross-contract calls has a single entry.
  *
- * `zswapOffer` is called back once every call has been assembled, with the
- * partitions to route against; omitting it composes a transaction with no
- * shielded offer. `networkId` and `ttl` carry the caller's policy decisions —
- * which network, how long the transaction lives.
+ * `zswapOffer` is called back once every call has been assembled; omitting it
+ * composes a transaction with no shielded offer.
  *
- * @see {@link ZswapOfferFactory}
- * @see {@link ComposeRefusalOrder} for when the envelope options are checked.
- * @see {@link EraBoundary}
+ * @see {@link ComposeRefusalOrder}
  */
 export interface ComposeCallOptions {
   readonly calls: readonly ComposeCallEntry[];
@@ -188,13 +155,6 @@ export interface ComposeCallOptions {
 /**
  * What a composed call transaction answers with: the serialized UNPROVEN
  * transaction, and the partition each call was split into, in `calls` order.
- *
- * The partitions are returned rather than left inside the composer because a
- * caller that has to report what a call recorded per segment would otherwise
- * have to split the same transcript a second time, and nothing would notice if
- * the two answers stopped agreeing.
- *
- * @see {@link EraBoundary}
  */
 export interface ComposeCallResultPojo {
   readonly txBytes: Uint8Array;
@@ -213,7 +173,6 @@ export interface ComposeCallResultPojo {
  * ALREADY carries its keys.
  *
  * @see {@link VerifierKeys}
- * @see {@link EraBoundary}
  */
 export interface ComposeDeployOptions {
   readonly contractStateBytes: Uint8Array;
@@ -226,14 +185,11 @@ export interface ComposeDeployOptions {
 /**
  * What a composed deploy hands back.
  *
- * `contractAddress` cannot be recomputed from the state a caller passed in, so
- * it is handed back here rather than derived. `initialContractStateBytes` is the state that
- * address was derived from — what a caller stores and later hands to a call.
+ * `contractAddress` cannot be recomputed from the state a caller passed in.
+ * `initialContractStateBytes` is the state that address was derived from: what
+ * a caller stores and later hands to a call.
  *
- * All three are plain data.
- *
- * @see {@link VerifierKeys} for why the address cannot be recomputed.
- * @see {@link EraBoundary}
+ * @see {@link VerifierKeys}
  */
 export interface DeployResultPojo {
   readonly txBytes: Uint8Array;

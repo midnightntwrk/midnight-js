@@ -209,6 +209,13 @@ recipe, a class plus witnesses instantiated fresh per operation, while this
 era's callers hold an instance whose witnesses are already bound. `containerFor`
 adapts one to the other here, in one place, so the adaptation does not
 land on every consumer — and it is the single type assertion the module needs.
+The adapter hands compact-js the caller's own instance on every operation, so
+one instance is reused across calls. That is the lifetime this era already had
+before compact-js served it, not a new one.
+
+A circuit is looked up with `Object.hasOwn` before it is called. compact-js
+guards its own lookup only with `if (!circuit)`, so a name such as `'toString'`
+would resolve through the prototype and be called as a circuit.
 
 Ledger 8 has no cross-contract call, so its execution adapter
 synthesises a single-entry trace. `soleCall` reads that one entry by name
@@ -219,12 +226,23 @@ leaves on the result for the caller to turn into the transaction's Zswap offer.
 
 Failures come back with the runtime's own reason, not just compact-js's
 wrapper. `Effect.runPromise` alone rejects with a `FiberFailure`, which carries
-neither the failure's class nor its `cause`; `runOrRethrow` uses
-`runPromiseExit` plus `Cause.squash` to recover the real error and rethrows it
-with the whole `causeChain` spelled out in the message and the original on
-`cause`. Without that, `Error executing circuit 'x'` is all a caller sees and
-the actual diagnostic — a block-time refusal, an out-of-gas, a failed assertion
-— is lost at exactly the moment someone needs it.
+neither the failure's class nor its `cause`. `runOrRethrow` uses
+`runPromiseExit` and reads EVERY failure with `Cause.failures`, falling back to
+`Cause.squash` only when the cause holds no typed failure. Verifier keys are read
+with unbounded concurrency, so one deploy can fail several times at once, and
+squashing to one failure would send the caller round the fix-and-rerun loop once
+per missing key. It then rethrows:
+
+- a midnight-js coded error raised directly, unchanged, however many failures
+  arrived beside it;
+- a lone failure's coded error found on its `cause` chain, as that coded error;
+- otherwise a `ContractExecutionError` whose message spells out every failure
+  with its cause chain, whose `cause` is the first coded error (or the first
+  failure), and whose `errors` holds every failure as the original object.
+
+Without that, `Error executing circuit 'x'` is all a caller sees and the actual
+diagnostic — a block-time refusal, an out-of-gas, a failed assertion — is lost
+at exactly the moment someone needs it.
 
 ## What a `TranscriptPojo` carries, and why
 
@@ -251,7 +269,9 @@ be counted twice; `comIndices` is read off the POST-call one, because the
 runtime registers a received coin's commitment as the circuit produces it. All
 three arrive on the `partitionInputs` compact-js publishes alongside the call
 (midnightntwrk/midnight-sdk#400); before it did, they had to be scraped off a
-query context by hand.
+query context by hand. Do not read `block.comIndices` instead: it is one dot
+away and keyed to `number` rather than `bigint`, and it produces a partition the
+target era refuses without anything reporting it.
 
 `zswapLocalState` is the post-call Zswap local state, DECODED into the
 runtime's public shape: the coins the circuit spent and produced. A caller turns
@@ -276,12 +296,29 @@ constructor left every slot blank and the deploy composition was the only thing
 that ever checked coverage. That is why this entry point takes a
 `VerifierKeyReader` at all, and why it is required rather than optional.
 
+`initialize` also writes the maintenance authority. That matters because the
+ledger 8 constructor alone leaves an EMPTY committee with a threshold of one:
+one signature from a set of zero keys, which nothing can satisfy, so a
+deployment left on it could never have a verifier key inserted, removed or
+replaced.
+
 A malformed signing key is refused BEFORE the constructor runs, as
 `ComposeOptionError` naming option `'signingKey'`. The ledger 8 runtime's own
 refusals name neither the option, the era nor the caller — a short key reads
 back as `failed to fill whole buffer`, a non-hex one as `Invalid character 'z'
 at position 0` — and the refusal never renders the key itself, which on the
 sampled path is the only copy in existence.
+
+The key rule was measured against the pinned runtime, not guessed.
+`sampleSigningKey()` answers 64 lowercase hex characters, and an uppercase key
+of the same length is accepted too. Whether the value is a valid Schnorr scalar
+cannot be checked here; the runtime's own `Malformed Schnorr signing key` names
+that. The signature kind is measured the same way: the era reports
+`supportsCmaSignatureKind` as schnorr only, and `Ledger.fromPlatformSigningKey`
+answers `Left(ContractConfigurationError)` for an ecdsa key. Naming the kind
+(`'schnorr'`) is what keeps the bare hex string this era's callers hold
+assignable to platform-js's tagged `SigningKey`, which `Configuration.Keys`
+serves.
 
 `contractState` on the result is a ledger 8 HANDLE, so it does not go
 straight into a deploy: both `composeLedger8DeployTx` and the era facade's

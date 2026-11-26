@@ -14,16 +14,12 @@
  */
 
 /**
- * compact-js's ledger 8 entry, re-exported.
+ * compact-js's ledger 8 entry, re-exported: outside this package, compact-js
+ * is reached only through these subpaths (an ESLint import restriction in
+ * `eslint.config.mjs` enforces it).
  *
- * Published for the same reason `./v9/compact-js/effect` is: only
- * `packages/protocol/src/` may import compact-js directly, so a downstream
- * package that has to name a ledger 8 value reaches it through here.
- *
- * `executeCircuit` does NOT take one of these containers — it takes a
- * {@link Ledger8EngineContract}, the constructed artifact the previous toolchain
- * emits, and `containerFor` adapts it at that point. Making `CompiledContract`
- * ledger 8's public surface was attempted and reverted; see ADR 0015.
+ * `executeCircuit` does not take these containers; it takes a
+ * {@link Ledger8EngineContract}. See ADR 0015.
  */
 
 export * from '@midnightntwrk/compact-js/v8/effect';

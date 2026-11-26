@@ -59,6 +59,7 @@ fork-crossing work:
 |---|---|
 | `executeCircuit` | Runs a pre-fork circuit, on a state either era's reader may have decoded. Asynchronous. |
 | `executeConstructor` | Runs a pre-fork constructor. Asynchronous. |
+| `composeMaintenanceTx` | Composes an unproven v8 maintenance update, built and signed by compact-js's ledger 8 executable. Asynchronous. |
 | `wrapKeepStateCall` | Binds a pre-fork transcript natively onto v9. |
 | `reexpressOperationsForLedger9` | Re-expresses a ledger 8 contract's entry points as a ledger 9 state. |
 
@@ -118,19 +119,21 @@ what makes the two eras symmetrical. It costs a v9-only consumer nothing:
 asking for the v8 era IS the observation of v8, and nothing reaches that
 function until someone does.
 
-`Ledger8Engine` is built the same way. Every method on it is synchronous
-because the object is handed over only after the ledger 8 toolchain has been
-acquired, so there is nothing left to await — the acquisition happens once, in
-`createLedger8Engine`, and the runtime instance it obtained is captured in
-closure.
+`Ledger8Engine` is not built this way. `createLedger8Engine` does not acquire
+the v8 ledger module (see above), and the members that run compact-js — `executeCircuit`,
+`executeConstructor` and `composeMaintenanceTx` — are asynchronous, because
+compact-js builds them on `Effect.tryPromise`, which `runSync` cannot discharge.
+No `Effect` reaches a caller: every value crossing the surface is plain data or
+an era handle. `wrapKeepStateCall` and `reexpressOperationsForLedger9` stay
+synchronous.
 
 The v9 era needs no hoisting to reach the same shape. `createLedger9Era` is wholly
 synchronous: `@midnightntwrk/ledger-v9` is this package's current era and is
 already linked by the package root, so there is nothing to acquire and nothing
 that can fail there.
 
-The result is that both eras hand back an object whose methods are synchronous,
-for two eras whose acquisition costs are not remotely alike.
+The result is that both era facades hand back an object whose methods are
+synchronous, for two eras whose acquisition costs are not remotely alike.
 
 ## `loadLedgerEra` is the entry point
 

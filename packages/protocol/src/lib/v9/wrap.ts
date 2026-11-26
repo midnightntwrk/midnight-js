@@ -20,12 +20,8 @@ import type { LedgerParametersOption } from '../shared/compose-types';
 import type { TranscriptPojo } from '../v8/executable';
 
 /**
- * Everything {@link wrapKeepStateCall} needs to wrap one keep-state call.
- * `contractState` is the migrated, post-fork v9 `ContractState` — read from
- * chain, or otherwise carrying the contract's real registered operations —
- * used only to look up the `ContractOperation` for `transcript.circuitId`
- * (mirrors `ComposeLedger8CallOptions`'s `contractState` parameter in
- * `../v8/compose.ts`).
+ * Everything `wrapKeepStateCall` needs. `contractState` is the migrated v9
+ * state, which must already register the operation for `transcript.circuitId`.
  */
 export interface WrapKeepStateCallOptions {
   readonly transcript: TranscriptPojo;
@@ -33,36 +29,12 @@ export interface WrapKeepStateCallOptions {
   readonly contractState: ledgerV9.ContractState;
   /**
    * The ledger parameters of the block this call is built against, or
-   * {@link INITIAL_LEDGER_PARAMETERS} to accept the initial cost model.
-   *
-   * Required rather than defaulted, and not hard-coded to the initial parameters here: the
-   * transcript crosses as `'unpartitioned'`, so the partitioner DOES run and the cost model it uses
-   * is whatever this supplies. Defaulting it would make this function the silent
-   * wrong-cost-model path the option exists to close. See {@link LedgerParametersOption}.
+   * {@link INITIAL_LEDGER_PARAMETERS}. The transcript is partitioned against them.
    */
   readonly ledgerParametersBytes: LedgerParametersOption;
 }
 
-/**
- * Wraps a {@link TranscriptPojo} — the output of {@link runLedger8Circuit}
- * (`../v8/executable.ts`) — into a v9-native `ContractCallPrototype`, ready for
- * `Intent.new(ttl).addCall(...)`, via {@link assembleCallPrototype}
- * (`./assemble-call.ts`) against the ledger-v9 module.
- *
- * `options.contractState` is the migrated, post-fork v9 `ContractState` —
- * read from chain, or otherwise carrying the contract's real registered
- * operations. It must already carry the operation for the circuit: a
- * keep-state call registers no new verifier key.
- *
- * @param options The transcript to wrap, the contract's address, and the
- * migrated post-fork state to resolve the circuit's operation against.
- * @returns The v9-native call prototype.
- * @throws ComposeFailedError at stage `'wrap-call'` if `contractState`
- * registers no operation for the circuit, and at `'call-verifier-key'` if the
- * registered operation carries no verifier key — rather than falling back to a
- * blank, unverifiable operation.
- * @see {@link Ledger8Execution}
- */
+// Refuses rather than falling back to a blank, unverifiable operation; see Ledger8Execution.
 export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.ContractCallPrototype => {
   const { transcript, contractAddress, contractState, ledgerParametersBytes } = options;
   const { prototype } = assembleCallPrototype(ledgerV9, {

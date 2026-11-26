@@ -20,24 +20,12 @@ import type { ContractStatePojo } from '../shared/contract-state';
 import type { LedgerEra } from '../shared/ledger-version';
 
 /**
- * The facade of one ledger era: an object bound to that one era, obtained
- * from `loadLedgerEra`. It hides the era's ledger package (WASM,
- * `ContractState`, `Transaction`, serialization) behind methods that take
- * and return plain data only. There is one facade per era.
+ * The facade of one ledger era, obtained from `loadLedgerEra`. Both eras expose
+ * the same synchronous methods; {@link LedgerEraFacade.version} says which era
+ * an object is bound to.
  *
- * Both eras expose the SAME methods with the same signatures. Which era an
- * object is bound to is readable from {@link LedgerEraFacade.version} and nowhere
- * else — a caller that has resolved the era for a record (see
- * `protocolVersionToLedger` in `../../version.ts`) hands that value to
- * `loadLedgerEra` once and then writes era-agnostic code.
- *
- * Every value crossing this boundary is plain data: `Uint8Array`s and plain
- * objects, never a live WASM handle, so a result outlives the module that
- * produced it and survives a `structuredClone` or a worker boundary.
- *
- * The methods are synchronous. Asking for an era is the point at which its
- * runtime is acquired, so by the time a caller holds one of these there is
- * nothing left to await.
+ * Every value crossing it is plain data (`Uint8Array`s and plain objects), so a
+ * result survives `structuredClone` and a worker boundary.
  *
  * @see {@link EraBoundary}
  */
@@ -49,15 +37,10 @@ export interface LedgerEraFacade {
    * Reads the primary state out of a raw, serialized contract-state envelope
    * written by this era.
    *
-   * Fails closed on an envelope this era cannot read — including one written
-   * by the other era — rather than returning a partial or empty state. The
-   * failure is a `StateDecodeFailedError` naming this era, the same class
-   * {@link LedgerEraFacade.decodeContractState} raises, with the decoder's own
-   * diagnosis on `cause`.
-   *
    * @param raw The serialized contract-state envelope.
    * @returns The primary state read out of the envelope.
-   * @throws StateDecodeFailedError if this era's decoder rejects `raw`.
+   * @throws StateDecodeFailedError if this era's decoder rejects `raw`,
+   * including an envelope the other era wrote; the decoder's diagnosis is on `cause`.
    * @see {@link FailClosedDecoding}
    */
   extractState(raw: Uint8Array): EncodedStateValue;
@@ -79,50 +62,33 @@ export interface LedgerEraFacade {
   decodeContractState(raw: Uint8Array): ContractStatePojo;
 
   /**
-   * Composes an UNPROVEN call transaction and serializes it.
-   *
-   * The returned bytes are what `Transaction.serialize()` produces before
-   * `.prove()` is ever called; proving needs a proving provider and a running
-   * proof server, neither of which this method has.
-   *
-   * Ledger 8 composes exactly ONE call and refuses a longer
-   * list. A Zswap offer is NOT refused on either era.
-   *
-   * A call's Zswap offer is supplied as a FACTORY rather than as ready-made
-   * bytes. It is handed the transcript split this method resolves, and the same
-   * split comes back on the result.
+   * Composes an UNPROVEN call transaction and serializes it. Ledger 8 composes
+   * exactly one call. A call's Zswap offer is a factory that receives the
+   * transcript split this method resolves; an offer is refused on neither era.
    *
    * @param options The calls to compose and the transaction-wide envelope.
    * @returns The serialized UNPROVEN transaction and each call's partition.
-   * @throws ComposeOptionError if an option is unusable on this era — an
-   * empty `networkId`, an invalid `ttl`, undecodable offer or state bytes, or
-   * a call tree with more than one entry on ledger 8.
+   * @throws ComposeOptionError if an option is unusable on this era: an empty
+   * `networkId`, an invalid `ttl`, unreadable state or ledger-parameter bytes,
+   * or more than one call on ledger 8. `option` names it.
    * @throws ComposeFailedError if a call cannot be assembled; `stage` names
    * which step refused it.
    * @see {@link ComposeRefusalOrder}
-   * @see {@link EraBoundary}
    */
   composeCallTx(options: ComposeCallOptions): ComposeCallResultPojo;
 
   /**
-   * Composes an UNPROVEN deploy transaction and returns it together with the
-   * address the deployment will have and the initial state that address was
-   * derived from.
+   * Composes an UNPROVEN deploy transaction. Returns the address because a
+   * deploy mints a fresh nonce, so the caller cannot recompute it.
    *
-   * The address cannot be recomputed from the state a caller passed in — a
-   * deploy mints a fresh nonce — which is why it is returned rather than left
-   * to the caller to derive.
-   *
-   * @param options The initial state, its verifier keys, and the
-   * transaction-wide envelope.
+   * @param options The initial state, its verifier keys, and the envelope.
    * @returns The serialized UNPROVEN transaction, the address the deployment
    * will have, and the initial state that address was derived from.
-   * @throws ComposeOptionError if an option is unusable on this era — an
-   * empty `networkId`, an invalid `ttl`, undecodable state bytes, or an
-   * omitted `verifierKeys` for a state that still declares a blank key.
-   * @throws ComposeFailedError if the supplied keys do not match the state's
-   * declared entry points, or if the ledger rejects a key blob; `stage` names
-   * which check refused it.
+   * @throws ComposeOptionError if an option is unusable on this era: an empty
+   * `networkId`, an invalid `ttl`, unreadable state bytes, or `verifierKeys`
+   * omitted for a state that still declares a blank key. `option` names it.
+   * @throws ComposeFailedError if the keys do not match the declared entry
+   * points or the ledger rejects a key blob; `stage` names which check.
    * @see {@link VerifierKeys}
    * @see {@link ComposeRefusalOrder}
    */

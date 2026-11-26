@@ -29,13 +29,7 @@ import { aggregateUnshieldedOffers } from '../shared/unshielded';
 import { entryPointName } from '../shared/verifier-keys';
 import type { Ledger8Protocol } from './load';
 
-/**
- * Reads a serialized Zswap offer into the v8 era, reporting bytes this era
- * cannot decode as {@link ComposeOptionError}. An absent offer is the normal
- * shape of a call that moved no shielded coins, and stays absent.
- *
- * @see {@link ComposeRefusalOrder}
- */
+// An absent offer stays absent; unreadable bytes are an option error (see ComposeRefusalOrder).
 export const readZswapOffer = (
   raw: Uint8Array | undefined,
   v8: Ledger8Protocol,
@@ -51,28 +45,7 @@ export const readZswapOffer = (
   }
 };
 
-/**
- * Everything {@link composeLedger8CallTx} needs to assemble one v8-native call
- * transaction. `contractState` is the v8-native `ContractState` the call is
- * dispatched against, as read from chain — it is used only to look up the
- * `ContractOperation` for `circuitId`, so it must carry the operation a real
- * deploy registered, including its verifier key. A constructor-built state
- * will not do: it declares its entry points with blank keys.
- *
- * The call's own inputs are carried as plain data rather than as a whole
- * execution transcript — never a live pre-fork handle.
- *
- * `zswapOffer` is called back once the call has been split, with the partition
- * to route against. Omitting it composes a transaction with no shielded offer,
- * which is the normal shape of a call that moved no shielded coins.
- *
- * `networkId` and `ttl` carry the caller's policy decisions (which network,
- * how long the transaction lives); their well-formedness is checked here — see
- * `assertComposeEnvelope` (`../shared/compose-options.ts`).
- *
- * @see {@link EraBoundary}
- * @see {@link ComposeRefusalOrder}
- */
+// `contractState` must be read from chain: a constructor-built state has blank keys (see VerifierKeys).
 export interface ComposeLedger8CallOptions {
   readonly circuitId: string;
   readonly contractAddress: string;
@@ -82,40 +55,14 @@ export interface ComposeLedger8CallOptions {
   readonly input: AlignedValue;
   readonly output: AlignedValue;
   readonly communicationCommitmentRandomness?: string;
-  /**
-   * The ledger parameters the chain held at the block this call is built against, serialized.
-   *
-   * Read by the partitioner. Required: a caller with no read surface names
-   * {@link INITIAL_LEDGER_PARAMETERS} to select this era's initial parameters, which is a
-   * compatibility path and not a correct one -- see `AssembleCallOptions.ledgerParameters`.
-   */
+  // Required; see LedgerParametersOption.
   readonly ledgerParametersBytes: LedgerParametersOption;
   readonly networkId: string;
   readonly ttl: Date;
   readonly zswapOffer?: ZswapOfferFactory;
 }
 
-/**
- * Composes a v8-native call transaction from one call's inputs and immediately
- * serializes it. The call prototype comes from {@link assembleCallPrototype}
- * against the injected v8 module.
- *
- * Never proves the transaction: the returned bytes are an UNPROVEN,
- * tag-prefixed serialization, exactly what `Transaction.serialize()` produces
- * before `.prove()` is ever called.
- *
- * @param options The call's inputs, offers and envelope options.
- * @param v8 The v8 ledger module, as handed over by `loadLedger8Protocol`
- *   (`./load.ts`).
- * @returns The UNPROVEN, serialized call transaction and the call's partition.
- * @throws ComposeOptionError If `networkId` is empty, `ttl` is not a valid
- *   instant, or the factory answered with offer bytes this era cannot read.
- * @throws ComposeFailedError If `contractState` has no registered operation for
- *   `circuitId` (stage `'call-operation'`), or the operation it does have
- *   carries no verifier key (stage `'call-verifier-key'`), plus every stage
- *   {@link assembleCallPrototype} and {@link aggregateUnshieldedOffers} raise.
- * @see {@link ComposeRefusalOrder}
- */
+// Never proves: returns the UNPROVEN serialization. Refusals: see ComposeRefusalOrder.
 export const composeLedger8CallTx = (options: ComposeLedger8CallOptions, v8: Ledger8Protocol): ComposeCallResultPojo => {
   const { contractAddress, contractState, networkId, ttl, zswapOffer } = options;
   assertComposeEnvelope(options, 'v8');

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 import { ComposeFailedError, ComposeOptionError } from '../../errors';
 import type { UnprovenOffer } from '../../v8.js';
 import { assertComposeEnvelope } from '../shared/compose-options';
@@ -21,32 +20,7 @@ import type { DeployResultPojo } from '../shared/compose-types';
 import { resolveVerifierKeyRegistrations } from '../shared/verifier-keys';
 import type { Ledger8Protocol } from './load';
 
-/**
- * The minimal shape a pre-fork (`compact-runtime@0.16`) `ContractState` is used
- * through here: just `.serialize()`. It is what {@link executeConstructor}
- * returns on its result, and `.serialize()` is how a caller turns that handle
- * into the bytes every deploy leg takes.
- *
- * Crosses the era boundary by bytes, not by handle.
- *
- * @see {@link DualInstantiationGuard} for why that crossing is the one a
- *      duplicate install cannot affect
- * @see {@link EraBoundary}
- */
-/**
- * Everything {@link composeLedger8DeployTx} needs to assemble one v8-native
- * deploy transaction. `verifierKeys` maps entry-point name -> raw, tagged
- * verifier key bytes (`keys/<id>.verifier`), and must name exactly the entry
- * points the contract state declares — no more, no fewer; see
- * {@link composeLedger8DeployTx}.
- *
- * `networkId` and `ttl` carry the caller's policy decisions (which network,
- * how long the transaction lives); their well-formedness is checked here — see
- * `assertComposeEnvelope` (`../shared/compose-options.ts`).
- *
- * @see {@link VerifierKeys}
- * @see {@link ComposeRefusalOrder}
- */
+// `verifierKeys` must name exactly the declared entry points; see VerifierKeys.
 export interface ComposeLedger8DeployOptions {
   readonly contractStateBytes: Uint8Array;
   readonly verifierKeys: ReadonlyMap<string, Uint8Array>;
@@ -56,11 +30,7 @@ export interface ComposeLedger8DeployOptions {
   readonly guaranteedZswapOffer?: UnprovenOffer;
 }
 
-/**
- * Bridges a pre-fork contract state into the v8 era by bytes, reporting a
- * rejected envelope as {@link ComposeOptionError} rather than letting a raw
- * decoder failure escape.
- */
+// A rejected state is an option error, never a raw decoder failure.
 const bridgeContractState = (
   contractState: Uint8Array,
   v8: Ledger8Protocol
@@ -72,11 +42,7 @@ const bridgeContractState = (
   }
 };
 
-/**
- * Registers one verifier key, reporting bytes the ledger rejects as
- * {@link ComposeFailedError} (stage `'deploy-verifier-key-blob'`) so the
- * failure names the entry point it belongs to.
- */
+// A rejected key blob names its entry point (stage 'deploy-verifier-key-blob').
 const registerVerifierKey = (
   ledgerContractState: InstanceType<Ledger8Protocol['ContractState']>,
   entryPoint: string | Uint8Array,
@@ -93,40 +59,8 @@ const registerVerifierKey = (
   ledgerContractState.setOperation(entryPoint, operation);
 };
 
-/**
- * Composes a v8-native deploy transaction from a {@link ConstructorResultPojo}'s
- * `contractState` and immediately serializes it: bridge the constructor's
- * pre-fork state into a v8-native one, register a verifier key for every entry
- * point it declares, then wrap it in a `ContractDeploy` / `Intent` /
- * `Transaction`.
- *
- * The verifier-key map is validated against the state's declared entry points
- * BEFORE anything is registered, by {@link resolveVerifierKeyRegistrations} —
- * the resolver both eras' deploy legs share.
- *
- * Never proves the transaction: the returned bytes are an UNPROVEN,
- * tag-prefixed serialization, exactly what `Transaction.serialize()` produces
- * before `.prove()` is ever called.
- *
- * @param options The state bytes, the verifier-key map, the envelope options
- *   and an optional Zswap offer.
- * @param v8 The v8 ledger module, as handed over by `loadLedger8Protocol`
- *   (`./load.ts`).
- * @returns The UNPROVEN, serialized transaction, the address the deployment
- *   will have, and the registered initial state. A deploy mints a fresh nonce,
- *   so the address is not a function of the state a caller passed in and cannot
- *   be recomputed from it — and the state the address was derived from is the
- *   one a caller stores and later dispatches calls against.
- * @throws ComposeOptionError If `networkId` is empty or `ttl` is not a valid
- *   instant, or the state bytes cannot be read.
- * @throws ComposeFailedError If the map and the state's declared entry points
- *   do not agree (stages `'deploy-ambiguous-circuit'`,
- *   `'deploy-unknown-circuit'`, `'deploy-verifier-key'`), or the ledger itself
- *   rejects a key blob (stage `'deploy-verifier-key-blob'`, with the ledger's
- *   own failure on `cause`).
- * @see {@link VerifierKeys}
- * @see {@link ComposeRefusalOrder}
- */
+// Validates the key map before registering anything, and never proves. The address cannot be
+// recomputed from the input state: a deploy mints a fresh nonce. See VerifierKeys.
 export const composeLedger8DeployTx = (options: ComposeLedger8DeployOptions, v8: Ledger8Protocol): DeployResultPojo => {
   const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
   assertComposeEnvelope(options, 'v8');

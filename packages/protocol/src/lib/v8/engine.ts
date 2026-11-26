@@ -54,96 +54,78 @@ export type {
 };
 
 /**
- * The public surface {@link createLedger8Engine} builds: the pre-fork ledger 8
- * EXECUTION capabilities.
- *
- * The two execution members are ASYNCHRONOUS. They used to be synchronous, and
- * the docblock here used to promise it: compact-js builds a circuit call on
- * `Effect.tryPromise`, so `runSync` cannot discharge it and the promise is not
- * satisfiable. Nothing else about the surface changed shape -- every value
- * crossing it is still plain data or an era handle, and no `Effect` reaches a
- * caller.
+ * The pre-fork ledger 8 execution capabilities {@link createLedger8Engine}
+ * builds. Every value crossing it is plain data or an era handle; no `Effect`
+ * reaches a caller.
  *
  * @see {@link EraBoundary}
  */
 export interface Ledger8Engine {
   /**
-   * Runs one circuit against the decoded contract state the chain serves.
-   *
-   * Takes the state and the balances beside it as ONE value -- see
-   * {@link Ledger8CircuitOptions.contractState} -- because the balances a
-   * circuit reads do not live inside the primary state, and two separate
-   * options could describe two different blocks.
+   * Runs one circuit against the decoded contract state the chain serves,
+   * with the balances on the same value ({@link Ledger8CircuitOptions.contractState}).
    *
    * @throws StateConversionFailedError At stage `'state conversion'` when the
    *   state cannot be decoded, does not re-encode to its source, or carries a
    *   balance the ledger 8 runtime cannot read.
-   * @throws InvalidArgumentError When the contract declares no circuit of that name.
+   * @throws InvalidArgumentError When the contract declares no circuit of that name, or
+   *   `nowSeconds` is not a finite number.
    */
   executeCircuit<C extends Ledger8EngineContract, PS>(
     options: Ledger8CircuitOptions<C, PS>
   ): Promise<TranscriptPojo>;
   /**
-   * Runs one ledger 8 constructor and returns the state it built.
-   *
-   * ASYNCHRONOUS for the same reason {@link Ledger8Engine.executeCircuit} is.
-   * Stricter than the leg it replaced: compact-js registers a verifier key
-   * against every declared entry point and refuses a missing one, where the
-   * hand-written constructor left every slot blank.
+   * Runs one ledger 8 constructor and returns the state it built, with a
+   * verifier key registered for every declared entry point.
    *
    * @throws ComposeOptionError Naming option `'signingKey'` when a supplied key
    *   is not the 32 bytes of hex the ledger 8 runtime reads.
    * @throws ComposeFailedError At stage `'deploy-verifier-key-blob'` when the
    *   ledger refuses the bytes served for a circuit.
+   * @throws ContractExecutionError When the key reader serves no key for a
+   *   declared entry point; compact-js's refusal is on `cause`.
    */
   executeConstructor<C extends Ledger8EngineContract, PS>(
     options: Ledger8ConstructorOptions<C, PS>
   ): Promise<ConstructorResultPojo>;
+  /**
+   * Wraps a ledger 8 transcript into a v9 call prototype against the migrated
+   * v9 contract state, which must already register the circuit's operation.
+   *
+   * @throws ComposeFailedError At stage `'wrap-call'` when the state registers
+   *   no operation for the circuit, or `'call-verifier-key'` when that
+   *   operation has no verifier key.
+   */
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
   /**
-   * Composes an UNPROVEN v8 transaction carrying one maintenance update --
-   * insert a verifier key, remove one, or replace the maintenance authority --
-   * built and signed by compact-js's ledger 8 `ContractExecutable`.
-   *
-   * ASYNCHRONOUS for the same reason {@link Ledger8Engine.executeCircuit} is.
-   * Reads the FULL state off the bytes the chain holds, and refuses a signing
-   * key other than the committee's first member before anything is signed.
+   * Composes an UNPROVEN v8 transaction carrying one maintenance update
+   * (insert a verifier key, remove one, or replace the authority). Does not
+   * check whether the targeted key slot is occupied.
    *
    * @throws ComposeOptionError Naming `'networkId'`, `'ttl'`, `'signingKey'`,
    *   `'newSigningKey'` or `'contractStateBytes'` when that option is unusable.
-   * @throws MaintenanceAuthorityMismatchError When the signing key is not the
-   *   committee's first member.
-   * @throws ComposeFailedError At stage `'maintenance-update'` when compact-js
-   *   refuses to build or sign the update.
+   * @throws MaintenanceAuthorityMismatchError When the authority has no
+   *   committee, needs more than one signature, or the signing key is not its
+   *   first member.
+   * @throws ComposeFailedError At stage `'maintenance-update'` when the address,
+   *   compact-js or the ledger refuses the update, with that failure on `cause`;
+   *   a coded cause is rethrown as itself.
+   * @throws InvalidArgumentError When an untyped caller names an unknown update kind.
    */
   composeMaintenanceTx(request: Ledger8MaintenanceRequest): Promise<Uint8Array>;
   /**
    * Re-expresses a ledger 8 contract's entry points as a ledger 9 contract state, so a
    * keep-state call has an operation registry the ledger 9 composer can read.
    *
-   * Fork-crossing work, which is why it sits here rather than on either era facade: the input is
-   * what the ledger 8 decoder read off the chain, and the output is for ledger 9.
+   * @throws ComposeOptionError Naming `'contractStateBytes'` when no entry point carries a key.
+   * @see {@link CrossEraOperationRegistry}
    */
   reexpressOperationsForLedger9(entryPoints: readonly ContractEntryPointPojo[]): Uint8Array;
 }
 
 /**
- * Builds a {@link Ledger8Engine}.
- *
- * The ledger 8 toolchain is no longer acquired here: compact-js's era-pinned
- * ledger-8 entries own it, and `lib/v8/executable.ts` reaches them. What this
- * function still does is sit behind the dynamic `import('../../engine.js')` in
- * `lib/v8/load-engine.ts`, so importing the package root never pulls the
- * multi-megabyte ledger 8 WASM onto the module graph.
- *
- * It no longer runs a dual-instantiation guard either. That guard compared
- * `onchain-runtime-v3` against the 0.16 glue at construction time. Both
- * acquisition paths are still live — `lib/v8/executable.ts` imports the glue
- * directly, and compact-js resolves the same specifier for itself — so the axis
- * did not go away; only the runtime check did. The invariant is held at install
- * time instead, by `src/test/single-instance.test.ts`, which pins one resolved
- * copy of `onchain-runtime-v3` and of each compact-runtime era line. That is a
- * check on THIS repo's lockfile, not on a consumer's process.
+ * Builds a {@link Ledger8Engine} without acquiring the v8 ledger module; reach it through
+ * `loadLedger8Engine` so the ledger 8 WASM stays off the root module graph.
  *
  * @returns The engine surface.
  * @see {@link EraBoundary}

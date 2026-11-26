@@ -18,29 +18,13 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { ComposeOptionError } from '../../errors';
 import type { ContractEntryPointPojo } from '../shared/contract-state';
 
-/**
- * Re-expresses a ledger 8 contract's entry points as a ledger 9 contract state.
- *
- * What crosses the era boundary here is the OPERATION REGISTRY, not the state. The primary state is
- * deliberately left at its default: a caller that needs the state itself reads it from
- * {@link ContractStatePojo.state}.
- *
- * @param entryPoints The entry points a ledger 8 contract state declared, as the ledger 8
- * decoder read them.
- * @returns The serialized ledger 9 contract state, carrying those entry points and their keys.
- * @throws ComposeOptionError if no entry point carries a key.
- * @see {@link CrossEraOperationRegistry} for why re-expressing the operations is faithful rather
- * than a substitution, and why the empty registry is refused here rather than one layer down.
- */
+// The operation registry crosses the fork, not the state; see CrossEraOperationRegistry.
 export const reexpressOperationsForLedger9 = (entryPoints: readonly ContractEntryPointPojo[]): Uint8Array => {
   const state = new ledgerV9.ContractState();
   let registered = 0;
 
   for (const entryPoint of entryPoints) {
-    // A blank slot is carried as `undefined` rather than as empty bytes -- see the fail-closed
-    // decoding note on ContractEntryPointPojo. Skipped rather than refused one by one: if the
-    // circuit being called is the one missing a key, the composer names it precisely, and a
-    // contract may legitimately declare an entry point this call does not touch.
+    // A blank slot is skipped, not refused; see CrossEraOperationRegistry.
     if (entryPoint.verifierKey === undefined) {
       continue;
     }

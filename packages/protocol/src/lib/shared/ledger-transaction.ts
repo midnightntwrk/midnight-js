@@ -137,17 +137,14 @@ const assertKnownEra = (era: string): void => {
 
 /**
  * Reads serialized bytes as a transaction of the given era at the given stage.
- *
- * A v8 transaction is read through {@link loadLedger8Protocol}, so the result
- * is an object of the ledger copy this framework loaded.
+ * A v8 transaction is an object of the ledger copy {@link loadLedger8Protocol} loaded.
  *
  * @param era The ledger era that wrote the bytes.
  * @param stage The stage the bytes were serialized at.
  * @param bytes The serialized transaction.
  * @returns The live transaction object.
  * @throws PayloadNotATransactionError If `bytes` is not a serialized
- *   transaction, or the era's runtime cannot read it at `stage`; the runtime's
- *   refusal is on `cause`.
+ *   transaction of `era` at `stage`; a runtime refusal is on `cause`.
  * @throws UnknownLedgerEraError If `era` is not a ledger era.
  * @throws InvalidArgumentError If `stage` is not a transaction stage.
  * @throws Ledger8RuntimeMissingError If the v8 runtime cannot be loaded.

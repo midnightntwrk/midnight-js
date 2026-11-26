@@ -24,12 +24,7 @@ import { composeLedger9CallTx, composeLedger9DeployTx } from '../v9/compose';
 import { extractEncodedStateValue, extractLedger9EncodedStateValue } from './envelope';
 import type { LedgerEraFacade } from './era';
 
-// The option, parameter and return vocabulary of the facade's compose methods
-// travels with them: publishing a method without them leaves a caller unable to
-// name what it takes or answers with, and `INITIAL_LEDGER_PARAMETERS`
-// unreachable except as a hand-written literal. The constant is a plain string
-// and its module imports nothing at run time, so this re-export adds no eager
-// graph -- see the dist-laziness gate.
+// The compose vocabulary travels with the facade; adds no eager graph (see ModuleGraphAndLazyLoading).
 export type {
   CallTranscriptSource,
   ComposeCallEntry,
@@ -64,11 +59,7 @@ const createLedger9Era = (): LedgerEraFacade => {
   return Object.freeze(era);
 };
 
-/**
- * The v8 era. Acquires ledger 8 and binds it into closure,
- * so the era's own methods stay synchronous -- see the EraBoundary document for why
- * the acquisition is hoisted here.
- */
+// Acquires ledger 8 up front so the era's methods stay synchronous; see EraBoundary.
 const createLedger8Era = async (): Promise<LedgerEraFacade> => {
   const v8 = await loadLedger8Protocol();
 
@@ -84,24 +75,14 @@ const createLedger8Era = async (): Promise<LedgerEraFacade> => {
 };
 
 /**
- * Resolves one ledger era to a {@link LedgerEraFacade} bound to it.
- *
- * This is the only sanctioned way to reach either era's operations. Pass the
- * version resolved from a record or from the network's latest block (see
- * `protocolVersionToLedger` in `../../version.ts`) rather than a string chosen
- * by hand.
- *
- * Memoised per era, so the ledger 8 WASM is instantiated at most once
- * per process. A FAILED v8 acquisition is not memoised: the next call retries.
+ * Resolves one ledger era to a {@link LedgerEraFacade} bound to it. Pass the
+ * era resolved from a record or the network head (`protocolVersionToLedger`).
+ * Memoised per era; a failed v8 acquisition is not memoised.
  *
  * @param version The era to resolve.
- * @returns The era facade bound to `version`. The same object on every call
- * for that era, and frozen.
- * @throws UnknownLedgerEraError — as a rejection — if `version` is not a
- * member of `LEDGER_ERAS`.
- * @throws Ledger8RuntimeMissingError — as a rejection — if the ledger 8
- * runtime cannot be acquired. It propagates unchanged, carrying the
- * underlying cause.
+ * @returns The frozen facade, the same object on every call for that era.
+ * @throws UnknownLedgerEraError (as a rejection) if `version` is not in `LEDGER_ERAS`.
+ * @throws Ledger8RuntimeMissingError (as a rejection) if ledger 8 cannot be acquired.
  * @see {@link EraBoundary}
  * @see {@link SharedTableDiscipline}
  */

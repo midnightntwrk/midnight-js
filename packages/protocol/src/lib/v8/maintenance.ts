@@ -149,34 +149,8 @@ const brandedAddress = (
   }
 };
 
-/**
- * Composes an UNPROVEN v8 transaction carrying one maintenance update, built
- * and signed by compact-js's ledger 8 `ContractExecutable`, and serializes it.
- *
- * Checks only what compact-js does not: the envelope, the key formats, and
- * that the authority can be signed for the way compact-js signs — one
- * signature, by the committee member at index 0.
- *
- * Whether the verifier-key slot an insert or a remove targets is occupied is
- * NOT checked here: that is the caller's decision, made against the same state.
- *
- * @param request The contract, its full state, the coin public key, the
- *   authority key, the transaction envelope and the update.
- * @returns The UNPROVEN, serialized transaction.
- * @throws ComposeOptionError If `networkId` is empty, `ttl` is not a valid
- *   instant, `signingKey` or `newSigningKey` is not 64 hex characters,
- *   `signingKey` is not a Schnorr scalar the ledger 8 runtime can read, or the
- *   state bytes cannot be read by the ledger 8 runtime.
- * @throws MaintenanceAuthorityMismatchError If the authority has no committee,
- *   needs more than one signature, or the signing key is not its first member.
- * @throws InvalidArgumentError If an untyped caller names an update kind that
- *   does not exist.
- * @throws ComposeFailedError At stage `'maintenance-update'` if the address,
- *   compact-js or the ledger refuses the update, with that failure on `cause`.
- *   A failure that already carries a coded midnight-js error is rethrown as
- *   that error instead.
- * @see {@link Ledger8Execution}
- */
+// Checks only what compact-js does not: the envelope, the key formats, and that the authority can be
+// signed for at committee index 0. Whether the targeted key slot is occupied is the caller's decision.
 export const composeLedger8MaintenanceTx = async (request: Ledger8MaintenanceRequest): Promise<Uint8Array> => {
   const { contract, contractAddress, contractStateBytes, coinPublicKey, signingKey, networkId, ttl, update } = request;
   assertComposeEnvelope(request, 'v8');

@@ -34,23 +34,15 @@ export type {
 let enginePromise: Promise<Engine.Ledger8Engine> | undefined;
 
 /**
- * The only sanctioned runtime path to the engine's public surface.
+ * Loads the ledger 8 engine on the first call, never as a side effect of
+ * importing the package root.
  *
- * The ledger 8 `compact-runtime@0.16` glue and
- * `@midnight-ntwrk/onchain-runtime-v3` WASM load only on the first call — never
- * as a side effect of importing the package root.
- *
- * A failed load is not memoised: the next call retries the import. A
- * {@link Ledger8RuntimeMissingError} from the ledger 8 runtime acquisition
- * propagates unchanged. Every other failure is wrapped in
- * {@link Ledger8RuntimeMissingError}, including the coded
- * `Ledger8RuntimeInvalidError` the envelope decoder raises for an incomplete
- * runtime, and a raw module-resolution error on the engine chunk itself.
+ * A failed load is not memoised: the next call retries the import.
  *
  * @returns The engine's public surface, memoised after the first successful
  *   load.
- * @throws Ledger8RuntimeMissingError If the ledger 8 runtime, or the `./v8/engine`
- *   chunk itself, cannot be acquired.
+ * @throws Ledger8RuntimeMissingError If the `./v8/engine` chunk cannot be
+ *   loaded; the import failure is on `cause`.
  * @see {@link ModuleGraphAndLazyLoading}
  * @see {@link EraBoundary}
  */

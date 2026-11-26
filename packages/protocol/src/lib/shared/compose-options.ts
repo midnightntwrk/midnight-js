@@ -22,16 +22,7 @@ export interface ComposeEnvelopeOptions {
   readonly ttl: Date;
 }
 
-/**
- * Rejects the two envelope options the ledger accepts but should not: an
- * empty `networkId`, and a `ttl` that is not a valid instant.
- *
- * @param options The transaction-envelope options to check.
- * @param version The era every failure raised here names.
- * @throws ComposeOptionError naming option `'networkId'` for an empty network
- * id, or `'ttl'` for a `ttl` that is not a valid instant.
- * @see {@link ComposeRefusalOrder}
- */
+// The two envelope options the ledger accepts but should not; see ComposeRefusalOrder.
 export const assertComposeEnvelope = (options: ComposeEnvelopeOptions, version: LedgerEra): void => {
   if (options.networkId.length === 0) {
     throw new ComposeOptionError(version, 'networkId');

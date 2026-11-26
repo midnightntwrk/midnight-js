@@ -136,12 +136,8 @@ export const versionOfRecord = (record: VersionedRecord): LedgerEra =>
  * Queries `source` for the network's latest protocol version and
  * resolves it to a {@link LedgerEra}.
  *
- * The source is expected to read the network on every call. This is the
- * construct path: the era being resolved is the one a transaction built now
- * will land in, and a stale reading is wrong exactly at the fork boundary,
- * where that question matters. `PublicDataProvider.queryLatestProtocolVersion`
- * states the same prohibition as a requirement on its implementations; this
- * parameter is a structural type, so nothing here can enforce it. See ADR 0007.
+ * `source` must read the network on every call, never cache: a stale reading
+ * is wrong exactly at the fork boundary. See ADR 0007.
  *
  * @param source The indexer or node client to ask for the latest version.
  * @returns A promise for the {@link LedgerEra} of the network's latest block.

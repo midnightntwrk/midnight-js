@@ -30,18 +30,7 @@ export interface CallTranscriptPair {
   readonly fallible?: Transcript<AlignedValue>;
 }
 
-/**
- * The era module slice {@link aggregateUnshieldedOffers} needs: just the
- * `UnshieldedOffer` constructor.
- *
- * @typeParam TOffer The offer type the era's own `UnshieldedOffer.new`
- * returns, inferred from the module that is passed.
- * @see {@link ComposeRefusalOrder} for why this slice is hand-written and
- * generic rather than derived from one era's class, and why `inputs` and
- * `signatures` are typed `never[]`.
- * @see {@link ModuleGraphAndLazyLoading} for why the module is injected rather
- * than imported.
- */
+// Hand-written and generic; `never[]` inputs and signatures: see InjectedVendorSlices.
 export interface UnshieldedOfferLedger<TOffer> {
   readonly UnshieldedOffer: {
     readonly new: (inputs: never[], outputs: UtxoOutput[], signatures: never[]) => TOffer;
@@ -54,21 +43,7 @@ export interface AggregatedUnshieldedOffers<TOffer> {
   readonly fallible: TOffer | undefined;
 }
 
-/**
- * Reads the UTXO outputs a call's transcript claims on behalf of USERS.
- *
- * @param transcript One half of a call's transcript pair. Absent is the normal
- * shape of a call with no fallible half, and yields no outputs.
- * @param version The era every failure raised here names.
- * @param circuitId The entry point every failure raised here names.
- * @returns One `UtxoOutput` per user-addressed unshielded spend the transcript
- * claims. Contract-addressed spends are skipped.
- * @throws ComposeFailedError at stage `'call-dust-payout'` for a user-addressed
- * dust spend.
- * @throws ComposeFailedError at stage `'call-unsupported-payout'` for a
- * user-addressed spend of any token type other than unshielded.
- * @see {@link ComposeRefusalOrder}
- */
+// User-addressed spends only; dust and non-unshielded tokens fail closed (see ComposeRefusalOrder).
 export const extractUserAddressedOutputs = (
   transcript: Transcript<AlignedValue> | undefined,
   version: LedgerEra,
@@ -94,21 +69,7 @@ export const extractUserAddressedOutputs = (
   return outputs;
 };
 
-/**
- * Builds the one unshielded offer each segment of a transaction carries, from
- * EVERY call in the tree.
- *
- * @typeParam TOffer The offer type `ledger.UnshieldedOffer.new` returns.
- * @param calls Every call in the transaction's tree — cross-contract callees
- * as well as the root call, since any of them can produce a payout.
- * @param ledger The era module slice carrying `UnshieldedOffer`.
- * @param version The era every failure raised here names.
- * @returns The guaranteed and fallible offers. A segment with nothing to pay
- * out gets no offer at all rather than an empty one.
- * @throws ComposeFailedError from {@link extractUserAddressedOutputs} for a
- * user-addressed spend this module cannot pay out.
- * @see {@link ComposeRefusalOrder}
- */
+// From every call in the tree, not just the root; a segment with nothing to pay out gets no offer.
 export const aggregateUnshieldedOffers = <TOffer>(
   calls: readonly CallTranscriptPair[],
   ledger: UnshieldedOfferLedger<TOffer>,

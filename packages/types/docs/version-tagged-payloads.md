@@ -196,6 +196,16 @@ does not use. That is wrong on any chain that has been running, not only across 
 fork — see `packages/contracts/docs/error-taxonomy.md` for what it cost before a
 refusal existed.
 
+The protocol composers therefore REQUIRE the parameters
+(`ledgerParametersBytes`). The initial cost model is still reachable, but only by
+name: a caller passes `INITIAL_LEDGER_PARAMETERS` from
+`@midnightntwrk/midnight-js-protocol`. The rejected alternative was an optional
+option that fell back to `initialParameters()` when left out. A caller that
+forgot it, or a provider that did not serve the parameters, then got the wrong
+cost model with no signal: the partitioner drew the guaranteed/fallible boundary
+in the wrong place, and the node refused the guaranteed segment with
+`Transcript(Execution(OutOfGas))` after the proof was already paid for.
+
 They are a `SerializedLedgerParameters` for the same reason the contract state is a
 `SerializedContractState`: only the
 era that wrote them can read them, and the caller holds the runtime.
