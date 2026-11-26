@@ -26,7 +26,7 @@
     "gen": "rm -rf gen && graphql-codegen",
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run"
+    "test": "graphql-codegen --check && vitest run"
   },
   "dependencies": {
     "@apollo/client": "^4.3.8",
