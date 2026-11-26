@@ -6,7 +6,7 @@
 
 # Class: Ledger8RuntimeMissingError
 
-Thrown when a lazily-loaded subpath export carrying the retained pre-fork
+Thrown when a lazily-loaded subpath export carrying the pre-fork ledger 8
 runtime could not be acquired at all. Raised by `loadLedger8Protocol`
 (`lib/v8/load.ts`) and `loadLedger8Engine` (`lib/v8/load-engine.ts`), and
 surfaced through `createLedger8Engine` and `loadLedgerEra('v8')`.

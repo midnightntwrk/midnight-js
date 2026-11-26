@@ -8,7 +8,7 @@
 
 > **Ledger8SigningKey** = `string`
 
-A retained-era signing key: 32 bytes of hex.
+A ledger 8 signing key: 32 bytes of hex.
 
 ## See
 

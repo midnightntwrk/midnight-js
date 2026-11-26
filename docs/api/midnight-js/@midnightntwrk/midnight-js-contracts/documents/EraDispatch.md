@@ -54,7 +54,7 @@ declaration that names another:
 | shape | the declaration must name | otherwise |
 | ----- | ------------------------- | --------- |
 | `CompiledContract` container (own string `tag`) | `'v9'` | `ledger8-artifacts-in-ledger9-container` |
-| retained-era candidate (own `impureCircuits`, plain `initialState`) | `'v8'` | `unwrapped-ledger9-contract` |
+| ledger 8 candidate (own `impureCircuits`, plain `initialState`) | `'v8'` | `unwrapped-ledger9-contract` |
 
 The container is still recognised by its own `tag`. The `tag`'s value is chosen
 by the caller — `CompiledContract.make(tag, ctor)` — and carries no era
@@ -79,7 +79,7 @@ Since this value selects which ledger pipeline executes a call, whoever serves
 the artifacts must not be the one who decides it.
 
 `compiler/contract-info.json` is the fallback, because `compactc` only began
-emitting a manifest in 0.33 and the retained toolchain (0.31) never did. When a
+emitting a manifest in 0.33 and the ledger 8 toolchain (0.31) never did. When a
 manifest IS present it vouches for that file too, so the fallback passes through
 the same integrity gate as every key and ZKIR — under the default `require` an
 unvouched-for description is refused rather than trusted.
@@ -115,7 +115,7 @@ refuses outright.
 | shape | own `tag` | own `impureCircuits` | `initialState` | verdict |
 | ----- | --------- | -------------------- | -------------- | ------- |
 | current-era container | string | absent | absent | ask the bundle; must declare `'v9'` |
-| retained-era candidate | absent | present | `Function` | ask the bundle; must declare `'v8'` |
+| ledger 8 candidate | absent | present | `Function` | ask the bundle; must declare `'v8'` |
 | raw current-era instance | absent | present | `AsyncFunction` | refused, by name |
 | anything else | — | — | — | refused as neither era |
 
@@ -146,16 +146,16 @@ build step can FABRICATE one. So:
 
 - `'AsyncFunction'` is conclusive proof of the current era and is allowed to
   REFUSE a raw instance on its own, before the bundle is consulted;
-- `'Function'` proves nothing. It is what a real retained artifact reads AND
+- `'Function'` proves nothing. It is what a real ledger 8 artifact reads AND
   what a transpiled current-era contract reads, so it only earns the artifact
   the right to have its bundle asked;
 - anything else — a generator, an async generator, a future codegen shape — is
   refused rather than routed anywhere by default.
 
-This replaces a rule that matched `'Function'` POSITIVELY as the retained era.
+This replaces a rule that matched `'Function'` POSITIVELY as ledger 8.
 That rule was fail-closed against every shape it could name and fail-OPEN
 against the one it could not: a current-era contract whose `async` a consumer's
-bundler had erased was routed into the retained pipeline instead of being
+bundler had erased was routed into the ledger 8 pipeline instead of being
 refused. The `class`-as-`initialState` hole closed with it, because a class's
 own constructor is `Function` and that reading no longer decides anything.
 `docs/adr/0012-read-the-artifact-era-from-what-the-artifact-declares.md` records
@@ -177,12 +177,12 @@ Three refusals have no default between them, deliberately:
 - `unknown-artifact-runtime-version` — a toolchain this framework cannot place,
   named in the message.
 
-A retained SHAPE whose bundle declares the CURRENT toolchain is reported as
+A ledger 8 SHAPE whose bundle declares the CURRENT toolchain is reported as
 `unwrapped-ledger9-contract`: it is a current-era contract passed raw, with
 its `async` erased by the caller's build. That is the case the old check let
 through.
 
-A container whose bundle declares the RETAINED toolchain is reported as
+A container whose bundle declares the ledger 8 toolchain is reported as
 `ledger8-artifacts-in-ledger9-container`: the provider serves another
 contract's artifacts, and the message names the declared version.
 
@@ -277,28 +277,28 @@ table before relying on that for the system as a whole:
 | artifact | head | `'call'` | `'deploy'` | `'maintenance'` |
 | -------- | ---- | -------- | ---------- | --------------- |
 | current-era | `v9` | `v9` pipeline | `v9` pipeline | `v9` pipeline |
-| retained-era | `v9` | keep-state | refused | refused |
-| retained-era | `v8` | `v8` pipeline | `v8` pipeline | `v8` pipeline |
+| ledger 8 | `v9` | keep-state | refused | refused |
+| ledger 8 | `v8` | `v8` pipeline | `v8` pipeline | `v8` pipeline |
 | current-era | `v8` | refused | refused | refused |
 
-A retained-era DEPLOY or MAINTENANCE update on a post-fork head is the one cell
-where the kinds differ: calls against contracts already on chain are what the
-retained era exists to keep working, and a new deployment has no such history to
+A ledger 8 DEPLOY or MAINTENANCE update on a post-fork head is the one cell
+where the kinds differ: keeping calls against contracts already on chain
+working is why the framework still supports ledger 8, and a new deployment has no such history to
 preserve. A maintenance update has a working path after the fork already: the
 same function with the artifact recompiled by the current toolchain maintains the
-migrated contract with the signing key stored for its address. So the retained
+migrated contract with the signing key stored for its address. So the ledger 8
 artifact is refused there with `EraMismatchError` with reason `'ledger8-maintenance-on-ledger9-network'`, which names
 that path, rather than routed anywhere.
 
 That path depends on one fact this package does not control: the fork
 translation keeps the contract's maintenance authority, its committee and its
 counter. The Hard fork lane asserts it on the `simple` shard. It replaces the
-authority before the fork with the retained artifact, checks that the retained
+authority before the fork with the ledger 8 artifact, checks that the ledger 8
 artifact is refused after it with nothing proven or submitted, and replaces the
 authority again with the recompiled artifact and the key the first replacement
 stored. See `consumer-e2e/README.md`.
 
-The two RETAINED rows and the current-era DEPLOY cell are enforced in
+The two ledger 8 rows and the current-era DEPLOY cell are enforced in
 production. A current-era deploy (`deployContract`, `submitDeployTx`) reads the
 network's ledger version once, before the constructor runs, and a pre-fork head
 is refused there with `EraMismatchError`, reason
@@ -365,7 +365,7 @@ column are both written. What cannot happen is an era arriving unruled.
 A result's `era` and its record's `public.era` take the same values but name
 different facts. `era` says which era built the caller's artifact; `public.era`
 says which era recorded the transaction. After the fork they DISAGREE: a
-retained-era call is recorded as a keep-state transaction tagged `'v9'` while
+ledger 8 call is recorded as a keep-state transaction tagged `'v9'` while
 `era` on its result says `'v8'`
 (`docs/adr/0011-tag-every-result-with-the-pipeline-that-produced-it.md`). The
 field name carries the difference, not the spelling of the value.
@@ -486,13 +486,13 @@ This package calls it in three places:
 
 | path | call site | era checked |
 | ---- | --------- | ----------- |
-| retained | `acquireLedger8Runtime`, immediately after `assertEraCompatible` | `resolved.head` |
+| ledger 8 | `acquireLedger8Runtime`, immediately after `assertEraCompatible` | `resolved.head` |
 | current | `submitLedger9PayloadAsync`, before the first provider call; used by `submitCallTx`, `submitDeployTx` and the maintenance transactions | `'v9'` |
 | generic | `submitOnHead` (behind `submitTx` / `submitTxAsync`), before the head is read | the era of the `unprovenTx` handle |
 
 Two things about that table are easy to get wrong.
 
-The era checked on the retained pipeline is the HEAD era, not the artifact's.
+The era checked on the ledger 8 pipeline is the HEAD era, not the artifact's.
 That is not a shortcut — it is the era the transaction handle is sealed in. A
 pre-fork head composes a v8 handle; a post-fork head is keep-state, which
 composes on the CURRENT era and seals a v9 handle, because the handle's era
@@ -505,7 +505,7 @@ current-era-only providers is ADMITTED, and the same head with a provider servin
 neither is refused naming `'v9'`.
 
 One call site per funnel, not one per entry point. `acquireLedger8Runtime` is
-the funnel every retained-era operation that reads the network passes through —
+the funnel every ledger 8 operation that reads the network passes through —
 `buildLedger8CallTx`, `buildLedger8DeployTx` and `submitLedger8MaintenanceTx` —
 so the check sits there rather than being spread across its callers, where a
 fourth caller would eventually forget it. The two builders that read nothing from
@@ -528,7 +528,7 @@ upholds the claim; a provider that implements the interface directly does its
 own.
 
 What the check buys is WHERE the refusal lands. Proving is the expensive step
-and the first of the three transaction methods, so a wallet that cannot balance a retained-era
+and the first of the three transaction methods, so a wallet that cannot balance a ledger 8
 transaction otherwise costs a full proving cycle before anything notices. Read up
 front, the same gap costs one comparison. `v8-native.test.ts` pins that
 directly: the wallet-gap and submitter-gap cases assert `proveTx` was never
@@ -544,9 +544,9 @@ against the head.
 
 The current era refuses the mirror of this on its call paths, through
 `requireLedger9Record`. Its attach accepts either tag, because a contract it finds may
-have been deployed before the fork. `assertLedger8RecordEra` is the retained-era path's half, and it
+have been deployed before the fork. `assertLedger8RecordEra` is the ledger 8 path's half, and it
 compares the record against the HEAD rather than against a fixed era, because a
-retained-era call is legitimately recorded by EITHER era — which is why the
+ledger 8 call is legitimately recorded by EITHER era — which is why the
 result type keeps `public.era` a union in the first place.
 
 What it does NOT assert is that the result's `era` and the record's `public.era`

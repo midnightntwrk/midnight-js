@@ -8,7 +8,7 @@
 
 > **Ledger8ConstructorParameters**\<`C`\> = `Parameters`\<`C`\[`"initialState"`\]\> *extends* \[`unknown`, `...(infer A)`\] ? `A` : `never`[]
 
-The arguments a retained-era CONSTRUCTOR takes, with the framework-built
+The arguments a ledger 8 CONSTRUCTOR takes, with the framework-built
 context stripped — the constructor counterpart of
 [Ledger8CircuitParameters](Ledger8CircuitParameters.md), and it follows the same rule: a constructor
 whose parameters are not tuple-shaped falls to `never[]`, not to `never`, so

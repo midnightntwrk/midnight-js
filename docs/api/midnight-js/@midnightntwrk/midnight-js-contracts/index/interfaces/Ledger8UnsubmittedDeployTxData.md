@@ -6,7 +6,7 @@
 
 # Interface: Ledger8UnsubmittedDeployTxData\<C\>
 
-What a retained-era deploy builder answers with: everything the constructor produced and the
+What a ledger 8 deploy builder answers with: everything the constructor produced and the
 unproven transaction, before the chain has recorded anything. Nothing is stored yet; storing the
 signing key and the private state once the deploy is final is the caller's job.
 
@@ -22,7 +22,7 @@ signing key and the private state once the deploy is final is the caller's job.
 
 > `readonly` **era**: `"v8"`
 
-The pipeline that produced this result. A retained-era deploy runs only before the fork.
+The pipeline that produced this result. A ledger 8 deploy runs only before the fork.
 
 ***
 

@@ -17,7 +17,7 @@ map. Plain data on every member.
  - [ComposeRefusalOrder](../../documents/ComposeRefusalOrder.md) for why partitioning needs the context the
 circuit actually ran on, and why `CallContext` and `Effects` are declared
 once against ledger-v9.
- - [RetainedEraExecution](../../documents/RetainedEraExecution.md) for why each member is read off the
+ - [Ledger8Execution](../../documents/Ledger8Execution.md) for why each member is read off the
 context it is.
  - [EraBoundary](../../documents/EraBoundary.md)
 
