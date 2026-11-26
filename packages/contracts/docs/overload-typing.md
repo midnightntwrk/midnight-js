@@ -2,29 +2,29 @@
 title: OverloadTyping
 ---
 
-# Typing the retained-era contract overloads
+# Typing the ledger 8 contract overloads
 
 The four entry points of this package — `deployContract`,
 `findDeployedContract`, `submitCallTx` and the call-transaction builder — accept
 contracts from two Compact toolchains. The current one
-(`compact-runtime@0.20`) hands over a `CompiledContract` container; the retained
+(`compact-runtime@0.20`) hands over a `CompiledContract` container; the ledger 8
 one (`compact-runtime@0.16`) hands over a raw contract instance. Both are
-accepted through an ADDITIVE overload: a retained-era overload is declared alongside
+accepted through an ADDITIVE overload: a ledger 8 overload is declared alongside
 the current-era overloads rather than replacing them.
 
-This document records why the retained-era declarations are hand-written, what
+This document records why the ledger 8 declarations are hand-written, what
 discriminates the two eras at the type level, how the family expresses openness
 without `any`, and why the ORDER of the overloads is load-bearing. The
 declarations themselves live in `packages/contracts/src/ledger8-contract.ts`.
 
-## Why the retained-era types are hand-written
+## Why the ledger 8 types are hand-written
 
-They are not imported from the retained toolchain's output, even though it does
+They are not imported from the ledger 8 toolchain's output, even though it does
 emit a `contract/index.d.ts`. That file describes ONE contract; this family is a
-top type over every retained-era contract, and it has to be written in terms a
+top type over every ledger 8 contract, and it has to be written in terms a
 published package can carry — the generated declarations name
 `@midnight-ntwrk/compact-runtime@0.16`, which this package does not depend on
-and consumers are not required to install. So every retained-era declaration is
+and consumers are not required to install. So every ledger 8 declaration is
 written from the real generated output, and is only as true as that reading.
 
 That is why the family is pinned from both sides, and the two halves are one
@@ -52,7 +52,7 @@ which is not the order of importance, and was measured rather than assumed:
 
 1. **The circuit context**, and this is the one that actually fires for a real
    contract. `Ledger8Circuit` takes a `Ledger8CircuitContextArgument`, which
-   names the four members the RETAINED runtime's `CircuitContext` requires. The
+   names the four members the ledger 8 runtime's `CircuitContext` requires. The
    current runtime's much larger one requires seven — `callContext`,
    `queryContexts`, `gasCosts`, `zswapLocalStates`, `costModel`,
    `callProofDataTrace`, `events` — of which only `costModel` is shared, so six
@@ -61,8 +61,8 @@ which is not the order of importance, and was measured rather than assumed:
    `costModel` is common to both eras is why it alone cannot discriminate them.
    This position is also where #1312 was: it used to take the descriptive
    `Ledger8CircuitContext`, whose `unknown` members are assignable in the wrong
-   direction, so it rejected every RETAINED-era contract too.
-2. **Sync versus async.** Retained-era circuit members and `initialState`
+   direction, so it rejected every ledger 8 contract too.
+2. **Sync versus async.** Ledger 8 circuit members and `initialState`
    return plain objects; the current era's return `Promise`s. A
    `Promise<CircuitResults<...>>` has none of the four members
    `Ledger8CircuitResult` declares. This is the discriminator the declarations
@@ -83,7 +83,7 @@ which is not the order of importance, and was measured rather than assumed:
 current-era instance from reaching them: a `CompiledContract` carries a `tag`
 and a branded property that a plain object does not have.
 
-`provableCircuits` deliberately does NOT discriminate. The real retained-era
+`provableCircuits` deliberately does NOT discriminate. The real ledger 8
 artifact sets BOTH `impureCircuits` and `provableCircuits`, so its presence says
 nothing about which toolchain produced the contract.
 
@@ -98,8 +98,8 @@ expressed by variance instead:
 - every result position the private state does not flow through widens to
   `unknown`, to which everything is assignable, so covariance always holds.
 
-The result is a genuine top type for the retained era that still excludes the
-current era's shape, because a `Promise` has none of the members the retained
+The result is a genuine top type for ledger 8 that still excludes the
+current era's shape, because a `Promise` has none of the members the ledger 8
 results declare.
 
 `Ledger8Circuit` and `Ledger8Witness` both widen their arguments to `never`.
@@ -117,7 +117,7 @@ decisions are at work in that signature:
    are checked CONTRAVARIANTLY. An `unknown[]` tail would require `unknown` to
    be assignable to the concrete argument type, so a real circuit such as
    `(context, coin: ShieldedCoinInfo)` would fail the `Ledger8Contract`
-   constraint outright and its contract could not select the retained-era
+   constraint outright and its contract could not select the ledger 8
    overload at all. `never` is assignable to every type, so every real circuit
    satisfies it.
 
@@ -126,7 +126,7 @@ tail. Widening the tail to `unknown[]` for readability costs the feature its
 argument-taking contracts. `overloads.test-d.ts` pins both directions against a
 real zero-argument fixture and a real argument-taking one.
 
-**Declare your retained-era collections as type ALIASES, not interfaces.**
+**Declare your ledger 8 collections as type ALIASES, not interfaces.**
 `Readonly<Record<string, Ledger8Circuit>>` requires an implicit index
 signature, and TypeScript gives one to an object type alias but not to an
 interface. A consumer who writes `interface MyCircuits { ... }` gets
@@ -140,14 +140,14 @@ generated declarations themselves rather than restating them.
 
 **The context has TWO types, and the split is the same contravariance
 argument.** `Ledger8CircuitContext` is the descriptive shape: its era-internal
-members are `unknown`, so every real retained-era context is assignable TO it,
+members are `unknown`, so every real ledger 8 context is assignable TO it,
 which is what `Ledger8CircuitParameters` needs in order to strip the leading
 context off `Parameters<...>`. `Ledger8CircuitContextArgument` is what stands in
 the circuit's PARAMETER position, where the assignability runs the other way:
 the declared parameter must be assignable INTO the runtime's real
 `CircuitContext`. `unknown` goes one way only, so reusing the descriptive shape
 there meant no real artifact ever satisfied `Ledger8Contract` and every
-retained-era overload was unreachable — the defect reported as #1312, which the
+ledger 8 overload was unreachable — the defect reported as #1312, which the
 member list made visible (`costModel` was missing) but did not cause. Every
 member of the argument type is `never`, which is assignable to whatever the
 runtime declares, so the family does not have to restate the runtime's member
@@ -155,7 +155,7 @@ TYPES to accept a real circuit.
 
 It is derived from `Ledger8CircuitContext` by a mapped type, so the two cannot
 drift on a member — and it still gives the family its second, independent reason
-to reject a current-era contract: it names only the retained runtime's four
+to reject a current-era contract: it names only the ledger 8 runtime's four
 required members, so six of the current runtime's seven are absent (see the list
 above; `costModel` is the one they share).
 
@@ -166,7 +166,7 @@ requires the real context to have NO MORE required members than those, so a
 member added upstream breaks the conformance assertions. Because the member list
 is the descriptive type's, it must be exactly the runtime's REQUIRED set: naming
 a runtime-optional member (`gasLimit`) without `?` would silently collapse
-`Ledger8CircuitParameters` to `never[]` for every retained contract.
+`Ledger8CircuitParameters` to `never[]` for every ledger 8 contract.
 
 The era-internal members of `Ledger8CircuitContext` — `currentQueryContext`,
 `currentZswapLocalState` and `costModel` — are `unknown` because they are live
@@ -190,18 +190,18 @@ all three were measured against this code rather than assumed:
 2. `Parameters<typeof f>`;
 3. the error TypeScript prints when NO overload matches a call.
 
-So every entry point declares its retained-era overload FIRST — where it cannot be
+So every entry point declares its ledger 8 overload FIRST — where it cannot be
 shadowed by a current-era overload — and leaves the overload that was already last exactly
 where it was. Nothing is appended. `ReturnType` and `Parameters` therefore
-report what they reported before the retained-era family existed, and a call
+report what they reported before the ledger 8 family existed, and a call
 that matches nothing is still reported against a real current-era overload, which
 names a real cause: a typo'd circuit id, a private state of the wrong type.
 
 That last point is the one worth protecting, because a mistyped CURRENT-era call
-is the common case and a retained-era call is the rare one.
+is the common case and a ledger 8 call is the rare one.
 
-`overloads.test-d.ts` pins it: that each retained-era overload is REACHABLE (a
-retained-era call resolves to the retained-era result type, not merely
+`overloads.test-d.ts` pins it: that each ledger 8 overload is REACHABLE (a
+ledger 8 call resolves to the ledger 8 result type, not merely
 compiles), and that `ReturnType` AND `Parameters` on all four entry points still
 report exactly what they reported at the base commit. Those two are what read
 from the LAST signature, so an overload appended to the end of any of these lists
@@ -213,7 +213,7 @@ choose and is deliberately not pinned.
 
 Adding a last overload carrying `NEITHER_ERA_CONTRACT_MESSAGE` would have made every
 mistyped current-era call report that the caller's perfectly ordinary contract
-"is neither a retained-era nor a current-era generated contract" — a false
+"is neither a ledger 8 nor a current-era generated contract" — a false
 statement on the common path. An overload that is NOT last never renders at all, so placing one
 earlier would only distort `ReturnType` and `Parameters`.
 
@@ -250,15 +250,15 @@ An earlier, provisional check tested for `impureCircuits` alone. It lived here,
 answered `true` for a raw current-era contract instance, and could not close that
 blind spot; `resolveArtifactEra` replaced it.
 
-## Why a retained-era result is era-tagged
+## Why a ledger 8 result is era-tagged
 
 `Ledger8FinalizedCallTxData.txData` is a `FinalizedTxRead` rather than
-a single-era record: the same retained-era contract is called as a v8
+a single-era record: the same ledger 8 contract is called as a v8
 transaction before the fork and as a v9 keep-state transaction after it, so the
 record it finalizes as carries the era that produced it. Providers take the
 same transaction handle in both eras, which is why
-`Ledger8ContractProviders` is the ordinary provider set keyed by a retained-era
-circuit id, and why there is no separate retained-era provider surface. Both
+`Ledger8ContractProviders` is the ordinary provider set keyed by a ledger 8
+circuit id, and why there is no separate ledger 8 provider surface. Both
 follow from `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`,
 `docs/adr/0014-build-provider-seams-from-per-era-handlers.md` and
 `docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md`.
@@ -267,11 +267,11 @@ follow from `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`,
 
 The private-state half of a find's configuration is read through a STRUCTURAL
 type, `FindContractPrivateStateConfig`, not through either era's own options
-type. The rule it feeds is one rule, and the retained-era path reaches it holding a
+type. The rule it feeds is one rule, and the ledger 8 path reaches it holding a
 `Ledger8FindDeployedContractOptions`.
 
 Both of its members are optional, because the current era's three option
-interfaces differ in which of them they declare and the retained era's declares
+interfaces differ in which of them they declare and ledger 8's declares
 both as optional. That makes it a WEAK type, and TypeScript refuses a source that
 shares no property with a weak type — which is exactly
 `Ledger9FindDeployedContractOptionsBase`, the commonest find of all.
@@ -289,13 +289,13 @@ current-era find.
 Published unnarrowed, that hands a shared handler two members with checking
 switched off — and a shared handler is precisely what these unions exist for.
 
-`WithOpaqueCircuitValues` restates both as `unknown`. The retained-era variant answers
+`WithOpaqueCircuitValues` restates both as `unknown`. The ledger 8 variant answers
 `unknown` for them already, so this puts the two variants on the same footing rather
 than restricting one. A concrete result stays assignable, since every `Result`
 and `PrivateState` is assignable to `unknown`. Narrow to one era, or to a
 concrete instantiation, to get the precise types back.
 
-### Why the retained narrowing falls back to an intersection
+### Why the ledger 8 narrowing falls back to an intersection
 
 `Extract` is the right answer for a UNION, and the only answer that removes the
 other era's variant. It is the wrong answer for a value whose `era` is the whole

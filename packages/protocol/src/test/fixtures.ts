@@ -32,7 +32,7 @@ import type { PartitionContext } from '../lib/shared/compose-types';
 const FIXTURES_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf');
 
 /**
- * The retained era's own UNPROVEN transaction tag, measured against the real
+ * Ledger 8's own UNPROVEN transaction tag, measured against the real
  * runtime. Pinned once for this package: v8-compose, v8-deploy and v8-prove all
  * read it from here, so a vendor schema bump moves this line and nothing else.
  *
@@ -62,7 +62,7 @@ export const readHexFixture = (name: string): Uint8Array => {
 export const fixturePath = (...segments: string[]): string => resolve(FIXTURES_DIR, ...segments);
 
 /**
- * The Zswap local state a coin-FREE circuit leaves behind, as the retained 0.16
+ * The Zswap local state a coin-FREE circuit leaves behind, as the ledger 8 (0.16)
  * runtime decodes it.
  *
  * Written down once because `TranscriptPojo` requires the member: a hand-built

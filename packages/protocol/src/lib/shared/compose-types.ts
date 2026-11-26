@@ -33,7 +33,7 @@ import type {
  * @see {@link ComposeRefusalOrder} for why partitioning needs the context the
  * circuit actually ran on, and why `CallContext` and `Effects` are declared
  * once against ledger-v9.
- * @see {@link RetainedEraExecution} for why each member is read off the
+ * @see {@link Ledger8Execution} for why each member is read off the
  * context it is.
  * @see {@link EraBoundary}
  */
@@ -48,8 +48,8 @@ export interface PartitionContext {
  * Where a call's public transcript comes from. Two shapes, because neither
  * production leg subsumes the other:
  *
- * - `'unpartitioned'` — the raw op sequence a circuit emitted on the retained
- *   pre-fork execution leg, the state it ran against, and the
+ * - `'unpartitioned'` — the raw op sequence a circuit emitted on the ledger 8
+ *   execution leg, the state it ran against, and the
  *   {@link PartitionContext} that leg recorded.
  * - `'partitioned'` — a guaranteed/fallible pair already split by compact-js,
  *   which is the current production path.
@@ -57,7 +57,7 @@ export interface PartitionContext {
  * Every member is plain data in the ledger's own declared algebra — no live
  * WASM handle.
  *
- * @see {@link RetainedEraExecution} for the leg that submits the unpartitioned
+ * @see {@link Ledger8Execution} for the leg that submits the unpartitioned
  * shape.
  * @see {@link ComposeRefusalOrder} for why an already-partitioned pair is
  * passed through rather than re-derived.

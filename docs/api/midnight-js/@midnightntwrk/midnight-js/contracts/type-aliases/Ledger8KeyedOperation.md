@@ -8,4 +8,4 @@
 
 > **Ledger8KeyedOperation** = `"deploy"` \| `"replace-authority"`
 
-The retained-era operation a submitted transaction belongs to.
+The ledger 8 operation a submitted transaction belongs to.

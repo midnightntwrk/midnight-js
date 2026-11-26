@@ -194,7 +194,7 @@ describe('unproven-call-tx', () => {
       expect(result.public.logEvents).toEqual([]);
     });
 
-    it('publishes the post-call state as an ENCODED value beside the handle, as the retained era does', async () => {
+    it('publishes the post-call state as an ENCODED value beside the handle, as the ledger 8 era does', async () => {
       const options = createMockCallOptions({
         initialContractState: await getInitialContractState()
       });

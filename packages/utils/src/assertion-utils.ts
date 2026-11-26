@@ -77,7 +77,7 @@ export class UnhandledUnionMemberError extends MidnightJsError {
  * @example
  * ```ts
  * switch (record.era) {
- *   case 'v8': return readRetained(record);
+ *   case 'v8': return readLedger8(record);
  *   case 'v9': return readNative(record);
  *   default: return assertNever(record, 'readContractRecord');
  * }

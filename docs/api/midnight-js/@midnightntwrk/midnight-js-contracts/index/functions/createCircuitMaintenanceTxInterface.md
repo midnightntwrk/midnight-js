@@ -10,8 +10,8 @@
 
 > **createCircuitMaintenanceTxInterface**\<`C`\>(`providers`, `circuitId`, `compiledContract`, `contractAddress`): [`Ledger8CircuitMaintenanceTxInterface`](../interfaces/Ledger8CircuitMaintenanceTxInterface.md)
 
-Creates a [Ledger9CircuitMaintenanceTxInterface](../interfaces/Ledger9CircuitMaintenanceTxInterface.md), or the retained era's
-`Ledger8CircuitMaintenanceTxInterface` for a contract the retained Compact toolchain produced.
+Creates a [Ledger9CircuitMaintenanceTxInterface](../interfaces/Ledger9CircuitMaintenanceTxInterface.md), or ledger 8's
+`Ledger8CircuitMaintenanceTxInterface` for a contract the ledger 8 Compact toolchain produced.
 
 The contract's shape only picks which overload each method calls; the era itself is resolved by
 that call, when the method runs.
@@ -65,8 +65,8 @@ EraMismatchError If `compiledContract` has neither toolchain's shape.
 
 > **createCircuitMaintenanceTxInterface**\<`C`, `PCK`\>(`providers`, `circuitId`, `compiledContract`, `contractAddress`): [`Ledger9CircuitMaintenanceTxInterface`](../interfaces/Ledger9CircuitMaintenanceTxInterface.md)
 
-Creates a [Ledger9CircuitMaintenanceTxInterface](../interfaces/Ledger9CircuitMaintenanceTxInterface.md), or the retained era's
-`Ledger8CircuitMaintenanceTxInterface` for a contract the retained Compact toolchain produced.
+Creates a [Ledger9CircuitMaintenanceTxInterface](../interfaces/Ledger9CircuitMaintenanceTxInterface.md), or ledger 8's
+`Ledger8CircuitMaintenanceTxInterface` for a contract the ledger 8 Compact toolchain produced.
 
 The contract's shape only picks which overload each method calls; the era itself is resolved by
 that call, when the method runs.

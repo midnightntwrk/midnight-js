@@ -80,11 +80,11 @@ through a router that reads the artifact era.
 - **The era is read once per operation.** A flow calls its era's functions directly, never another
   router, and the era the router read is passed on, never read again. An operation reads the network
   head at most once ([ADR 0007](./0007-never-latch-the-network-head-version.md)).
-- **One flow per artifact era**, never one per (artifact era, head era) pair. The retained flow reads
+- **One flow per artifact era**, never one per (artifact era, head era) pair. The ledger 8 flow reads
   the head itself and decides keep-state: today a ledger 8 artifact on a ledger 9 head. A flow refuses
   a head era it was not written for; whether a ledger 8 artifact can run on a later head is decided
   when that ledger is added.
-- **Flows are imported statically.** The retained era's runtime stays lazy inside `protocol`
+- **Flows are imported statically.** Ledger 8's runtime stays lazy inside `protocol`
   ([ADR 0004](./0004-lazy-v8-era-access-via-protocol-subpath.md)).
 
 ### Adding and removing an era
@@ -93,7 +93,7 @@ Adding an era changes no existing name: add the `LedgerN*` functions and types, 
 `RUNTIME_VERSION_TO_ERA`, a `case` in every router and request builder, a branch in every era-picking
 type alias, the router overloads, and a handler key in each provider factory
 ([ADR 0014](./0014-build-provider-seams-from-per-era-handlers.md)). The flow of the era that was
-current becomes the retained flow.
+current becomes the flow of an older era, named after its ledger.
 
 Removing an era changes no remaining name's meaning: delete its `LedgerN*` functions and types, its
 `case` and flow in every router, its overloads and alias branches, and its pipeline and runtime loader
@@ -125,5 +125,5 @@ not on the day of the fork.
   change meaning at every fork, and a type reachable only through a namespace cannot be named in
   emitted declarations (TS4023).
 - **Era-scoped subpaths (`contracts/ledger8`, `contracts/ledger9`).** Rejected. Every import of a
-  shared entry point would need to know the era, and `protocol` already keeps the retained runtime
+  shared entry point would need to know the era, and `protocol` already keeps the ledger 8 runtime
   lazy, so the bundle gain is small.

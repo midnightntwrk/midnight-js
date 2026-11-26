@@ -12,7 +12,7 @@ The opening of the tag every serialized ledger transaction carries, on both
 eras.
 
 Stops before the bracketed version deliberately: a `[vN]` is the wire-schema
-version of the serialized OBJECT and never a ledger era — the retained era's
+version of the serialized OBJECT and never a ledger era — ledger 8's
 transactions are tagged `transaction[v9]`.
 
 ## See

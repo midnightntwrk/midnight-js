@@ -22,7 +22,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { resolveArtifactEra } from '../internal/era';
 import type { CoinReceiver016Contract, CoinReceiver016Module, Counter016Contract, Counter016Module } from './ledger8-fixture-types';
 
-// The retained-era half of `resolveArtifactEra`'s coverage, and the reason it is a FILE of its own
+// The ledger 8 half of `resolveArtifactEra`'s coverage, and the reason it is a FILE of its own
 // rather than a `describe` inside `era-dispatch.test.ts`: the real `compact-runtime@0.16`
 // artifacts need a module-scoped runtime stub (their generated code opens with
 // `checkRuntimeVersion('0.16.0')`, which the installed current runtime rejects outright), while
@@ -68,13 +68,13 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => {
   };
 });
 
-// What a retained bundle declares about itself: the compact-runtime its compiler recorded in
+// What a ledger 8 bundle declares about itself: the compact-runtime its compiler recorded in
 // `compiler/contract-info.json`. These fixtures were built by compactc 0.31.1, whose runtime is
 // 0.16.0 -- asserted against the real counter-016 file in
 // `testkit-js/testkit-js/test/counter-016-artifacts.ut.test.ts`, not assumed here.
 const LEDGER8_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
 
-describe('resolveArtifactEra against the REAL retained-era artifacts', () => {
+describe('resolveArtifactEra against the REAL ledger 8 artifacts', () => {
   let counter: Counter016Contract;
   let coinReceiver: CoinReceiver016Contract;
 
@@ -85,8 +85,8 @@ describe('resolveArtifactEra against the REAL retained-era artifacts', () => {
     coinReceiver = new coinReceiverModule.Contract({});
   });
 
-  it('routes the real zero-argument retained artifact to the retained-era pipeline', async () => {
-    // The shape, restated as an assertion so a toolchain change that made the retained codegen
+  it('routes the real zero-argument ledger 8 artifact to the ledger 8 pipeline', async () => {
+    // The shape, restated as an assertion so a toolchain change that made the ledger 8 codegen
     // async would fail HERE, naming the cause, rather than in the routing below. It is a
     // PRECONDITION of the routing, not the routing's reason: the era itself comes from what the
     // bundle declares.
@@ -95,14 +95,14 @@ describe('resolveArtifactEra against the REAL retained-era artifacts', () => {
     await expect(resolveArtifactEra(counter, LEDGER8_BUNDLE)).resolves.toBe('v8' satisfies LedgerEra);
   });
 
-  it('routes the real argument-taking retained artifact the same way', async () => {
+  it('routes the real argument-taking ledger 8 artifact the same way', async () => {
     expect(coinReceiver.initialState.constructor.name).toBe('Function');
 
     await expect(resolveArtifactEra(coinReceiver, LEDGER8_BUNDLE)).resolves.toBe('v8' satisfies LedgerEra);
   });
 
   it('places the real artifact without consulting the compact-js brand, which it does not carry', () => {
-    // The retained artifact has no brand either, so the brand cannot distinguish the two eras in
+    // The ledger 8 artifact has no brand either, so the brand cannot distinguish the two eras in
     // EITHER direction -- see the pin in `era-dispatch.test.ts` for the current-era half.
     expect(Symbol.for('compact-js/CompiledContract') in counter).toBe(false);
     expect('tag' in counter).toBe(false);

@@ -8,7 +8,7 @@
 
 > **Ledger8Circuit** = (`context`, ...`args`) => [`Ledger8CircuitResult`](../interfaces/Ledger8CircuitResult.md)
 
-A retained-era circuit member.
+A ledger 8 circuit member.
 
 Two things here are load-bearing and neither is cosmetic: the leading context is declared
 EXPLICITLY, and both it and the argument tail are bottom types rather than `unknown`. Do not

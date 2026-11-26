@@ -44,12 +44,12 @@ An era-named subpath always means the same ledger. At the next fork, a new
 | `./version` | (own) | `LEDGER_ERAS`, `protocolVersionToLedger`, `versionOfRecord`, `latestNetworkLedgerVersion` and the types `LedgerEra`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
 | `./v9` | `@midnightntwrk/ledger-v9` | Ledger 9 types and transaction primitives |
 | `./v8` | `@midnightntwrk/ledger-v8` | Ledger 8 — do not import at runtime; use `loadLedger8Protocol()` |
-| `./v8/engine` | (own) | Retained pre-fork execution engine — do not import at runtime; use `loadLedger8Engine()` |
+| `./v8/engine` | (own) | Ledger 8 execution engine — do not import at runtime; use `loadLedger8Engine()` |
 | `./v9/compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities for ledger 9 |
-| `./v9/compact-js` | `@midnight-ntwrk/compact-js` | Compact JS bindings for ledger 9 |
-| `./v9/compact-js/effect` | `@midnight-ntwrk/compact-js/effect` | Effect-based Compact bindings for ledger 9 |
-| `./v9/compact-js/effect/Contract` | `@midnight-ntwrk/compact-js/effect/Contract` | Effect-based Contract module for ledger 9 |
-| `./compact-js/v8/effect` | `@midnight-ntwrk/compact-js/v8/effect` | Effect-based Compact bindings for ledger 8 |
+| `./v9/compact-js` | `@midnightntwrk/compact-js` | Compact JS bindings for ledger 9 |
+| `./v9/compact-js/effect` | `@midnightntwrk/compact-js/effect` | Effect-based Compact bindings for ledger 9 |
+| `./v9/compact-js/effect/Contract` | `@midnightntwrk/compact-js/effect/Contract` | Effect-based Contract module for ledger 9 |
+| `./compact-js/v8/effect` | `@midnightntwrk/compact-js/v8/effect` | Effect-based Compact bindings for ledger 8 |
 | `./v9/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4` | On-chain runtime (Impact VM) for ledger 9 |
 | `./platform-js` | `@midnight-ntwrk/platform-js` | Platform services |
 | `./platform-js/effect/Configuration` | `@midnight-ntwrk/platform-js/effect/Configuration` | Effect-based configuration |
@@ -61,7 +61,7 @@ Nothing under `src/lib/` is a build entry, so this layout is internal and no con
 
 | Directory | Holds | Ledger reference |
 |---|---|---|
-| `lib/v8/` | the retained pre-fork era: `load.ts`, `engine.ts`, `load-engine.ts`, `executable.ts`, `compose.ts`, `deploy.ts`, `prove.ts`, `adapt.ts` | acquires `ledger-v8`, `onchain-runtime-v3` and the 0.16 glue, always through a dynamic import |
+| `lib/v8/` | ledger 8: `load.ts`, `engine.ts`, `load-engine.ts`, `executable.ts`, `compose.ts`, `deploy.ts`, `prove.ts`, `adapt.ts` | acquires `ledger-v8`, `onchain-runtime-v3` and the 0.16 glue, always through a dynamic import |
 | `lib/v9/` | the current era's composition code: `compose.ts`, `wrap.ts` | links `ledger-v9` statically |
 | `lib/shared/` | what both eras run: `ledger-version.ts`, `verifier-keys.ts`, `compose-options.ts`, `assemble-call.ts`, `compose-types.ts`, `unshielded.ts`, `contract-state.ts` | era passed in as a `LedgerEra` parameter, never chosen here |
 | `lib/era/` | the facade and the dispatch: `load-era.ts`, `era.ts`, `envelope.ts` | reaches both, which is the point of the layer |
@@ -69,7 +69,7 @@ Nothing under `src/lib/` is a build entry, so this layout is internal and no con
 The directory names say what a module is **about**, not what it links. Three consequences a reader should not have to derive:
 
 - **`lib/v8/compose.ts`, `deploy.ts` and `adapt.ts` link no v8 at all.** They take the acquired module as a `Ledger8Protocol` parameter, which is a type. That injection is what keeps the v8 WASM out of the eager graph, and the guarantee is enforced by `dist-laziness.test.ts` and `v8-surface.test.ts` — not by this layout. Read the tests, not the directory, for the bundle boundary.
-- **`lib/shared/` is not free of vendors.** `assemble-call.ts` links `@midnight-ntwrk/compact-js`, a post-fork package, for `hashVerifierKey` and `encodeContractKeyLocation`; `contract-state.ts` links it for `hashVerifierKey`. Both are called by both eras, so their subject is shared even though their linkage is not. This is safe in one direction only: v9 is the eagerly-linked baseline, so a shared module reaching for it never wakes v8, while the reverse would.
+- **`lib/shared/` is not free of vendors.** `assemble-call.ts` links `@midnightntwrk/compact-js`, a post-fork package, for `hashVerifierKey` and `encodeContractKeyLocation`; `contract-state.ts` links it for `hashVerifierKey`. Both are called by both eras, so their subject is shared even though their linkage is not. This is safe in one direction only: v9 is the eagerly-linked baseline, so a shared module reaching for it never wakes v8, while the reverse would.
 - **`lib/v9/wrap.ts` type-imports `lib/v8/executable.ts`.** `TranscriptPojo` is the v8 engine's output and `wrapKeepStateCall` binds it onto v9. The cross-era edge is the operation's whole purpose, and it is type-only.
 
 `compose-types.ts` and `era.ts` name their shared types through `@midnightntwrk/ledger-v9` because some vendor has to name them. `EncodedStateValue`, `Op`, `AlignedValue`, `Transcript`, `CallContext` and `Effects` are pinned identical across `onchain-runtime-v3`, `ledger-v8` and `ledger-v9` by the compile-time assertions at the bottom of `v8-executable.test.ts`; the import names one era, the type belongs to neither. Those assertions are evaluated by `yarn typecheck:tests` — run by the pre-push hook AND by CI's `typecheck:tests:core` job. The test run itself does not evaluate them, because vitest transpiles test files without type-checking.
@@ -84,14 +84,14 @@ docstring resolves to it.
 | Document | What it explains |
 |---|---|
 | [Era boundary](./docs/era-boundary.md) | Why only bytes and plain objects cross between the eras, how the eight operations are split between `LedgerEraFacade` and `Ledger8Engine`, and the memoisation rules |
-| [Retained-era execution](./docs/retained-era-execution.md) | The state a circuit runs against, why the Merkle walk was removed, the era pin, and what a `TranscriptPojo` carries |
+| [Ledger 8 execution](./docs/ledger8-execution.md) | The state a circuit runs against, why the Merkle walk was removed, the era pin, and what a `TranscriptPojo` carries |
 | [Dual-instantiation guard](./docs/dual-instantiation-guard.md) | What a duplicate WASM install does in the argument position versus the receiver position, and why the guard is a correctness requirement rather than a diagnostic |
 | [Fail-closed decoding](./docs/fail-closed-decoding.md) | Why the version tag is the only authority over the bytes, and the division of labour between the three decode failures |
 | [Compose refusal order](./docs/compose-refusal-order.md) | The order in which both era paths refuse compose options, and the one deliberate difference between them |
 | [Verifier keys](./docs/verifier-keys.md) | Registration rules, the refusals that stop a deploy landing at an address the caller's artifacts do not describe, and why the address cannot be recomputed |
 | [Module graph and lazy loading](./docs/module-graph-and-lazy-loading.md) | Build entries, the `./v8` and `./v8/engine` chunks, the import cycle avoided by a leaf module, and why a vendor's types are named with `import type` |
 | [Injected vendor slices](./docs/injected-vendor-slices.md) | How a function names the vendor class it takes by injection — derived from the vendor's own class, declared structurally, or narrowed — and what each choice buys |
-| [Cross-era operation registry](./docs/cross-era-operation-registry.md) | What actually crosses the fork boundary when a contract served with its retained-era version tag is called, why re-expressing its operations is faithful rather than a substitution, and why the primary state is left at its default |
+| [Cross-era operation registry](./docs/cross-era-operation-registry.md) | What actually crosses the fork boundary when a contract served with its ledger 8 version tag is called, why re-expressing its operations is faithful rather than a substitution, and why the primary state is left at its default |
 | [Shared table discipline](./docs/shared-table-discipline.md) | Why the shared tables are frozen and null-prototyped, and why exhaustiveness is enforced at compile time as well as at run time |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its
@@ -117,7 +117,7 @@ import type { Transaction } from '@midnightntwrk/midnight-js-protocol/v8';
 
 If the v8 module cannot be loaded (usually a broken or partial install), `loadLedger8Protocol()` rejects with `Ledger8RuntimeMissingError` (code `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`) carrying the original error as `cause`. Its `subpath` field is `'/v8'`, naming which chunk failed. The failed load is not memoised — the next call retries.
 
-## Running Contracts on the Retained Pre-Fork Engine
+## Running Contracts on the Ledger 8 Engine
 
 Contracts compiled against the pre-fork toolchain keep executing on `compact-runtime@0.16` after the fork. That toolchain and its `onchain-runtime-v3` WASM live behind the `./v8/engine` subpath, gated the same way as `./v8` and for the same reason. `loadLedger8Engine()` is the only sanctioned runtime path to it:
 
@@ -144,9 +144,9 @@ const transcript = await engine.executeCircuit({
 const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState: migratedLedger9ContractState });
 ```
 
-`executeCircuit` and `executeConstructor` are **asynchronous** — `await` them. There is no separate state conversion step: pass the decoded contract state straight in, and the engine builds the state the retained runtime executes against.
+`executeCircuit` and `executeConstructor` are **asynchronous** — `await` them. There is no separate state conversion step: pass the decoded contract state straight in, and the engine builds the state the ledger 8 runtime executes against.
 
-Read it with the era the state's own version tag names, not with a fixed one. A contract an earlier post-fork call has MIGRATED carries a current-era version tag while its artifacts stay the retained toolchain's, so `era` above is the network's current era for that contract and the retained era for one that has not migrated. Handing the retained reader state with a current-era version tag is refused on the tag.
+Read it with the era the state's own version tag names, not with a fixed one. A contract an earlier post-fork call has MIGRATED carries a current-era version tag while its artifacts stay the ledger 8 toolchain's, so `era` above is the network's current era for that contract and ledger 8 for one that has not migrated. Handing the ledger 8 reader state with a current-era version tag is refused on the tag.
 
 `contractState` must carry a usable `balance`. It is required rather than defaulted, because an empty balance is a legitimate value — a contract holding nothing has one — and defaulting would make "holds nothing" indistinguishable from "the caller forgot", which is a circuit reading zero where the chain says otherwise. `decodeContractState` produces both halves for you; assembling the value by hand is what the refusal is there for.
 
@@ -196,7 +196,7 @@ const deploy = era.composeDeployTx({ contractStateBytes, verifierKeys, networkId
 
 Derive the era with `versionOfRecord` or `latestNetworkLedgerVersion` (see [Version Module](#version-module)) rather than writing the string by hand. An era string that is not `'v8'` or `'v9'` rejects with `UnknownLedgerEraError`; the offending value is on the error's `requestedVersion` field, not in its message.
 
-Each era is memoised, so the retained pre-fork WASM is instantiated at most once per process. Asking for `'v8'` is what acquires it — a consumer that only ever asks for `'v9'` never loads it at all, which is gated by `dist-laziness.test.ts`. A **failed** v8 acquisition is not memoised: the rejection propagates unchanged as `Ledger8RuntimeMissingError` and the next call retries.
+Each era is memoised, so the ledger 8 WASM is instantiated at most once per process. Asking for `'v8'` is what acquires it — a consumer that only ever asks for `'v9'` never loads it at all, which is gated by `dist-laziness.test.ts`. A **failed** v8 acquisition is not memoised: the rejection propagates unchanged as `Ledger8RuntimeMissingError` and the next call retries.
 
 ### Only bytes and plain objects cross this boundary
 
@@ -212,7 +212,7 @@ The same method names mostly mean the same capabilities. One thing the v8 era re
 
 **A Zswap offer is not one of them.** Both eras call the `zswapOffer` factory back with the split they resolved and carry the offer it answers with into the transaction; both throw `ComposeOptionError` with `option: 'zswapOffer'` for bytes their own decoder rejects (`option: 'guaranteedZswapOfferBytes'` for the offer a deploy is given), with the decoder's failure on `cause`. Both read that offer LAST, after the call's unshielded payout has been aggregated, so a call with two faults is refused the same way on either era. A coin-moving call composes on either era.
 
-The v8 era also *requires* `verifierKeys` on `composeDeployTx`, where the v9 era accepts its omission in one case. The retained deploy leg registers the compiled contract's keys onto the initial state itself, so it always needs the map; omitting it throws `ComposeOptionError` with `option: 'verifierKeys'`. The v9 era allows the omission only for a state that ALREADY carries its keys, and checks rather than assumes it: a state still declaring a blank-keyed entry point throws the same `ComposeOptionError` with the same `option`. So the two eras agree on every input except one — a pre-keyed state, which deploys as-is on v9 and needs its keys supplied again on v8.
+The v8 era also *requires* `verifierKeys` on `composeDeployTx`, where the v9 era accepts its omission in one case. The ledger 8 deploy leg registers the compiled contract's keys onto the initial state itself, so it always needs the map; omitting it throws `ComposeOptionError` with `option: 'verifierKeys'`. The v9 era allows the omission only for a state that ALREADY carries its keys, and checks rather than assumes it: a state still declaring a blank-keyed entry point throws the same `ComposeOptionError` with the same `option`. So the two eras agree on every input except one — a pre-keyed state, which deploys as-is on v9 and needs its keys supplied again on v8.
 
 What is *not* asymmetric: a call's user-addressed unshielded payouts are aggregated onto the transaction's guaranteed and fallible offers on **both** eras. Attaching them on one era only would leave the other composing an unbalanced transaction the node rejects on submission, with nothing having reported a problem at composition time — so `era-parity.test.ts` asserts the payout each segment carries, per era.
 

@@ -36,7 +36,7 @@ Several era decisions a reader might expect are REFUSALS rather than choices,
 and are not breadcrumbed a second time. Each already throws a registered,
 remediation-carrying error, which is a stronger signal than a debug line:
 
-- the retained-era deploy path refuses a POST-FORK head;
+- the ledger 8 deploy path refuses a POST-FORK head;
 - a scope function bound to one era refuses a head of the other;
 - a provider answering with the other era's payload variant refuses;
 - a fetched state whose envelope disagrees with the head refuses.
@@ -93,7 +93,7 @@ would claim a pipeline for an operation that was then refused.
 
 Which ROUTE the pairing runs is the `(path, version)` pair itself and is not
 restated as a third field — `path: 'v8'` with `version: 'v9'` is the
-keep-state route, with `version: 'v8'` the retained-native one. A derived route
+keep-state route, with `version: 'v8'` the ledger-8-native one. A derived route
 name could disagree with the pair it was derived from, which is the same reason
 the era gate itself returns nothing.
 
@@ -158,7 +158,7 @@ configured logger, and nothing else.**
 
 `loggerProvider` is a public interface a consumer implements, with every level
 optional, so `debug` is arbitrary third-party code. Without the guard it sits on
-the success path of every retained-era call, deploy, attach and scoped
+the success path of every ledger 8 call, deploy, attach and scoped
 transaction, able to fail an operation that otherwise succeeded.
 
 A breadcrumb is a side effect with no bearing on the outcome, so a fault in it

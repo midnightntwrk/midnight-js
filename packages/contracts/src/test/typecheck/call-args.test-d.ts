@@ -33,7 +33,7 @@ import type {
   Counter016Contract
 } from '../ledger8-fixture-types';
 
-// The current era's twin of `overloads.test-d.ts`'s retained-era assertions.
+// The current era's twin of `overloads.test-d.ts`'s ledger 8 assertions.
 // compact-js's `CircuitParameters` unbrands the circuit id itself as of
 // 3.0.0-rc.2 (midnightntwrk/midnight-sdk#402), so a branded id and a plain
 // literal resolve to the same parameter tuple. These assertions hold both

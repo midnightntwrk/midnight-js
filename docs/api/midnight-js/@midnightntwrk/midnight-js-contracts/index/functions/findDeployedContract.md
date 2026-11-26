@@ -61,7 +61,13 @@ InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a
 
 ## Throws
 
-ContractTypeError One or more circuits defined on `contract` are undefined on the contract
+InvalidArgumentError `circuitIds` is empty or names a circuit `contract` does not declare.
+                             Raised before anything is read from the chain.
+
+## Throws
+
+ContractTypeError One or more circuits defined on `contract` (only those named in
+                          `circuitIds`, when it is given) are undefined on the contract
                           state found at `contractAddress`, carry no deployed verifier key, or
                           have mis-matched verifier keys.
 
@@ -85,7 +91,7 @@ EraMismatchError If `options.compiledContract` belongs to neither Compact era, o
 
 > **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger8FoundContract`](../interfaces/Ledger8FoundContract.md)\<`C`\>\>
 
-The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
 Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It reads the

@@ -49,7 +49,7 @@ import { FORK_SCHEDULE } from '../src/wallet/wallet-configuration-mapper';
 import { WalletSeeds } from '../src/wallet/wallet-seed';
 import { loadWalletLedger8 } from '../src/wallet/wallet-transaction';
 
-const RETAINED_VERSION = ProtocolVersion.ProtocolVersion(1_000_000n);
+const LEDGER8_VERSION = ProtocolVersion.ProtocolVersion(1_000_000n);
 const CURRENT_VERSION = FORK_SCHEDULE.v9;
 const NETWORK_ID = 'undeployed';
 // The wallet's finalized transaction is built for another network, so its bytes
@@ -93,7 +93,7 @@ const eras: readonly EraFixture[] = [
   },
   {
     era: 'v8',
-    activeVersion: RETAINED_VERSION,
+    activeVersion: LEDGER8_VERSION,
     unbound: async () => LedgerTransaction.seal('v8', 'Unbound', await ledger8Unbound(await loadLedger8Protocol())),
     finalized: async () =>
       LedgerTransaction.seal('v8', 'Finalized', (await ledger8Unbound(await loadLedger8Protocol())).bind()),
@@ -194,8 +194,8 @@ describe('MidnightWalletProvider', () => {
   describe('a wallet that finalizes in another epoch than the chain is in', () => {
     it('is refused with the wallet SDK error, and no handle is sealed', async () => {
       const { wallet } = await createBalancingWallet(eras[0]);
-      const atRetainedEpoch = { ...wallet, state: walletAt(RETAINED_VERSION).state } as WalletFacade;
-      const provider = await createProvider(atRetainedEpoch);
+      const atLedger8Epoch = { ...wallet, state: walletAt(LEDGER8_VERSION).state } as WalletFacade;
+      const provider = await createProvider(atLedger8Epoch);
       const unbound = await eras[0].unbound();
       const fromBytes = vi.spyOn(LedgerTransaction, 'fromBytes');
 

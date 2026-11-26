@@ -15,8 +15,8 @@
 
 import { readFileSync } from 'node:fs';
 
-import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import { hashVerifierKey } from '@midnightntwrk/compact-js';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
@@ -756,7 +756,7 @@ describe('the two ledger eras run the same scenario', () => {
   });
 
   // Both eras hand the offer factory the same split for the same call, and
-  // answer with it. The retained CALL pipeline depends on exactly this: it can
+  // answer with it. The ledger 8 CALL pipeline depends on exactly this: it can
   // only route a Zswap coin once it holds the split, and the factory is the
   // only place that split is ever offered.
   it.each(ERAS)('hands %s the same partition to route against, and answers with it', async (version) => {

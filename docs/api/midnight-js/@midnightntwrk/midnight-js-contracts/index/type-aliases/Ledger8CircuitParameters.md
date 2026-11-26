@@ -8,7 +8,7 @@
 
 > **Ledger8CircuitParameters**\<`C`, `PCK`\> = `Parameters`\<`C`\[`"provableCircuits"`\]\[`PCK`\]\> *extends* \[[`Ledger8CircuitContext`](../interfaces/Ledger8CircuitContext.md), `...(infer A)`\] ? `A` : `never`[]
 
-The arguments a caller supplies for circuit `PCK` on a retained-era contract.
+The arguments a caller supplies for circuit `PCK` on a ledger 8 contract.
 
 The leading [Ledger8CircuitContext](../interfaces/Ledger8CircuitContext.md) is stripped, exactly as the current
 era's `Contract.CircuitParameters` strips its own leading `CircuitContext`:

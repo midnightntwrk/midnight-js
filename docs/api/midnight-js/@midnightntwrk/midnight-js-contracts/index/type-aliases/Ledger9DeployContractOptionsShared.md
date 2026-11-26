@@ -19,14 +19,14 @@ declaring `privateStateId: PrivateStateId` over a base declaring
 private-state variant uninhabitable — so the pairing rule can only be stated by
 making the two variants siblings over this.
 
-Ledger8DeployContractOptionsShared plays the same role for the
-retained era, which arrives there by a different route: its variants are
+Ledger8DeployContractOptionsShared plays the same role for
+ledger 8, which arrives there by a different route: its variants are
 interfaces, and an interface redeclaring the member is rejected outright as an
 incompatible extension. This era cannot use interfaces, because `args` reaches
 both variants through the [Ledger9ContractConstructorOptionsWithArguments](Ledger9ContractConstructorOptionsWithArguments.md)
 conditional and an interface cannot extend a conditional type.
 
-PUBLISHED, unlike its retained-era counterpart, purely so the two members
+PUBLISHED, unlike its ledger 8 counterpart, purely so the two members
 below keep a documented page of their own: TypeDoc inlines the members an
 interface inherits, but renders an unexported alias as bare text, which would
 delete `signingKey` and `additionalCoinEncPublicKeyMappings` from the

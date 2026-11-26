@@ -308,7 +308,7 @@ describe('a record is read without acquiring the v8 runtime: the caller decodes 
   });
 });
 
-describe('the module graph keeps both retained-era chunks off the eager path', () => {
+describe('the module graph keeps both ledger 8 chunks off the eager path', () => {
   const SOURCE_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
   const sourceFiles = (directory: string): string[] =>
@@ -325,7 +325,7 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
     sourceFiles(SOURCE_ROOT).map((path) => ({ path, text: readFileSync(path, 'utf8') }));
 
   // Every lazy accessor the protocol package publishes. The engine accessor is
-  // the one that pulls the retained compact-runtime 0.16 glue and the
+  // the one that pulls the ledger 8 compact-runtime 0.16 glue and the
   // onchain-runtime-v3 WASM, neither of which a decode-only read path has any
   // use for.
   const LAZY_ACCESSORS = ['loadLedger8Protocol', 'loadLedger8Engine'] as const;
@@ -362,7 +362,7 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
       )
     );
 
-  it('never links a retained-era package or subpath at runtime, by import or by re-export', () => {
+  it('never links a ledger 8 package or subpath at runtime, by import or by re-export', () => {
     const FORBIDDEN = [
       '@midnightntwrk/ledger-v8',
       '@midnightntwrk/midnight-js-protocol/v8',

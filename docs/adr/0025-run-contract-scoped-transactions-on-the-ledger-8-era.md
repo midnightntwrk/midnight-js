@@ -34,7 +34,7 @@ contracts.
 - `withLedger8ContractScopedTransaction` mirrors `withLedger9ContractScopedTransaction`. Each
   refuses a head of the other era with `EraMismatchError`, reason `'scope-era-mismatch'`, from the
   head reading alone and before the scope function runs.
-- The ledger 8 scope acquires the retained runtime once, before its function runs. The first call
+- The ledger 8 scope acquires the ledger 8 runtime once, before its function runs. The first call
   added to it reads the contract state and the stored private state; every later call runs on the
   states the call before it ended on.
   The calls are merged with the framework's own ledger 8 copy and submitted once; the private state

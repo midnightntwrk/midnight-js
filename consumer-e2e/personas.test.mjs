@@ -15,7 +15,7 @@
 
 import { describe, expect, test } from 'vitest';
 
-import { MATRIX_CONTRACTS, RETAINED_TWINS, resolveContractSelection } from './personas.mjs';
+import { MATRIX_CONTRACTS, LEDGER8_TWINS, resolveContractSelection } from './personas.mjs';
 
 // WHAT THESE ARE FOR. `resolveContractSelection` decides which legs a Hard fork
 // shard runs, and every way it can be wrong is silent: a shard that narrows to
@@ -25,7 +25,7 @@ import { MATRIX_CONTRACTS, RETAINED_TWINS, resolveContractSelection } from './pe
 // shard that passed.
 //
 // The asymmetric keys are what make it non-trivial, so they are the subject:
-// `events` has no retained twin that can exist (`emit` is not a language-0.23
+// `events` has no ledger 8 twin that can exist (`emit` is not a language-0.23
 // form) and `private-counter` has no current-era leg worth running (a post-fork
 // deploy has no pre-fork private state to carry).
 
@@ -39,7 +39,7 @@ describe('[Unit tests] resolveContractSelection', () => {
     const selection = resolveContractSelection(undefined);
 
     expect(selection.current).toEqual(MATRIX_CONTRACTS);
-    expect(selection.retained).toEqual(RETAINED_TWINS);
+    expect(selection.ledger8).toEqual(LEDGER8_TWINS);
   });
 
   /**
@@ -50,13 +50,13 @@ describe('[Unit tests] resolveContractSelection', () => {
   test('keeps a contract that has both legs in both halves', () => {
     const selection = resolveContractSelection(['simple']);
 
-    expect(selection).toEqual({ current: ['simple'], retained: ['simple'] });
+    expect(selection).toEqual({ current: ['simple'], ledger8: ['simple'] });
   });
 
   /**
-   * @given a request naming `events`, which has no retained twin
+   * @given a request naming `events`, which has no ledger 8 twin
    * @when the selection is resolved
-   * @then the retained half is empty and nothing is refused
+   * @then the ledger 8 half is empty and nothing is refused
    *
    * The pre-existing asymmetry, kept here because the change that added the
    * other one had to leave this working.
@@ -64,7 +64,7 @@ describe('[Unit tests] resolveContractSelection', () => {
   test('narrows a current-era-only contract to the current half', () => {
     const selection = resolveContractSelection(['events']);
 
-    expect(selection).toEqual({ current: ['events'], retained: [] });
+    expect(selection).toEqual({ current: ['events'], ledger8: [] });
   });
 
   /**
@@ -73,14 +73,14 @@ describe('[Unit tests] resolveContractSelection', () => {
    * @then the current half is empty and nothing is refused
    *
    * THE REGRESSION THIS PINS. Validation used to run against `MATRIX_CONTRACTS`
-   * alone, which worked only while every retained twin was also a current-era
-   * one. A retained-only key reached that check as an unknown and the shard died
+   * alone, which worked only while every ledger 8 twin was also a current-era
+   * one. A ledger-8-only key reached that check as an unknown and the shard died
    * naming it a typo.
    */
-  test('narrows a retained-only contract to the retained half', () => {
+  test('narrows a ledger-8-only contract to the ledger 8 half', () => {
     const selection = resolveContractSelection(['private-counter']);
 
-    expect(selection).toEqual({ current: [], retained: ['private-counter'] });
+    expect(selection).toEqual({ current: [], ledger8: ['private-counter'] });
   });
 
   /**
@@ -123,7 +123,7 @@ describe('[Unit tests] resolveContractSelection', () => {
    * was wrong in. This is the assertion that keeps them meaningful.
    */
   test('the two matrices genuinely differ in both directions', () => {
-    expect(MATRIX_CONTRACTS.filter((key) => !RETAINED_TWINS.includes(key))).not.toHaveLength(0);
-    expect(RETAINED_TWINS.filter((key) => !MATRIX_CONTRACTS.includes(key))).not.toHaveLength(0);
+    expect(MATRIX_CONTRACTS.filter((key) => !LEDGER8_TWINS.includes(key))).not.toHaveLength(0);
+    expect(LEDGER8_TWINS.filter((key) => !MATRIX_CONTRACTS.includes(key))).not.toHaveLength(0);
   });
 });

@@ -10,12 +10,12 @@
 
 > **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger8DeployedContract`](../interfaces/Ledger8DeployedContract.md)\<`C`\>\>
 
-The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
-Reachable only BEFORE THE FORK: the retained era has no post-fork deployment, so a retained
+Reachable only BEFORE THE FORK: ledger 8 has no post-fork deployment, so a ledger 8
 artifact after the fork is refused with `EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`). Recompile with the
-current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
+current toolchain and deploy that artifact instead; the ledger 8 artifact keeps working for calls
 against contracts deployed before the fork.
 
 A verifier key is registered for every entry point the artifact declares.

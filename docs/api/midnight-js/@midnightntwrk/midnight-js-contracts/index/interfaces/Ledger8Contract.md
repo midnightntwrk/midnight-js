@@ -6,7 +6,7 @@
 
 # Interface: Ledger8Contract\<PS\>
 
-A contract instance produced by the retained (`compact-runtime@0.16`)
+A contract instance produced by the ledger 8 (`compact-runtime@0.16`)
 toolchain, as the real generated artifact declares it: `witnesses`, the three
 circuit collections, and a synchronous `initialState`.
 

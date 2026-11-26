@@ -11,8 +11,8 @@
 The era whose objects this build links eagerly, today through `./v9`.
 
 "Current" is relative: today it is ledger 9 (`'v9'`). At the next hard fork it
-moves to the new ledger and ledger 9 joins RetainedLedgerEra. Code
-bound to one ledger is named after that ledger (`Ledger9*`) instead.
+moves to the new ledger. Code bound to one ledger is named after that ledger
+(`Ledger9*`) instead.
 
 A protocol fact rather than a consumer's choice: it is decided by which
 ledger the package links eagerly, and every other era is reached lazily and

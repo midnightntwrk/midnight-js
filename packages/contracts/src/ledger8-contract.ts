@@ -14,17 +14,17 @@
  */
 
 /**
- * The retained-era contract type family: the shape of a contract produced by
+ * The ledger 8 contract type family: the shape of a contract produced by
  * the PREVIOUS Compact toolchain (`compact-runtime@0.16`), which the current
  * entry points accept through an additive overload alongside the current
  * (`compact-runtime@0.21`) `CompiledContract` container.
  *
- * Every declaration here is hand-written. The retained toolchain DOES emit an
+ * Every declaration here is hand-written. The ledger 8 toolchain DOES emit an
  * `index.d.ts`, but it describes one contract in terms of
  * `compact-runtime@0.16` -- a package this one does not depend on and consumers
  * need not install -- where this family is a top type over the whole era. Three
  * things separate the eras at the type level: the circuit CONTEXT, which is the
- * one that fires for a real contract; the fact that retained-era circuits and
+ * one that fires for a real contract; the fact that ledger 8 circuits and
  * `initialState` return plain objects where the current era returns `Promise`s;
  * and the current era's `CompiledContract` container.
  *
@@ -44,11 +44,11 @@ import type {
 } from '@midnightntwrk/midnight-js-protocol';
 
 /**
- * The retained era's contract-state handle.
+ * The ledger 8 contract-state handle.
  *
  * DERIVED from the engine's own results rather than restated: it is compact-js's
  * ledger-8 type, and naming it structurally keeps this package free of any
- * dependency on the retained runtime.
+ * dependency on the ledger 8 runtime.
  */
 type Ledger8StateValue = TranscriptPojo['postContractState'];
 
@@ -82,14 +82,14 @@ import type { Ledger8FoundDeployTxPublicData } from './tx-model';
 
 
 /**
- * The context a retained-era circuit receives as its first argument, as a
+ * The context a ledger 8 circuit receives as its first argument, as a
  * caller READS it.
  *
  * The member list is an invariant, not a description: it must be exactly the
- * retained runtime's REQUIRED members. `gasLimit`, the one optional member, is
+ * ledger 8 runtime's REQUIRED members. `gasLimit`, the one optional member, is
  * therefore absent -- and naming it, or any future optional member, without
  * `?` would collapse {@link Ledger8CircuitParameters} to `never[]` for every
- * retained contract. `costModel` is named for the same reason rather than for
+ * ledger 8 contract. `costModel` is named for the same reason rather than for
  * anything this type does on its own: {@link Ledger8CircuitContextArgument}
  * takes its keys from here.
  *
@@ -109,10 +109,10 @@ export interface Ledger8CircuitContext<PS = unknown> {
 }
 
 /**
- * The context in the position where a retained-era circuit ACCEPTS it.
+ * The context in the position where a ledger 8 circuit ACCEPTS it.
  *
  * A parameter position is contravariant, so this type is the one that has to be
- * assignable INTO the retained runtime's real `CircuitContext` -- the opposite
+ * assignable INTO the ledger 8 runtime's real `CircuitContext` -- the opposite
  * direction from {@link Ledger8CircuitContext}. Every member is therefore
  * `never`, and it is derived by a mapped type so the two cannot drift apart on
  * a member.
@@ -127,7 +127,7 @@ export interface Ledger8CircuitContext<PS = unknown> {
 export type Ledger8CircuitContextArgument = { readonly [K in keyof Ledger8CircuitContext]: never };
 
 /**
- * What a retained-era circuit member returns: a plain object, NOT a `Promise`.
+ * What a ledger 8 circuit member returns: a plain object, NOT a `Promise`.
  *
  * The absence of `Promise` here is the load-bearing half of the era
  * discriminator — a current-era circuit's `Promise<CircuitResults<...>>` has
@@ -141,7 +141,7 @@ export interface Ledger8CircuitResult {
 }
 
 /**
- * A retained-era circuit member.
+ * A ledger 8 circuit member.
  *
  * Two things here are load-bearing and neither is cosmetic: the leading context is declared
  * EXPLICITLY, and both it and the argument tail are bottom types rather than `unknown`. Do not
@@ -152,7 +152,7 @@ export interface Ledger8CircuitResult {
 export type Ledger8Circuit = (context: Ledger8CircuitContextArgument, ...args: never[]) => Ledger8CircuitResult;
 
 /**
- * A retained-era witness implementation, which returns the next private state
+ * A ledger 8 witness implementation, which returns the next private state
  * paired with the value the circuit reads.
  *
  * `PS` is threaded through the FIRST tuple member so a witness declared over the wrong private
@@ -162,7 +162,7 @@ export type Ledger8Circuit = (context: Ledger8CircuitContextArgument, ...args: n
 export type Ledger8Witness<PS = unknown> = (...args: never[]) => readonly [PS, unknown];
 
 /**
- * What a retained-era artifact's own `initialState` returns: a plain object,
+ * What a ledger 8 artifact's own `initialState` returns: a plain object,
  * NOT a `Promise`.
  *
  * A declaration OF THE ARTIFACT, not a framework result. It is the shape
@@ -170,9 +170,9 @@ export type Ledger8Witness<PS = unknown> = (...args: never[]) => readonly [PS, u
  * the era discriminable at the type level -- the current era's `initialState`
  * answers with a `Promise`.
  *
- * Deliberately NOT the retained counterpart of `Ledger9ContractConstructorResult`,
+ * Deliberately NOT the ledger 8 counterpart of `Ledger9ContractConstructorResult`,
  * which is a framework result carrying `era` and `next*` members. There is no
- * retained counterpart of that type: the constructor output a retained deploy
+ * ledger 8 counterpart of that type: the constructor output a ledger 8 deploy
  * would publish is spread across `Ledger8DeployedContract`'s `initial*`
  * members, and nothing constructs one today. This type was called
  * `Ledger8ConstructorResult`, which put a false pairing next to
@@ -185,7 +185,7 @@ export interface Ledger8InitialStateResult<PS = unknown> {
 }
 
 /**
- * A contract instance produced by the retained (`compact-runtime@0.16`)
+ * A contract instance produced by the ledger 8 (`compact-runtime@0.16`)
  * toolchain, as the real generated artifact declares it: `witnesses`, the three
  * circuit collections, and a synchronous `initialState`.
  *
@@ -201,13 +201,13 @@ export interface Ledger8Contract<PS = unknown> {
 }
 
 /**
- * The private state type a retained-era contract carries.
+ * The private state type a ledger 8 contract carries.
  */
 export type Ledger8PrivateState<C extends Ledger8Contract> =
   C extends Ledger8Contract<infer PS> ? PS : never;
 
 /**
- * The name of a callable circuit on a retained-era contract.
+ * The name of a callable circuit on a ledger 8 contract.
  *
  * Keyed off `provableCircuits`, NOT `impureCircuits`: `provableCircuits` is the
  * map compact-js indexes to run a circuit, and the one the deploy pre-check
@@ -217,7 +217,7 @@ export type Ledger8PrivateState<C extends Ledger8Contract> =
 export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['provableCircuits'] & string;
 
 /**
- * The arguments a caller supplies for circuit `PCK` on a retained-era contract.
+ * The arguments a caller supplies for circuit `PCK` on a ledger 8 contract.
  *
  * The leading {@link Ledger8CircuitContext} is stripped, exactly as the current
  * era's `Contract.CircuitParameters` strips its own leading `CircuitContext`:
@@ -236,12 +236,12 @@ export type Ledger8CircuitParameters<C extends Ledger8Contract, PCK extends Ledg
   Parameters<C['provableCircuits'][PCK]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
 
 /**
- * The providers a retained-era call transaction needs.
+ * The providers a ledger 8 call transaction needs.
  *
- * The same provider set the current era uses, keyed by the retained-era circuit
+ * The same provider set the current era uses, keyed by the ledger 8 circuit
  * id.
  *
- * @see {@link OverloadTyping} for why there is no separate retained-era provider
+ * @see {@link OverloadTyping} for why there is no separate ledger 8 provider
  *      surface.
  */
 export type Ledger8ContractProviders<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> = MidnightProviders<
@@ -251,11 +251,11 @@ export type Ledger8ContractProviders<C extends Ledger8Contract, PCK extends Ledg
 >;
 
 /**
- * The target of a retained-era circuit invocation, without its arguments.
+ * The target of a ledger 8 circuit invocation, without its arguments.
  */
 export interface Ledger8CallTxTarget<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> {
   /**
-   * The retained-era contract instance, passed raw — there is no
+   * The ledger 8 contract instance, passed raw — there is no
    * `CompiledContract` container for this era.
    */
   readonly compiledContract: C;
@@ -278,7 +278,7 @@ export interface Ledger8CallTxTarget<C extends Ledger8Contract, PCK extends Ledg
 }
 
 /**
- * Base configuration for a retained-era call transaction.
+ * Base configuration for a ledger 8 call transaction.
  *
  * `args` is CONDITIONAL, mirroring the current era's `Ledger9CallOptionsWithArguments`: a circuit that
  * takes no arguments of its own has no `args` member at all, rather than one the caller has to
@@ -296,7 +296,7 @@ export type Ledger8CallTxOptionsBase<C extends Ledger8Contract, PCK extends Ledg
       };
 
 /**
- * A retained-era call transaction configuration that also names where to store
+ * A ledger 8 call transaction configuration that also names where to store
  * the private state the call produces.
  */
 export type Ledger8CallTxOptionsWithPrivateStateId<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
@@ -308,16 +308,16 @@ export type Ledger8CallTxOptionsWithPrivateStateId<C extends Ledger8Contract, PC
   };
 
 /**
- * Retained-era call transaction configuration.
+ * Ledger 8 call transaction configuration.
  */
 export type Ledger8CallTxOptions<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
   | Ledger8CallTxOptionsBase<C, PCK>
   | Ledger8CallTxOptionsWithPrivateStateId<C, PCK>;
 
 /**
- * Configuration for building a retained-era call on states the caller read itself, with
+ * Configuration for building a ledger 8 call on states the caller read itself, with
  * `createLedger8UnprovenCallTxFromInitialStates`. The head era is stated, and each state carries the
- * era that wrote it, because after the fork a retained-era contract's state may already be a ledger 9
+ * era that wrote it, because after the fork a ledger 8 contract's state may already be a ledger 9
  * one.
  */
 export type Ledger8CallOptionsWithInitialStates<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
@@ -345,9 +345,9 @@ export type Ledger8CallOptionsWithInitialStates<C extends Ledger8Contract, PCK e
   };
 
 /**
- * The finalized data a retained-era call transaction resolves with.
+ * The finalized data a ledger 8 call transaction resolves with.
  *
- * `txData` is era-tagged rather than single-era: the same retained-era
+ * `txData` is era-tagged rather than single-era: the same ledger 8
  * contract is called as a v8 transaction before the fork and as a v9 keep-state
  * transaction after it, so the record it finalizes as carries the era that
  * produced it.
@@ -355,11 +355,11 @@ export type Ledger8CallOptionsWithInitialStates<C extends Ledger8Contract, PCK e
  * @see {@link OverloadTyping} for the era-tagged provider methods that rule follows from.
  */
 /**
- * What a retained-era circuit's own return value narrows to.
+ * What a ledger 8 circuit's own return value narrows to.
  *
  * Derived through `infer` with a fallback rather than read off
  * {@link Ledger8CircuitResult}, whose `result` is `unknown` because that type is
- * the ERA DISCRIMINATOR and has to stay wide enough to match any retained
+ * the ERA DISCRIMINATOR and has to stay wide enough to match any ledger 8
  * codegen. A concrete contract type narrows it here; anything that does not
  * falls to `unknown` rather than to `never`, so a caller is handed a value it
  * has to check instead of one it cannot use.
@@ -368,11 +368,11 @@ export type Ledger8CircuitReturnType<C extends Ledger8Contract, PCK extends Ledg
   ReturnType<C['provableCircuits'][PCK]> extends { readonly result: infer R } ? R : unknown;
 
 /**
- * The public, non-sensitive half of a retained-era circuit execution.
+ * The public, non-sensitive half of a ledger 8 circuit execution.
  *
  * Carries {@link CallResultPublicBase} plus the post-call state. Against
  * `Ledger9CallResultPublic` exactly ONE member is missing: `logEvents`,
- * because the retained toolchain has no log-event concept at any layer, so
+ * because the ledger 8 toolchain has no log-event concept at any layer, so
  * there is no value to carry rather than a value being dropped. That absence is
  * named in the era key-set parity gate's allow-list, which is what keeps a
  * second absence from joining it unnoticed.
@@ -382,7 +382,7 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
    * The state the execution ENDED on, as a LIVE `onchain-runtime-v3` handle
    * rather than as bytes.
    *
-   * Valid only while the retained runtime instance that produced it is loaded.
+   * Valid only while the ledger 8 runtime instance that produced it is loaded.
    * It does not survive `structuredClone`, a `postMessage` to a worker, or
    * serialization — anything that walks it sees `__wbg_ptr`, an integer that
    * means nothing outside its module. Serialize it yourself if you need to
@@ -402,7 +402,7 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
 }
 
 /**
- * The private, ZK-confidential half of a retained-era circuit execution.
+ * The private, ZK-confidential half of a ledger 8 circuit execution.
  *
  * Carries {@link CallResultPrivateBase} and {@link UnsubmittedTxDataBase} — so
  * the execution members and the caller's new coins come from the same
@@ -426,11 +426,11 @@ export interface Ledger8CallResultPrivate<C extends Ledger8Contract, PCK extends
 }
 
 /**
- * The public data of a finalized retained-era call: the execution's public half
+ * The public data of a finalized ledger 8 call: the execution's public half
  * combined with the finalized record.
  *
  * The record stays {@link FinalizedTxRead} rather than being narrowed
- * to `Ledger9FinalizedTxData`. A retained-era call is recorded by
+ * to `Ledger9FinalizedTxData`. A ledger 8 call is recorded by
  * whichever era the network is on, so `era` is a union here where the
  * current era pins `'v9'` -- narrowing it would refuse the very records this
  * pipeline exists to produce.
@@ -438,7 +438,7 @@ export interface Ledger8CallResultPrivate<C extends Ledger8Contract, PCK extends
 export type Ledger8FinalizedCallTxPublicData = Ledger8CallResultPublic & FinalizedTxRead;
 
 /**
- * What a retained-era call transaction resolves with once finalized.
+ * What a ledger 8 call transaction resolves with once finalized.
  *
  * The SAME two-level structure the current era answers with -- `public` for the
  * non-sensitive half, `private` for the confidential one -- so a caller reads
@@ -450,7 +450,7 @@ export type Ledger8FinalizedCallTxPublicData = Ledger8CallResultPublic & Finaliz
  */
 export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> {
   /**
-   * The pipeline that produced this result: always the retained era here, even
+   * The pipeline that produced this result: always ledger 8 here, even
    * when the transaction that recorded it is a keep-state transaction tagged
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
@@ -464,17 +464,17 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, PCK exten
 }
 
 /**
- * The public half of ONE retained-era contract call.
+ * The public half of ONE ledger 8 contract call.
  *
  * Both state members are LIVE `onchain-runtime-v3` handles, valid only while
- * the retained runtime instance that produced them is loaded. Neither survives
+ * the ledger 8 runtime instance that produced them is loaded. Neither survives
  * `structuredClone`, a worker transfer or serialization; both are published
  * under ADR-0010 for callers that want the object rather than another decode of
  * the same bytes, and both carry an {@link EncodedStateValue} twin for
  * everything else.
  *
- * @typeParam TState - The retained-era state type; the framework's own
- * retained runtime fills it with compact-js's ledger-8 state handle.
+ * @typeParam TState - The ledger 8 state type; the framework's own
+ * ledger 8 runtime fills it with compact-js's ledger-8 state handle.
  */
 export interface Ledger8ContractCallPublic<TState = Ledger8StateValue> extends CallResultPublicBase {
   /**
@@ -493,10 +493,10 @@ export interface Ledger8ContractCallPublic<TState = Ledger8StateValue> extends C
    */
   readonly contractStateEncoded: EncodedStateValue;
   /**
-   * The state this call BOUND to: the retained-era handle the pipeline
+   * The state this call BOUND to: the ledger 8 handle the pipeline
    * executed against, forwarded rather than re-derived.
    *
-   * Retained-era only. The current era publishes no pre-call state on a call
+   * Ledger 8 only. The current era publishes no pre-call state on a call
    * entry, so era-agnostic code must not reach for this member.
    *
    * Indistinguishable from {@link Ledger8ContractCallPublic.postContractState}
@@ -515,9 +515,9 @@ export interface Ledger8ContractCallPublic<TState = Ledger8StateValue> extends C
 }
 
 /**
- * Proof data for ONE retained-era contract call.
+ * Proof data for ONE ledger 8 contract call.
  *
- * The retained era's counterpart of `compact-js`'s `ContractCall`: it carries
+ * The ledger 8 counterpart of `compact-js`'s `ContractCall`: it carries
  * every member that one does, under the same name and meaning, and adds three.
  * `public.contractState` differs only in TYPE — each era's state handle comes
  * from its own runtime. The additions are `public.contractStateEncoded` and the
@@ -540,7 +540,7 @@ export interface Ledger8ContractCall<TState = Ledger8StateValue> {
 }
 
 /**
- * The execution data of a retained-era call, before the chain has recorded it.
+ * The execution data of a ledger 8 call, before the chain has recorded it.
  *
  * The same two halves {@link Ledger8FinalizedCallTxData} carries, minus the
  * finalized record — which is the one thing a submission that does not wait
@@ -548,7 +548,7 @@ export interface Ledger8ContractCall<TState = Ledger8StateValue> {
  */
 export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> {
   /**
-   * The pipeline that produced this result: always the retained era here, even
+   * The pipeline that produced this result: always ledger 8 here, even
    * when the transaction that recorded it is a keep-state transaction tagged
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
@@ -565,7 +565,7 @@ export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, PCK ext
 }
 
 /**
- * What a retained-era call transaction resolves with when submitted without
+ * What a ledger 8 call transaction resolves with when submitted without
  * waiting for finalization.
  *
  * Carries the execution data on `callTxData`, as the current era's
@@ -576,7 +576,7 @@ export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, PCK ext
 export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>
   extends SubmittedCallTxBase<Ledger8UnsubmittedCallTxData<C, PCK>> {
   /**
-   * The pipeline that produced this result: always the retained era here, even
+   * The pipeline that produced this result: always ledger 8 here, even
    * when the transaction that recorded it is a keep-state transaction tagged
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
@@ -586,7 +586,7 @@ export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, PCK extends L
 }
 
 /**
- * The arguments a retained-era CONSTRUCTOR takes, with the framework-built
+ * The arguments a ledger 8 CONSTRUCTOR takes, with the framework-built
  * context stripped — the constructor counterpart of
  * {@link Ledger8CircuitParameters}, and it follows the same rule: a constructor
  * whose parameters are not tuple-shaped falls to `never[]`, not to `never`, so
@@ -597,7 +597,7 @@ export type Ledger8ConstructorParameters<C extends Ledger8Contract> =
   Parameters<C['initialState']> extends [unknown, ...infer A] ? A : never[];
 
 /**
- * What both retained-era deploy options variants carry, and nothing either variant decides.
+ * What both ledger 8 deploy options variants carry, and nothing either variant decides.
  *
  * NOT published, and neither variant extends the other. A variant declaring
  * `privateStateId: PrivateStateId` over a base declaring `privateStateId?:
@@ -611,7 +611,7 @@ interface Ledger8DeployContractOptionsShared<C extends Ledger8Contract> {
    * The signing key to register as the deployed contract's maintenance
    * authority. If undefined, a fresh one is sampled.
    *
-   * The same `{ tag, value }` shape the current era takes. The retained era
+   * The same `{ tag, value }` shape the current era takes. Ledger 8
    * signs with `schnorr` only, so any other key -- or a value that is not
    * exactly 64 hexadecimal characters -- is refused with
    * `Ledger8SigningKeyError` (reason `'unusable'`) before anything is composed.
@@ -620,7 +620,7 @@ interface Ledger8DeployContractOptionsShared<C extends Ledger8Contract> {
 }
 
 /**
- * The deploy options variant for a retained-era contract whose private state is stored
+ * The deploy options variant for a ledger 8 contract whose private state is stored
  * NOWHERE: the constructor runs against `undefined` and nothing is written.
  *
  * The other variant is {@link Ledger8DeployContractOptionsWithPrivateState}.
@@ -647,7 +647,7 @@ export interface Ledger8DeployContractOptionsBase<C extends Ledger8Contract>
 }
 
 /**
- * Deploy configuration for a retained-era contract that carries private state,
+ * Deploy configuration for a ledger 8 contract that carries private state,
  * naming where the state the constructor produces is stored.
  *
  * Both members together or neither: a state with no id has nowhere to go, and
@@ -670,11 +670,11 @@ export interface Ledger8DeployContractOptionsWithPrivateState<C extends Ledger8C
 }
 
 /**
- * Configuration for deploying a retained-era contract.
+ * Configuration for deploying a ledger 8 contract.
  *
  * `args` is CONDITIONAL, exactly as {@link Ledger8CallTxOptionsBase}'s is: a
  * constructor that takes no arguments of its own has no `args` member at all.
- * A retained constructor CAN take arguments — `Ledger8Contract.initialState`
+ * A ledger 8 constructor CAN take arguments — `Ledger8Contract.initialState`
  * says so, and the pipeline under this overload has always passed them through — so
  * denying them here made a zero-argument constructor the only deployable one.
  *
@@ -696,7 +696,7 @@ export type Ledger8DeployContractOptions<C extends Ledger8Contract> =
       };
 
 /**
- * Configuration for building a retained-era deploy without submitting it, with
+ * Configuration for building a ledger 8 deploy without submitting it, with
  * `createLedger8UnprovenDeployTx` or `createLedger8UnprovenDeployTxFromVerifierKeys`. A builder
  * stores nothing, so the constructor's private state needs no id to be stored under.
  */
@@ -720,7 +720,7 @@ export type Ledger8UnprovenDeployTxOptions<C extends Ledger8Contract> =
       };
 
 /**
- * Configuration for attaching to an already-deployed retained-era contract.
+ * Configuration for attaching to an already-deployed ledger 8 contract.
  */
 export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
   readonly compiledContract: C;
@@ -729,7 +729,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * Where the calls made through {@link Ledger8FoundContract.callTx} read and
    * store this contract's private state.
    *
-   * Optional because a retained-era contract may genuinely carry none: OMITTING
+   * Optional because a ledger 8 contract may genuinely carry none: OMITTING
    * the property means nothing is read and nothing is written. Naming one the
    * provider holds nothing under is a caller error and is refused, rather than
    * executing against a default state — and so is writing the property with an
@@ -753,7 +753,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * The key to record as this contract's maintenance authority key, for a
    * caller that holds one and deployed the contract somewhere else.
    *
-   * VALIDATED BEFORE IT IS STORED. A retained-era key is a `schnorr` key whose
+   * VALIDATED BEFORE IT IS STORED. A ledger 8 key is a `schnorr` key whose
    * value is exactly 64 hexadecimal characters, which is what that era's
    * `sampleSigningKey` produces; this type also admits `ecdsa` and values of any
    * length, and those are refused with `Ledger8SigningKeyError` (reason `'unusable'`).
@@ -777,12 +777,12 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
 }
 
 /**
- * Lifts every circuit a retained-era contract declares to a function that
+ * Lifts every circuit a ledger 8 contract declares to a function that
  * builds and submits a call transaction against one address.
  *
  * Two signatures per circuit, as `Ledger9CircuitCallTxInterface` has: called with a
  * {@link Ledger8TransactionContext} first, the call joins that scope instead of being submitted on
- * its own. A scope made after the hard fork is a ledger 9 one, which a retained-era call cannot join
+ * its own. A scope made after the hard fork is a ledger 9 one, which a ledger 8 call cannot join
  * (`EraMismatchError`, reason `'ledger8-call-in-scope'`).
  */
 export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
@@ -796,7 +796,7 @@ export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
 };
 
 /**
- * The deploy data of a retained-era contract found on chain: the same
+ * The deploy data of a ledger 8 contract found on chain: the same
  * `{ era, public, private }` structure `Ledger9FoundDeployTxData`
  * has, so a caller reads `deployTxData.public.txId` and
  * `deployTxData.private.signingKey` identically in both eras.
@@ -806,13 +806,13 @@ export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
  */
 export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
   /**
-   * The pipeline this handle runs on: always the retained era here. The era
+   * The pipeline this handle runs on: always ledger 8 here. The era
    * that recorded the deploy transaction is `public.era`.
    */
   readonly era: 'v8';
   /**
    * The record of the transaction that DEPLOYED the contract, and the address
-   * it created. Version-tagged because a retained-era contract was deployed in
+   * it created. Version-tagged because a ledger 8 contract was deployed in
    * whichever era was current at the time — narrow it with
    * `switch (deployTxData.public.era)`.
    */
@@ -847,7 +847,7 @@ export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
      * 2. something is stored that this framework did not write -- an entry naming
      *    the other signature kind, which the CURRENT era legitimately stores
      *    under the same address in the same provider, or one whose value is not
-     *    the shape a retained-era key has;
+     *    the shape a ledger 8 key has;
      * 3. the entry could not be READ at all, because `getSigningKey` rejected: a
      *    wrong store password, a rotation-lock timeout, store I/O, or an entry the
      *    provider refuses as not a signing key.
@@ -857,7 +857,7 @@ export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
      * cases are distinguishable.
      *
      * The remedy for case 2, and for a refused entry in case 3, is the caller's
-     * either way: pass the retained-era key on
+     * either way: pass the ledger 8 key on
      * {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
      * entry, or remove the entry with
      * `privateStateProvider.removeSigningKey(address)` first.
@@ -878,12 +878,12 @@ export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
 }
 
 /**
- * What a retained-era deploy builder answers with: everything the constructor produced and the
+ * What a ledger 8 deploy builder answers with: everything the constructor produced and the
  * unproven transaction, before the chain has recorded anything. Nothing is stored yet; storing the
  * signing key and the private state once the deploy is final is the caller's job.
  */
 export interface Ledger8UnsubmittedDeployTxData<C extends Ledger8Contract> {
-  /** The pipeline that produced this result. A retained-era deploy runs only before the fork. */
+  /** The pipeline that produced this result. A ledger 8 deploy runs only before the fork. */
   readonly era: 'v8';
   readonly public: {
     /** The address the composition minted, which no other deployment shares. */
@@ -917,7 +917,7 @@ export interface Ledger8UnsubmittedDeployTxData<C extends Ledger8Contract> {
 }
 
 /**
- * The deploy data of a retained-era contract deployed by the caller: the
+ * The deploy data of a ledger 8 contract deployed by the caller: the
  * {@link Ledger8FoundDeployTxData} structure, carrying what the constructor
  * produced as well.
  *
@@ -926,7 +926,7 @@ export interface Ledger8UnsubmittedDeployTxData<C extends Ledger8Contract> {
  */
 export interface Ledger8FinalizedDeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
   /**
-   * The record of the deploy transaction, always a ledger 8 one: a retained-era
+   * The record of the deploy transaction, always a ledger 8 one: a ledger 8
    * deploy runs only before the fork.
    */
   readonly public: Omit<Ledger8FoundDeployTxPublicData, 'initialContractState'> & {
@@ -974,22 +974,22 @@ export interface Ledger8FinalizedDeployTxData<C extends Ledger8Contract> extends
 }
 
 /**
- * What a retained-era maintenance update resolves with once the chain has recorded it: the
- * retained era's counterpart of `Ledger9FinalizedMaintenanceTxData`.
+ * What a ledger 8 maintenance update resolves with once the chain has recorded it: the
+ * ledger 8 counterpart of `Ledger9FinalizedMaintenanceTxData`.
  *
- * `public` is always the ledger 8 record. A retained-era artifact maintains a contract only before
+ * `public` is always the ledger 8 record. A ledger 8 artifact maintains a contract only before
  * the fork, so no other era can record the update.
  */
 export interface Ledger8FinalizedMaintenanceTxData {
-  /** The pipeline that produced this result: always the retained era here. */
+  /** The pipeline that produced this result: always ledger 8 here. */
   readonly era: 'v8';
   /** The finalized record of the maintenance transaction. */
   readonly public: Ledger8FinalizedTxData;
 }
 
 /**
- * Maintenance updates for one circuit of a retained-era contract, bound to one address: the
- * retained era's counterpart of `Ledger9CircuitMaintenanceTxInterface`.
+ * Maintenance updates for one circuit of a ledger 8 contract, bound to one address: the
+ * ledger 8 counterpart of `Ledger9CircuitMaintenanceTxInterface`.
  */
 export interface Ledger8CircuitMaintenanceTxInterface {
   /** Removes the verifier key the contract holds for this circuit. */
@@ -1002,14 +1002,14 @@ export interface Ledger8CircuitMaintenanceTxInterface {
   insertVerifierKey(newVk: VerifierKey): Promise<Ledger8FinalizedMaintenanceTxData>;
 }
 
-/** One {@link Ledger8CircuitMaintenanceTxInterface} per circuit the retained-era contract declares. */
+/** One {@link Ledger8CircuitMaintenanceTxInterface} per circuit the ledger 8 contract declares. */
 export type Ledger8CircuitMaintenanceTxInterfaces<C extends Ledger8Contract> = Record<
   Ledger8CircuitId<C>,
   Ledger8CircuitMaintenanceTxInterface
 >;
 
 /**
- * Maintenance updates for a whole retained-era contract, bound to one address: the retained era's
+ * Maintenance updates for a whole ledger 8 contract, bound to one address: ledger 8's
  * counterpart of `Ledger9ContractMaintenanceTxInterface`.
  */
 export interface Ledger8ContractMaintenanceTxInterface {
@@ -1023,7 +1023,7 @@ export interface Ledger8ContractMaintenanceTxInterface {
 }
 
 /**
- * A retained-era contract found on the blockchain.
+ * A ledger 8 contract found on the blockchain.
  *
  * Carries a {@link Ledger8CircuitCallTxInterface} for the same reason
  * `Ledger9FoundContract` carries one: a caller that has just supplied
@@ -1035,7 +1035,7 @@ export interface Ledger8ContractMaintenanceTxInterface {
  */
 export interface Ledger8FoundContract<C extends Ledger8Contract> {
   /**
-   * The pipeline that produced this result: always the retained era here, even
+   * The pipeline that produced this result: always ledger 8 here, even
    * when the transaction that recorded it is a keep-state transaction tagged
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
@@ -1065,7 +1065,7 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
 }
 
 /**
- * A retained-era contract deployed by the caller.
+ * A ledger 8 contract deployed by the caller.
  *
  * It differs from {@link Ledger8FoundContract} only in its
  * {@link Ledger8DeployedContract.deployTxData}, which carries what the
@@ -1073,7 +1073,7 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
  *
  * Exported flat so a caller that receives one by inference can also NAME it, and
  * a dApp's declaration emit can write it. This is what `deployContract`'s
- * retained-era overload answers with.
+ * ledger 8 overload answers with.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
   /** See {@link Ledger8FinalizedDeployTxData}. */
@@ -1081,11 +1081,11 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
 }
 
 /**
- * The widest instantiation of each retained-era type, which the era-dispatching implementation
+ * The widest instantiation of each ledger 8 type, which the era-dispatching implementation
  * signatures widen to.
  *
  * An implementation signature has to be compatible with every overload declared over it, so each
- * entry point's implementation carries the retained-era overload's parameter and result types alongside
+ * entry point's implementation carries the ledger 8 overload's parameter and result types alongside
  * the current era's. It is never the signature a caller sees — the overloads above it are.
  */
 export type AnyLedger8CallTxOptions = Ledger8CallTxOptions<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
@@ -1123,9 +1123,8 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * The message for a contract belonging to neither era. This is the SINGLE place its text is
  * written.
  *
- * Names the two eras by ROLE, never by toolchain version: this text is thrown at users, and a
- * version number in it goes stale on every runtime bump. The retained/current vocabulary is the
- * one the rest of this package uses.
+ * Names the two eras by LEDGER NUMBER, never by toolchain version: this text is thrown at users, and a
+ * toolchain version number in it goes stale on every runtime bump.
  *
  * DO NOT DELETE AS UNUSED, and do not inline it either. It is consumed by
  * `EraMismatchError` in `./errors`, which is what `resolveArtifactEra` in `./internal/era`
