@@ -8,7 +8,7 @@
 
 > **Ledger8PrivateState**\<`C`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<infer PS\> ? `PS` : `never`
 
-The private state type a retained-era contract carries.
+The private state type a ledger 8 contract carries.
 
 ## Type Parameters
 

@@ -25,8 +25,8 @@ them.
 
 The balances the contract holds, which are NOT part of the primary state:
 the ledger keeps them beside it, so a caller reading only `state` cannot
-reach them. A retained-era call that executes without them runs every
-circuit against an empty balance — see [RetainedEraExecution](../../documents/RetainedEraExecution.md).
+reach them. A ledger 8 call that executes without them runs every
+circuit against an empty balance — see [Ledger8Execution](../../documents/Ledger8Execution.md).
 
 ***
 

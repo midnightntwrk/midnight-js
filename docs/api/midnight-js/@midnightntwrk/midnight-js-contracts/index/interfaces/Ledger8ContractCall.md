@@ -6,9 +6,9 @@
 
 # Interface: Ledger8ContractCall\<TState\>
 
-Proof data for ONE retained-era contract call.
+Proof data for ONE ledger 8 contract call.
 
-The retained era's counterpart of `compact-js`'s `ContractCall`: it carries
+The ledger 8 counterpart of `compact-js`'s `ContractCall`: it carries
 every member that one does, under the same name and meaning, and adds three.
 `public.contractState` differs only in TYPE — each era's state handle comes
 from its own runtime. The additions are `public.contractStateEncoded` and the

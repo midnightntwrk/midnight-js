@@ -80,7 +80,7 @@ export const composeEraLedger8CallTx = (options: ComposeCallOptions, v8: Ledger8
       input: call.input,
       output: call.output,
       communicationCommitmentRandomness: call.communicationCommitmentRandomness,
-      // Carried across the adapter, not dropped. Without this the retained-native path silently
+      // Carried across the adapter, not dropped. Without this the ledger 8 native path silently
       // partitions against this era's INITIAL parameters while the caller believed it had supplied
       // the chain's -- the same defect this option exists to close, one layer down.
       ledgerParametersBytes: call.ledgerParametersBytes,

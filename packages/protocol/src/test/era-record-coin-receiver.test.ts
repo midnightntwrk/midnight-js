@@ -15,7 +15,7 @@
 
 /**
  * Mints AND guards the three `coin-receiver-016` fixtures that a coin-moving
- * call needs downstream: a recording of the transcript the real retained-era
+ * call needs downstream: a recording of the transcript the real ledger 8
  * runtime produces for `receive_coin`, and the two contract-state envelopes
  * that same call is dispatched against, one per era.
  *
@@ -24,7 +24,7 @@
  * The generator scripts are plain Node `.mjs` and cannot reach
  * `executeCircuit`, which is TypeScript source inside this package; and the
  * compiled fixture module opens with `checkRuntimeVersion('0.16.0')`, so it
- * only loads where the retained alias is substituted for the bare
+ * only loads where the ledger 8 alias is substituted for the bare
  * `@midnight-ntwrk/compact-runtime` specifier. Both are already solved here,
  * by `vi.mock`, which is exactly how `counter-016/increment-transcript.golden.json`
  * was minted -- "directly from `v8-execute.test.ts`'s own real execution", per
@@ -49,8 +49,8 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 
-import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import type * as CompactContract from '@midnightntwrk/compact-js/effect/Contract';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import type { ConstructorContext } from 'compact-runtime-ledger8';
@@ -65,7 +65,7 @@ import type { Assert } from './type-assertions';
 
 // The fixture module asserts `checkRuntimeVersion('0.16.0')` against a bare
 // `@midnight-ntwrk/compact-runtime` import, so the specifier is redirected to
-// the retained alias for this file only -- the same redirect
+// the ledger 8 alias for this file only -- the same redirect
 // the retired `v8-execute.test.ts` and `era-partition-received-coin.test.ts` use.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
@@ -217,7 +217,7 @@ interface RecordingFile {
 
 // The recorded member set is tied to the runtime's own transcript type at
 // COMPILE time: `RecordedTranscript` must name a member for every member of
-// `TranscriptPojo` except the two that carry live retained-runtime handles
+// `TranscriptPojo` except the two that carry live ledger 8 runtime handles
 // (`preContractState`, `postContractState`), which cannot be serialized at all.
 // A member added to `TranscriptPojo` fails this, which is what stops the
 // recording drifting behind the runtime.
@@ -236,7 +236,7 @@ const buildRecording = (execution: RealExecution): RecordingFile => {
   const { transcript, preState } = execution;
   return {
     documentation:
-      'Recording of the transcript the real retained-era (compact-runtime@0.16) runtime produces for ' +
+      'Recording of the transcript the real ledger 8 (compact-runtime@0.16) runtime produces for ' +
       "coin-receiver-016's receive_coin circuit, minted by real execution from " +
       'packages/protocol/src/test/era-record-coin-receiver.test.ts. Values are tagged: {"__bigint"}, ' +
       '{"__bytes"} (lower-case hex) and {"__map"}. NO member is substituted: the execution clock is an ' +
@@ -271,7 +271,7 @@ const buildRecording = (execution: RealExecution): RecordingFile => {
   };
 };
 
-/** The retained-era (`contract-state[v6]`) envelope the v8-native path dispatches against. */
+/** The ledger 8 (`contract-state[v6]`) envelope the v8-native path dispatches against. */
 const mintV6Envelope = (execution: RealExecution): Uint8Array => {
   const contractState = new ocrt3.ContractState();
   contractState.data = execution.initialData;
@@ -333,7 +333,7 @@ const ASSEMBLE_PER_ERA: Readonly<
   }
 };
 
-describe('coin-receiver-016 fixtures: minted by real retained-era execution, then guarded', () => {
+describe('coin-receiver-016 fixtures: minted by real ledger 8 execution, then guarded', () => {
   let execution: RealExecution;
 
   beforeAll(async () => {

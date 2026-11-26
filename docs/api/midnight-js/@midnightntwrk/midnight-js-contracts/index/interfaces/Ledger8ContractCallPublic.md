@@ -6,10 +6,10 @@
 
 # Interface: Ledger8ContractCallPublic\<TState\>
 
-The public half of ONE retained-era contract call.
+The public half of ONE ledger 8 contract call.
 
 Both state members are LIVE `onchain-runtime-v3` handles, valid only while
-the retained runtime instance that produced them is loaded. Neither survives
+the ledger 8 runtime instance that produced them is loaded. Neither survives
 `structuredClone`, a worker transfer or serialization; both are published
 under ADR-0010 for callers that want the object rather than another decode of
 the same bytes, and both carry an [EncodedStateValue](https://github.com/midnightntwrk/midnight-ledger) twin for
@@ -25,8 +25,8 @@ everything else.
 
 `TState` = `Ledger8StateValue`
 
-The retained-era state type; the framework's own
-retained runtime fills it with compact-js's ledger-8 state handle.
+The ledger 8 state type; the framework's own
+ledger 8 runtime fills it with compact-js's ledger-8 state handle.
 
 ## Properties
 
@@ -71,10 +71,10 @@ fallible half may fail without invalidating it.
 
 > `readonly` **preContractState**: `TState`
 
-The state this call BOUND to: the retained-era handle the pipeline
+The state this call BOUND to: the ledger 8 handle the pipeline
 executed against, forwarded rather than re-derived.
 
-Retained-era only. The current era publishes no pre-call state on a call
+Ledger 8 only. The current era publishes no pre-call state on a call
 entry, so era-agnostic code must not reach for this member.
 
 Indistinguishable from Ledger8ContractCallPublic.postContractState

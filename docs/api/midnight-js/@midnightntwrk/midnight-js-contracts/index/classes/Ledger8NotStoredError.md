@@ -6,7 +6,7 @@
 
 # Class: Ledger8NotStoredError
 
-An error indicating that a retained-era operation was CONFIRMED on chain, but the private-state
+An error indicating that a ledger 8 operation was CONFIRMED on chain, but the private-state
 provider refused to record it locally.
 
 `operation` `'deploy'`: distinct from [Ledger8UnconfirmedError](Ledger8UnconfirmedError.md), which covers the window where

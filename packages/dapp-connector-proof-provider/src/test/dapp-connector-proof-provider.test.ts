@@ -118,7 +118,7 @@ describe('dappConnectorProofProvider', () => {
   });
 
   // Set equality rather than `toContain`: this provider serves both eras, and
-  // an era silently dropped from the declaration would have a retained-era
+  // an era silently dropped from the declaration would have a ledger 8
   // operation refused before it started -- which `toContain` would not catch.
   it('declares both eras, matching the two handlers it is built from', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, costModel);

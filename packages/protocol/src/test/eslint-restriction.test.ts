@@ -72,7 +72,7 @@ describe('Protocol ACL: no-restricted-imports canaries', () => {
   it.each([
     '@midnightntwrk/ledger-v9',
     '@midnight-ntwrk/compact-runtime',
-    '@midnight-ntwrk/compact-js',
+    '@midnightntwrk/compact-js',
     '@midnightntwrk/onchain-runtime-v4',
     '@midnight-ntwrk/platform-js',
     'compact-runtime-ledger8'

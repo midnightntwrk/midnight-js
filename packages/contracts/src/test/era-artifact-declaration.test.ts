@@ -32,15 +32,15 @@ const refusing = (error: Error): ArtifactRuntimeVersionSource & { getArtifactRun
   getArtifactRuntimeVersion: vi.fn<() => Promise<string>>().mockRejectedValue(error)
 });
 
-// The shape the retained toolchain generates: `impureCircuits` and a SYNCHRONOUS `initialState`.
-const retainedShape = (): object => ({
+// The shape the ledger 8 toolchain generates: `impureCircuits` and a SYNCHRONOUS `initialState`.
+const ledger8Shape = (): object => ({
   impureCircuits: { increment: (): void => undefined },
   initialState: (): Record<string, never> => ({})
 });
 
 // What a bundler emits for the CURRENT era's `async initialState` when it targets below ES2017:
 // a plain function returning a promise. `constructor.name` reads 'Function' on it, exactly as it
-// does on a real retained artifact -- which is why the era may not be read from that name.
+// does on a real ledger 8 artifact -- which is why the era may not be read from that name.
 const transpiledCurrentEraShape = (): object => ({
   impureCircuits: { deposit: (): Promise<void> => Promise.resolve() },
   initialState: (): Promise<Record<string, never>> => Promise.resolve({})
@@ -96,23 +96,23 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     expect((error as EraMismatchError).cause).toBe(unavailable);
   });
 
-  it('places a retained artifact from the runtime version its compiler recorded', async () => {
+  it('places a ledger 8 artifact from the runtime version its compiler recorded', async () => {
     const source = declaring('0.16.0');
 
-    const era = await resolveArtifactEra(retainedShape(), source);
+    const era = await resolveArtifactEra(ledger8Shape(), source);
 
     expect(era).toBe<LedgerEra>('v8');
     expect(source.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
   });
 
   it('reads the declared version patch-insensitively', async () => {
-    expect(await resolveArtifactEra(retainedShape(), declaring('0.16.7'))).toBe<LedgerEra>('v8');
+    expect(await resolveArtifactEra(ledger8Shape(), declaring('0.16.7'))).toBe<LedgerEra>('v8');
   });
 
   it('REFUSES a current-era contract whose async initialState a build step erased', async () => {
     // The regression this whole change exists for. Structurally this object is indistinguishable
-    // from a retained artifact -- `constructor.name` reads 'Function' on both -- so routing on that
-    // name sent a current-era contract into the retained pipeline. The declared runtime version
+    // from a ledger 8 artifact -- `constructor.name` reads 'Function' on both -- so routing on that
+    // name sent a current-era contract into the ledger 8 pipeline. The declared runtime version
     // separates them, and it is the same on both sides of any transpilation.
     const source = declaring('0.21.0');
 
@@ -127,14 +127,14 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
   it('refuses an artifact set whose runtime version this framework cannot place, naming it', async () => {
     const source = declaring('0.99.0');
 
-    await expect(resolveArtifactEra(retainedShape(), source)).rejects.toMatchObject({
+    await expect(resolveArtifactEra(ledger8Shape(), source)).rejects.toMatchObject({
       reason: 'unknown-artifact-runtime-version'
     });
-    await expect(resolveArtifactEra(retainedShape(), source)).rejects.toThrow(/0\.99\.0/);
+    await expect(resolveArtifactEra(ledger8Shape(), source)).rejects.toThrow(/0\.99\.0/);
   });
 
   it('refuses a malformed runtime version rather than reading a prefix of it', async () => {
-    await expect(resolveArtifactEra(retainedShape(), declaring('sixteen'))).rejects.toMatchObject({
+    await expect(resolveArtifactEra(ledger8Shape(), declaring('sixteen'))).rejects.toMatchObject({
       reason: 'unknown-artifact-runtime-version'
     });
   });
@@ -145,7 +145,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     const unavailable = new ZkArtifactContractInfoError('no contract-info.json at https://cdn.example/compiler/');
     const source = refusing(unavailable);
 
-    const error = await resolveArtifactEra(retainedShape(), source).catch((thrown: unknown) => thrown);
+    const error = await resolveArtifactEra(ledger8Shape(), source).catch((thrown: unknown) => thrown);
 
     expect(error).toBeInstanceOf(EraMismatchError);
     expect(error).toMatchObject({ reason: 'artifact-era-undeclared' });
@@ -154,8 +154,9 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
 
   it('separates a provider that CANNOT declare an era from artifacts that do not', async () => {
     // The real third-party case, through the real base class rather than a stand-in: a provider
-    // written before the retained era existed never overrode the member. Its fix is to implement
-    // the method, not to serve a file, so it may not be reported as an artifact problem.
+    // written before the framework served more than one era never overrode the member. Its fix
+    // is to implement the method, not to serve a file, so it may not be reported as an artifact
+    // problem.
     class ArtifactOnlyProvider extends ZKConfigProvider<string> {
       async getZKIR(): Promise<ZKIR> {
         return new Uint8Array() as ZKIR;
@@ -170,7 +171,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
       }
     }
 
-    const error = await resolveArtifactEra(retainedShape(), new ArtifactOnlyProvider()).catch(
+    const error = await resolveArtifactEra(ledger8Shape(), new ArtifactOnlyProvider()).catch(
       (thrown: unknown) => thrown
     );
 
@@ -191,7 +192,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     // These say nothing about which era the artifacts belong to. Relabelling them sends the caller
     // to serve a file that is already there, and buries the real fault on `cause`. The sibling
     // `readHeadEra` states the same rule for the head read.
-    await expect(resolveArtifactEra(retainedShape(), refusing(failure))).rejects.toBe(failure);
+    await expect(resolveArtifactEra(ledger8Shape(), refusing(failure))).rejects.toBe(failure);
   });
 
   it('refuses a raw current-era contract by its async initialState before any provider read', async () => {

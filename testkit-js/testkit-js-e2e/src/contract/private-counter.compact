@@ -1,7 +1,7 @@
 // The fork window's private-state contract, and the only contract in either
 // fork matrix that declares a witness.
 //
-// Every other matrix contract declares no witness at all -- the retained twins
+// Every other matrix contract declares no witness at all -- the ledger 8 twins
 // are constructed with an empty witness object, the current-era ones with
 // `withVacantWitnesses` -- so nothing there carries private state and nothing
 // there can show private state SURVIVING the boundary. This one can:
@@ -13,15 +13,15 @@
 // adds the step that was written into private state BEFORE it, so `round` can
 // only keep advancing by that step if the post-fork call read pre-fork private
 // state. A framework that silently started from a fresh private state fails the
-// call outright -- the retained call path refuses a missing entry with `No
+// call outright -- the ledger 8 call path refuses a missing entry with `No
 // private state found at private state ID` -- and one that reset the step to a
 // different value leaves a different number. The harness asserts the figures;
 // see `consumer-e2e/fork-matrix-entry.mjs`, which is where they live.
 //
 // `pragma language_version >= 0.23` deliberately: this source is compiled by
-// BOTH toolchains -- 0.31.1 for the retained twin and this repo's current
-// compactc for the e2e build -- and the floor is what the retained one accepts.
-// Adding a form newer than 0.23 breaks the retained twin, which is the one that
+// BOTH toolchains -- 0.31.1 for the ledger 8 twin and this repo's current
+// compactc for the e2e build -- and the floor is what the ledger 8 one accepts.
+// Adding a form newer than 0.23 breaks the ledger 8 twin, which is the one that
 // matters here.
 //
 // The unit-tier twin of this file is

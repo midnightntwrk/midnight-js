@@ -17,6 +17,7 @@ import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerEraError } fro
 import { type Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
 import { ContractOperation } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import type * as midnightJsTypes from '@midnightntwrk/midnight-js-types';
+import type { VerifierKey } from '@midnightntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnightntwrk/midnight-js-utils';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,6 +29,7 @@ import {
   contractStateAndParametersReadStub,
   contractStateReadStub,
   contractStatesOf,
+  createDefaultCircuit,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
@@ -40,8 +42,10 @@ import {
   separateContractStates
 } from './test-mocks';
 
+const builtCallTx = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+
 vi.mock('../tx-interfaces', () => ({
-  createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' })
+  createCircuitCallTxInterface: vi.fn(() => builtCallTx.current)
 }));
 
 vi.mock('../governance/tx-interfaces', () => ({
@@ -109,6 +113,7 @@ describe('findDeployedContract', () => {
   };
 
   beforeEach(() => {
+    builtCallTx.current = { call: 'mock-call-interface' };
     providers = createMockProviders();
     contractAddress = createMockContractAddress();
     compiledContract = createMockCompiledContract();
@@ -542,5 +547,118 @@ describe('findDeployedContract', () => {
     expect(thrown.contractAddress).toBe(contractAddress);
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
     expect(contractStatesOf(providers.privateStateProvider).set).not.toHaveBeenCalled();
+  });
+
+  describe('circuitIds', () => {
+    const callA = vi.fn();
+    const callB = vi.fn();
+    const callC = vi.fn();
+
+    const rejectionOf = async (promise: Promise<unknown>): Promise<unknown> =>
+      promise.then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+    // The mock contract's circuits are typed loosely, so their parameter list resolves to `never`.
+    const callWithoutArguments = (call: () => Promise<unknown>): Promise<unknown> => call();
+
+    beforeEach(() => {
+      compiledContract = createMockCompiledContract({
+        circuits: { a: createDefaultCircuit(), b: createDefaultCircuit(), c: createDefaultCircuit() }
+      });
+      builtCallTx.current = { a: callA, b: callB, c: callC };
+      vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockImplementation(async (circuitIds) =>
+        circuitIds.map((circuitId) => [circuitId, new Uint8Array(32) as VerifierKey])
+      );
+      vi.mocked(contractState.operation).mockImplementation((circuitId) =>
+        circuitId === 'c' ? undefined : { verifierKey: new Uint8Array(32) } as ContractOperation
+      );
+    });
+
+    it('attaches when every named circuit is on chain although others are missing', async () => {
+      const found = await findDeployedContract(providers, { compiledContract, contractAddress, circuitIds: ['a'] });
+
+      expect(found.contractAddress).toBe(contractAddress);
+      expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(['a']);
+    });
+
+    it('keeps the call of a named circuit as built', async () => {
+      const found = await findDeployedContract(providers, { compiledContract, contractAddress, circuitIds: ['a'] });
+
+      expect(found.callTx.a).toBe(callA);
+    });
+
+    it('refuses a call to a circuit that was not named, before it is built', async () => {
+      const found = await findDeployedContract(providers, { compiledContract, contractAddress, circuitIds: ['a'] });
+
+      const rejection = await rejectionOf(callWithoutArguments(found.callTx.b));
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(callB).not.toHaveBeenCalled();
+    });
+
+    it('refuses a named circuit missing on chain and writes nothing', async () => {
+      const rejection = await rejectionOf(
+        findDeployedContract(providers, { compiledContract, contractAddress, circuitIds: ['a', 'c'] })
+      );
+
+      assert(rejection instanceof ContractTypeError);
+      expect(rejection.missingCircuitIds).toEqual(['c']);
+      expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+      expect(contractStatesOf(providers.privateStateProvider).set).not.toHaveBeenCalled();
+    });
+
+    it('refuses an empty circuit list before reading the chain', async () => {
+      const rejection = await rejectionOf(
+        findDeployedContract(providers, { compiledContract, contractAddress, circuitIds: [] })
+      );
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(providers.publicDataProvider.watchForDeployTxData).not.toHaveBeenCalled();
+    });
+
+    it('refuses a circuit id the contract does not declare before reading the chain', async () => {
+      const rejection = await rejectionOf(
+        findDeployedContract(providers, { compiledContract, contractAddress, circuitIds: ['a', 'nope'] })
+      );
+
+      assert(rejection instanceof InvalidArgumentError);
+      expect(rejection.message).toContain('nope');
+      expect(providers.publicDataProvider.watchForDeployTxData).not.toHaveBeenCalled();
+    });
+
+    it('guards the same list it checked', async () => {
+      const circuitIds = ['a'];
+      vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockImplementation(async (requested) => {
+        const keys = requested.map((circuitId): [string, VerifierKey] => [circuitId, new Uint8Array(32) as VerifierKey]);
+        circuitIds.push('c');
+        return keys;
+      });
+
+      const found = await findDeployedContract(providers, { compiledContract, contractAddress, circuitIds });
+      const rejection = await rejectionOf(callWithoutArguments(found.callTx.c));
+
+      expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(['a']);
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(callC).not.toHaveBeenCalled();
+    });
+
+    it('keeps every call as built when circuitIds is omitted', async () => {
+      vi.mocked(contractState.operation).mockReturnValue({ verifierKey: new Uint8Array(32) } as ContractOperation);
+
+      const found = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(found.callTx).toBe(builtCallTx.current);
+    });
+
+    it('attaches a contract with no provable circuits when circuitIds is omitted', async () => {
+      compiledContract = createMockCompiledContract({ circuits: {} });
+
+      const found = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(found.contractAddress).toBe(contractAddress);
+      expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith([]);
+    });
   });
 });

@@ -6,18 +6,18 @@
 
 # Interface: TranscriptPojo
 
-The result of one retained-era circuit call: every artifact
+The result of one ledger 8 circuit call: every artifact
 wrapKeepStateCall (`../v9/wrap.ts`) needs to assemble a v9-native
 `ContractCallPrototype`.
 
-`preContractState` and `postContractState` are LIVE HANDLES from the retained
+`preContractState` and `postContractState` are LIVE HANDLES from the ledger 8
 runtime; every other member is plain data. `postContractStateEncoded` is the
 post-state's encoded form, carried beside the handle so a caller has a value
 that outlives the runtime instance.
 
 ## See
 
-[RetainedEraExecution](../../documents/RetainedEraExecution.md)
+[Ledger8Execution](../../documents/Ledger8Execution.md)
 
 ## Properties
 
@@ -62,7 +62,7 @@ See [TranscriptPojo.preContractState](#precontractstate): the two are the same t
 The post-call state as an [EncodedStateValue](https://github.com/midnightntwrk/midnight-ledger): the same value
 [postContractState](#postcontractstate) holds, in the form that survives this process.
 
-`EncodedStateValue` is pinned identical across the retained and current
+`EncodedStateValue` is pinned identical across the ledger 8 and current
 runtimes, so this is the member era-agnostic code reads, and the one that
 can be persisted, cloned or sent to a worker.
 

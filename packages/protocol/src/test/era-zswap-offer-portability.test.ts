@@ -25,8 +25,8 @@
  * (`packages/contracts/src/internal/utils/zswap-utils.ts`), which builds its offers out
  * of the CURRENT era's ledger classes — that is the ledger the `contracts`
  * package links — and then hands the serialized bytes to whichever era the
- * retained-era pipelines are composing against. Were the two eras' offer
- * encodings different, the retained-era path would need a second offer builder, and
+ * ledger 8 pipelines are composing against. Were the two eras' offer
+ * encodings different, the ledger 8 path would need a second offer builder, and
  * an offer built by the wrong one would surface as an opaque deserialization
  * failure deep inside a composition.
  *
@@ -97,11 +97,11 @@ describe('Zswap offer portability across the ledger eras', () => {
   // A ROUND TRIP, not merely "the other era's deserializer did not throw".
   // `toBeDefined()` alone passes for an offer that decoded into something
   // structurally valid but semantically wrong -- a dropped field, a different
-  // value, a different token type -- and the retained-era path reuses the current
+  // value, a different token type -- and the ledger 8 path reuses the current
   // era's offer builder on the strength of exactly this claim. Re-serializing
   // on the far era and comparing bytes pins the shared ENCODING, which is what
   // the reuse actually depends on.
-  it('the retained era deserializes an offer the current era serialized, unchanged', () => {
+  it('ledger 8 deserializes an offer the current era serialized, unchanged', () => {
     const bytes = serializeOffer(ledgerV9);
 
     const reserialized = LedgerV8.ZswapOffer.deserialize('pre-proof', bytes).serialize();
@@ -109,7 +109,7 @@ describe('Zswap offer portability across the ledger eras', () => {
     expect(Buffer.from(reserialized).toString('hex')).toBe(Buffer.from(bytes).toString('hex'));
   });
 
-  it('the current era deserializes an offer the retained era serialized, unchanged', () => {
+  it('the current era deserializes an offer ledger 8 serialized, unchanged', () => {
     const bytes = serializeOffer(LedgerV8);
 
     const reserialized = ledgerV9.ZswapOffer.deserialize('pre-proof', bytes).serialize();

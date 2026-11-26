@@ -6,10 +6,10 @@
 
 # Interface: Ledger8FinalizedMaintenanceTxData
 
-What a retained-era maintenance update resolves with once the chain has recorded it: the
-retained era's counterpart of `Ledger9FinalizedMaintenanceTxData`.
+What a ledger 8 maintenance update resolves with once the chain has recorded it: the
+ledger 8 counterpart of `Ledger9FinalizedMaintenanceTxData`.
 
-`public` is always the ledger 8 record. A retained-era artifact maintains a contract only before
+`public` is always the ledger 8 record. A ledger 8 artifact maintains a contract only before
 the fork, so no other era can record the update.
 
 ## Properties
@@ -18,7 +18,7 @@ the fork, so no other era can record the update.
 
 > `readonly` **era**: `"v8"`
 
-The pipeline that produced this result: always the retained era here.
+The pipeline that produced this result: always ledger 8 here.
 
 ***
 

@@ -15,7 +15,7 @@ version resolved from a record or from the network's latest block (see
 `protocolVersionToLedger` in `../../version.ts`) rather than a string chosen
 by hand.
 
-Memoised per era, so the retained pre-fork WASM is instantiated at most once
+Memoised per era, so the ledger 8 WASM is instantiated at most once
 per process. A FAILED v8 acquisition is not memoised: the next call retries.
 
 ## Parameters
@@ -40,8 +40,8 @@ member of `LEDGER_ERAS`.
 
 ## Throws
 
-Ledger8RuntimeMissingError — as a rejection — if the retained
-pre-fork runtime cannot be acquired. It propagates unchanged, carrying the
+Ledger8RuntimeMissingError — as a rejection — if the ledger 8
+runtime cannot be acquired. It propagates unchanged, carrying the
 underlying cause.
 
 ## See

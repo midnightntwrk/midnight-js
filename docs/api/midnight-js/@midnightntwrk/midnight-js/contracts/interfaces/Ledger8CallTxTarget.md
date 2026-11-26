@@ -6,7 +6,7 @@
 
 # Interface: Ledger8CallTxTarget\<C, PCK\>
 
-The target of a retained-era circuit invocation, without its arguments.
+The target of a ledger 8 circuit invocation, without its arguments.
 
 ## Type Parameters
 
@@ -44,7 +44,7 @@ The identifier of the circuit to call.
 
 > `readonly` **compiledContract**: `C`
 
-The retained-era contract instance, passed raw — there is no
+The ledger 8 contract instance, passed raw — there is no
 `CompiledContract` container for this era.
 
 ***

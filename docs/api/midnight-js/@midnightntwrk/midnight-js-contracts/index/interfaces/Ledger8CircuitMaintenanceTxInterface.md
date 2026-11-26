@@ -6,8 +6,8 @@
 
 # Interface: Ledger8CircuitMaintenanceTxInterface
 
-Maintenance updates for one circuit of a retained-era contract, bound to one address: the
-retained era's counterpart of `Ledger9CircuitMaintenanceTxInterface`.
+Maintenance updates for one circuit of a ledger 8 contract, bound to one address: the
+ledger 8 counterpart of `Ledger9CircuitMaintenanceTxInterface`.
 
 ## Methods
 

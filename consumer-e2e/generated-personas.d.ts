@@ -19,7 +19,7 @@
  * They do not exist in this repository and cannot: a wrapper is one compactc
  * build plus a manifest pinning the Compact runtime that build demands, written
  * at run time under a short root outside the workspace. `tsc` therefore has
- * nothing to resolve, and without these declarations every `fork-retained-*` /
+ * nothing to resolve, and without these declarations every `fork-ledger8-*` /
  * `fork-current-*` import is a `TS2307` that drowns out the findings this
  * typecheck exists for.
  *
@@ -29,7 +29,7 @@
  * lane at every call site here. What these declarations supply is only enough
  * shape for those call sites to select an overload at all — and how much of the
  * options object that leaves checked differs by overload. The current-era one is
- * pinned, so its members are; the retained one is `any`, so `circuitId` and
+ * pinned, so its members are; the ledger 8 one is `any`, so `circuitId` and
  * `args` are not. The `declare module` blocks below carry which is which.
  *
  * NO TOP-LEVEL `import`/`export` IN THIS FILE. It has to stay a script rather
@@ -87,16 +87,16 @@ type ForkCurrentContractCtor = new (
   ): Promise<import('@midnightntwrk/midnight-js-protocol/v9/compact-runtime').ConstructorResult<undefined>>;
 };
 
-declare module '@midnight-ntwrk/fork-retained-*' {
+declare module '@midnight-ntwrk/fork-ledger8-*' {
   /**
    * The compactc-generated contract class.
    *
    * Instances are `any` ON PURPOSE, and this is the one place the looseness is
-   * deliberate rather than conceded. A retained wrapper's `Contract` sits in the
+   * deliberate rather than conceded. A ledger 8 wrapper's `Contract` sits in the
    * `compiledContract` position of `Ledger8DeployContractOptions` and
    * `Ledger8CallTxOptions`, whose `args` member is CONDITIONAL on the contract's
-   * own parameter lists. The helpers that use it — `deployRetained`,
-   * `callRetained` — are generic over every twin and every circuit, so no single
+   * own parameter lists. The helpers that use it — `deployLedger8`,
+   * `callLedger8` — are generic over every twin and every circuit, so no single
    * declaration can satisfy that conditional for all of them: pinning a nullary
    * shape makes the twins that take arguments fail, and pinning an argument-taking
    * one makes the nullary twins fail. Either way the failure would be this file
@@ -118,7 +118,7 @@ declare module '@midnight-ntwrk/fork-retained-*' {
 }
 
 declare module '@midnight-ntwrk/fork-current-*' {
-  /** See {@link ForkCurrentContractCtor} for why this one is narrow where its retained sibling is not. */
+  /** See {@link ForkCurrentContractCtor} for why this one is narrow where its ledger 8 sibling is not. */
   export const Contract: ForkCurrentContractCtor;
 
   export function ledger(state: any): any;

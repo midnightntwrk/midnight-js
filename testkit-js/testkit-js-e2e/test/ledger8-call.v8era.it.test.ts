@@ -40,54 +40,54 @@ import {
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
-import { Contract as RetainedBlockTimeContract } from '../src/contract/compiled-retained/block-time/contract/index.js';
-import { Contract as RetainedUnshieldedContract } from '../src/contract/compiled-retained/unshielded/contract/index.js';
+import { Contract as Ledger8BlockTimeContract } from '../src/contract/compiled-ledger8/block-time/contract/index.js';
+import { Contract as Ledger8UnshieldedContract } from '../src/contract/compiled-ledger8/unshielded/contract/index.js';
 
 const logger = createLogger(
-  path.resolve(`${process.cwd()}`, 'logs', 'tests', `retained_call_${new Date().toISOString()}.log`)
+  path.resolve(`${process.cwd()}`, 'logs', 'tests', `ledger8_call_${new Date().toISOString()}.log`)
 );
 
 /**
- * Retained-era contract calls against a live pre-fork chain, driven by the `v8era`
+ * Ledger 8 contract calls against a live pre-fork chain, driven by the `v8era`
  * image set the `.v8era.` filename selects.
  *
  * Two twins: `unshielded` reads `CallContext.balance`, `block-time` reads
  * `CallContext.secondsSinceEpoch`. Which contracts earn a twin, what the
  * assertions have to be, and where the artifacts come from:
  *
- * @see docs/architecture/retained-era-coverage.md
+ * @see docs/architecture/ledger8-coverage.md
  */
 
-/** The runtime version a retained-era artifact set declares; the era is read off this. */
-const RETAINED_RUNTIME_VERSION = '0.16.0';
+/** The runtime version a ledger 8 artifact set declares; the era is read off this. */
+const LEDGER8_RUNTIME_VERSION = '0.16.0';
 
 /** The specifier the build step points a twin's emitted module at. */
-const RETAINED_SPECIFIER = 'compact-runtime-ledger8';
+const LEDGER8_SPECIFIER = 'compact-runtime-ledger8';
 
 /** The build step these two constants have to agree with. */
-const REWRITE_SCRIPT = path.resolve(__dirname, '../scripts/rewrite-retained-runtime.mjs');
+const REWRITE_SCRIPT = path.resolve(__dirname, '../scripts/rewrite-ledger8-runtime.mjs');
 
 /** The twins this file drives; a typo is a compile error rather than a late ENOENT while proving. */
-type RetainedTwin = 'unshielded' | 'block-time';
+type Ledger8Twin = 'unshielded' | 'block-time';
 
-const RETAINED_TWINS: readonly RetainedTwin[] = ['unshielded', 'block-time'];
+const LEDGER8_TWINS: readonly Ledger8Twin[] = ['unshielded', 'block-time'];
 
 // One suffix per run, not per configuration: the two `unshielded` configurations
 // below must name the same private state store.
 const RUN_SUFFIX = Date.now().toString();
 
-const retainedArtifactPath = (twin: RetainedTwin): string =>
-  path.resolve(__dirname, '../src/contract/compiled-retained', twin);
+const ledger8ArtifactPath = (twin: Ledger8Twin): string =>
+  path.resolve(__dirname, '../src/contract/compiled-ledger8', twin);
 
-class RetainedConfiguration implements ContractConfiguration {
-  constructor(private readonly twin: RetainedTwin) {}
+class Ledger8Configuration implements ContractConfiguration {
+  constructor(private readonly twin: Ledger8Twin) {}
 
   get privateStateStoreName(): string {
-    return `retained-${this.twin}-private-store-${RUN_SUFFIX}`;
+    return `ledger8-${this.twin}-private-store-${RUN_SUFFIX}`;
   }
 
   get zkConfigPath(): string {
-    return retainedArtifactPath(this.twin);
+    return ledger8ArtifactPath(this.twin);
   }
 
   /** `compactc` 0.31.1 emits no manifest, so the default `require` mode has nothing to read. */
@@ -101,12 +101,12 @@ const currentTimeSeconds = (): bigint => BigInt(Math.floor(Date.now() / 1_000));
 // Neither twin declares a witness. `undefined` rather than the generated default
 // of `any`, which would untype the private-state channel -- the provider set and
 // the `private` half of every call result.
-const unshieldedContract = new RetainedUnshieldedContract<undefined>({});
-const blockTimeContract = new RetainedBlockTimeContract<undefined>({});
+const unshieldedContract = new Ledger8UnshieldedContract<undefined>({});
+const blockTimeContract = new Ledger8BlockTimeContract<undefined>({});
 
-type RetainedProviders<C extends Ledger8Contract> = Ledger8ContractProviders<C, Ledger8CircuitId<C>>;
+type Ledger8Providers<C extends Ledger8Contract> = Ledger8ContractProviders<C, Ledger8CircuitId<C>>;
 
-describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => {
+describe('Ledger 8 contract calls on a pre-fork (ledger v8) network', () => {
   const MINT_DOMAIN_SEPARATOR = new Uint8Array(32).fill(1);
   const SECOND_MINT_DOMAIN_SEPARATOR = new Uint8Array(32).fill(3);
   const NEVER_MINTED_COLOUR = new Uint8Array(32).fill(2);
@@ -139,14 +139,14 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
   }, VERY_SLOW_TEST_TIMEOUT);
 
   describe('preconditions', () => {
-    // Both ways of silently not exercising the retained pipeline -- a current-era
+    // Both ways of silently not exercising the ledger 8 pipeline -- a current-era
     // chain, or a current-era artifact set -- leave the rest of this file green.
     test('the network under test is a pre-fork one', async () => {
       // Arrange.
       const providers = initializeMidnightProviders(
         wallet,
         environmentConfiguration,
-        new RetainedConfiguration('unshielded')
+        new Ledger8Configuration('unshielded')
       );
 
       // Act.
@@ -168,14 +168,14 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
       const script = readFileSync(REWRITE_SCRIPT, 'utf8');
 
       // Assert.
-      expect(script).toContain(`RETAINED_RUNTIME_VERSION = '${RETAINED_RUNTIME_VERSION}'`);
-      expect(script).toContain(`RETAINED_SPECIFIER = '${RETAINED_SPECIFIER}'`);
+      expect(script).toContain(`LEDGER8_RUNTIME_VERSION = '${LEDGER8_RUNTIME_VERSION}'`);
+      expect(script).toContain(`LEDGER8_SPECIFIER = '${LEDGER8_SPECIFIER}'`);
     });
 
-    test.each(RETAINED_TWINS)('the %s twin is a retained-era artifact set wired to the retained runtime', (twin) => {
+    test.each(LEDGER8_TWINS)('the %s twin is a ledger 8 artifact set wired to the ledger 8 runtime', (twin) => {
       // Arrange: both emitted files, because the build step rewrites both and the
       // whole directory is excluded from lint.
-      const twinDir = retainedArtifactPath(twin);
+      const twinDir = ledger8ArtifactPath(twin);
       const contractInfo: unknown = JSON.parse(
         readFileSync(path.join(twinDir, 'compiler', 'contract-info.json'), 'utf8')
       );
@@ -184,9 +184,9 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
       );
 
       // Assert: `resolveArtifactEra` reads the era off this field.
-      expect(contractInfo).toMatchObject({ 'runtime-version': RETAINED_RUNTIME_VERSION });
+      expect(contractInfo).toMatchObject({ 'runtime-version': LEDGER8_RUNTIME_VERSION });
       for (const source of emitted) {
-        expect(source).toContain(`from '${RETAINED_SPECIFIER}'`);
+        expect(source).toContain(`from '${LEDGER8_SPECIFIER}'`);
         // The bare name, not `from '...'`: a differently quoted or subpath import
         // would resolve the current runtime just as wrongly.
         expect(source).not.toContain('@midnight-ntwrk/compact-runtime');
@@ -198,7 +198,7 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
     let contractAddress: ContractAddress;
     let mintedColour: Uint8Array;
     let secondColour: Uint8Array;
-    let providers: RetainedProviders<typeof unshieldedContract>;
+    let providers: Ledger8Providers<typeof unshieldedContract>;
 
     const contract = unshieldedContract;
 
@@ -206,13 +206,13 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
       providers = initializeMidnightProviders(
         wallet,
         environmentConfiguration,
-        new RetainedConfiguration('unshielded')
+        new Ledger8Configuration('unshielded')
       );
 
-      // The raw instance: the retained era has no `CompiledContract` container.
+      // The raw instance: ledger 8 has no `CompiledContract` container.
       const deployed = await deployContract(providers, { compiledContract: contract });
       contractAddress = deployed.contractAddress;
-      logger.info(`Deployed retained unshielded twin at address: ${contractAddress}`);
+      logger.info(`Deployed ledger 8 unshielded twin at address: ${contractAddress}`);
 
       const minted = await submitCallTx(providers, {
         compiledContract: contract,
@@ -328,7 +328,7 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
         // The provider's own reason is not usable: it reaches `cause` as a generic
         // `SubmissionError: Transaction submission error`, with no balance text to
         // match on. The method plus the successful send below is what separates "the
-        // ledger compared the amount" from "retained sends fail".
+        // ledger compared the amount" from "ledger 8 sends fail".
         expect(rejection).toBeInstanceOf(ProviderFailedError);
         expect(
           rejection instanceof ProviderFailedError
@@ -342,7 +342,7 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
     // LAST, because it is the only test here that moves the balance. Everything
     // above reads what `beforeAll` minted.
     //
-    // Without it the refusal above proves nothing: a pipeline where EVERY retained
+    // Without it the refusal above proves nothing: a pipeline where EVERY ledger 8
     // send failed -- effects dropped, unshielded outputs misassembled -- would
     // refuse the oversized one too, for the wrong reason, and stay green.
     test(
@@ -371,7 +371,7 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
         });
 
         // Assert: admitted, and the balance the next call reads back followed it.
-        // The retained result carries no `unshielded` movement summary -- that is a
+        // The ledger 8 result carries no `unshielded` movement summary -- that is a
         // current-era member -- so the delta is what shows the send landed on the
         // chain rather than merely being accepted.
         expect(sent.public.status).toBe(SucceedEntirely);
@@ -391,7 +391,7 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
 
   describe('block-time: CallContext.secondsSinceEpoch', () => {
     let contractAddress: ContractAddress;
-    let providers: RetainedProviders<typeof blockTimeContract>;
+    let providers: Ledger8Providers<typeof blockTimeContract>;
 
     const contract = blockTimeContract;
 
@@ -399,11 +399,11 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
       providers = initializeMidnightProviders(
         wallet,
         environmentConfiguration,
-        new RetainedConfiguration('block-time')
+        new Ledger8Configuration('block-time')
       );
       const deployed = await deployContract(providers, { compiledContract: contract });
       contractAddress = deployed.contractAddress;
-      logger.info(`Deployed retained block-time twin at address: ${contractAddress}`);
+      logger.info(`Deployed ledger 8 block-time twin at address: ${contractAddress}`);
     }, VERY_SLOW_TEST_TIMEOUT);
 
     test(
@@ -421,7 +421,7 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
         });
 
         // Assert: a pipeline handing the circuit a zero block time fails this
-        // locally, before any transaction exists. The retained runtime stamps a
+        // locally, before any transaction exists. The ledger 8 runtime stamps a
         // wall clock of its own, so this holds unless something drops the field.
         expect(txData.public.status).toBe(SucceedEntirely);
       },

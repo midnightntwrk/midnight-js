@@ -6,14 +6,14 @@
 
 # Interface: Ledger8CircuitContext\<PS\>
 
-The context a retained-era circuit receives as its first argument, as a
+The context a ledger 8 circuit receives as its first argument, as a
 caller READS it.
 
 The member list is an invariant, not a description: it must be exactly the
-retained runtime's REQUIRED members. `gasLimit`, the one optional member, is
+ledger 8 runtime's REQUIRED members. `gasLimit`, the one optional member, is
 therefore absent -- and naming it, or any future optional member, without
 `?` would collapse [Ledger8CircuitParameters](../type-aliases/Ledger8CircuitParameters.md) to `never[]` for every
-retained contract. `costModel` is named for the same reason rather than for
+ledger 8 contract. `costModel` is named for the same reason rather than for
 anything this type does on its own: Ledger8CircuitContextArgument
 takes its keys from here.
 

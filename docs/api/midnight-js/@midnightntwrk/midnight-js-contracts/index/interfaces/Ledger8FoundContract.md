@@ -6,7 +6,7 @@
 
 # Interface: Ledger8FoundContract\<C\>
 
-A retained-era contract found on the blockchain.
+A ledger 8 contract found on the blockchain.
 
 Carries a [Ledger8CircuitCallTxInterface](../type-aliases/Ledger8CircuitCallTxInterface.md) for the same reason
 `Ledger9FoundContract` carries one: a caller that has just supplied
@@ -85,7 +85,7 @@ contract under `private`, at the same paths as on the current era's
 
 > `readonly` **era**: `"v8"`
 
-The pipeline that produced this result: always the retained era here, even
+The pipeline that produced this result: always ledger 8 here, even
 when the transaction that recorded it is a keep-state transaction tagged
 `'v9'`. Those are different facts, and only this one says which module
 produced the objects below.

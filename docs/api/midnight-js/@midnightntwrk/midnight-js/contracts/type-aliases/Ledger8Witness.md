@@ -8,7 +8,7 @@
 
 > **Ledger8Witness**\<`PS`\> = (...`args`) => readonly \[`PS`, `unknown`\]
 
-A retained-era witness implementation, which returns the next private state
+A ledger 8 witness implementation, which returns the next private state
 paired with the value the circuit reads.
 
 `PS` is threaded through the FIRST tuple member so a witness declared over the wrong private

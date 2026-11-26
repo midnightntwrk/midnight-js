@@ -23,10 +23,10 @@ import {
 import { loadLedger8Protocol } from './load';
 
 /**
- * Proves a retained-era transaction.
+ * Proves a ledger 8 transaction.
  *
  * The cost model comes from the same `loadLedger8Protocol` result as the
- * transaction class, and that pairing is load-bearing: the retained ledger
+ * transaction class, and that pairing is load-bearing: ledger 8
  * ships its own `CostModel` and its `prove()` checks the argument against that
  * class across the WASM boundary, so the current era's cost model is rejected
  * with `expected instance of CostModel`.
@@ -34,13 +34,13 @@ import { loadLedger8Protocol } from './load';
  * @param tx The unproven transaction, an object of the v8 ledger copy this
  *   framework loaded (read one with `deserializeTransactionAtStage`).
  * @param provingProvider The circuit-level proving provider to drive, typed as
- *   the RETAINED era's `ProvingProvider`: `check` and `prove`, and no
+ *   ledger 8's `ProvingProvider`: `check` and `prove`, and no
  *   `lookupKey`. That is the declared return type of an in-process prover's
  *   `asV8ProvingProvider()`, so registering one here needs no cast. The current
  *   era's shape is a superset, so a provider serving both eras also satisfies
  *   this parameter and needs no adapter.
  * @returns The proven, unbound transaction.
- * @throws Ledger8RuntimeMissingError If the retained runtime cannot be loaded.
+ * @throws Ledger8RuntimeMissingError If the ledger 8 runtime cannot be loaded.
  * @throws InvalidArgumentError If `tx` is not an unproven transaction of the
  *   v8 ledger copy this framework loaded.
  *

@@ -19,7 +19,7 @@
 // Builds each dApp persona outside the workspace, installs it from the packed
 // framework tarballs with an isolated linker, and runs its entry. Usage:
 //
-//   node consumer-e2e/linker-smoke.mjs [pnpm|pnp] [retained|current] ...
+//   node consumer-e2e/linker-smoke.mjs [pnpm|pnp] [ledger8|current] ...
 //
 // Defaults to every linker and every persona.
 
@@ -39,7 +39,7 @@ import {
   PERSONAS,
   personaManifest,
   readManifest,
-  RETAINED_RUNTIME,
+  LEDGER8_RUNTIME,
   REPOSITORY_ROOT
 } from './personas.mjs';
 
@@ -85,7 +85,7 @@ const PNPM_BIN = path.join(
  * The linkers under test. Both isolate: pnpm's default gives each package its own
  * `node_modules` with symlinks, and Yarn PnP gives no `node_modules` at all. A
  * hoisted linker is deliberately absent -- it cannot satisfy two Compact runtime
- * majors in one tree, which is the situation a retained-era dApp is in.
+ * majors in one tree, which is the situation a ledger 8 dApp is in.
  */
 export const LINKERS = {
   pnpm: {
@@ -148,7 +148,7 @@ export const LINKERS = {
  * @param extraContracts Contract keys to wrap in addition to the persona's own.
  *
  * The fork matrix needs fourteen more contracts than the install smoke does --
- * seven current-era and seven retained twins -- and their prover keys run to a few
+ * seven current-era and seven ledger 8 twins -- and their prover keys run to a few
  * hundred megabytes. Declaring them on the persona would make every AC6 install
  * pay for artifacts it never proves against, so the caller that wants them asks
  * for them.
@@ -239,7 +239,7 @@ const main = () => {
       try {
         const { cwd, persona, linker } = buildPersona(personaName, linkerName, manifest);
         linker.install(cwd);
-        linker.run(cwd, ['entry.mjs', personaName, persona.runtime ?? '', RETAINED_RUNTIME, CURRENT_RUNTIME]);
+        linker.run(cwd, ['entry.mjs', personaName, persona.runtime ?? '', LEDGER8_RUNTIME, CURRENT_RUNTIME]);
         process.stdout.write(`--- ${label}: ok\n`);
       } catch (error) {
         failures.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);

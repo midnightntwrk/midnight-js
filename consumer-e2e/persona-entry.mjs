@@ -26,11 +26,11 @@ import process from 'node:process';
 import { realpathSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
-// `linker-smoke.mjs` passes four: <persona> <the persona's own runtime> <retained
-// runtime> <current runtime>. The retained one is in that list for
+// `linker-smoke.mjs` passes four: <persona> <the persona's own runtime> <ledger 8
+// runtime> <current runtime>. The ledger 8 one is in that list for
 // `fork-crossing-entry.mjs`, which asserts against both eras; this entry needs
 // only the framework's own, and the framework carries the CURRENT runtime for
-// both personas -- that is the whole point of the retained persona, where the two
+// both personas -- that is the whole point of the ledger 8 persona, where the two
 // are different majors in one install. Hence the hole: reading the fourth
 // argument here compared the framework against 0.16.0 and failed every run.
 const [, , personaName, expectedRuntime, , frameworkRuntime] = process.argv;
@@ -69,7 +69,7 @@ const realPathOf = (specifier, fromSpecifier) => {
 // 1. The persona's own Compact runtime is the one its era's codegen demands.
 check('persona compact-runtime', versionOf('@midnight-ntwrk/compact-runtime'), expectedRuntime);
 
-// 2. The framework brings its own, which for the retained persona is a DIFFERENT
+// 2. The framework brings its own, which for the ledger 8 persona is a DIFFERENT
 //    major living in the same install. A hoisted linker cannot satisfy both.
 check(
   'framework compact-runtime',
@@ -94,10 +94,10 @@ try {
   failures.push(`contract module import: ${error instanceof Error ? error.message : String(error)}`);
 }
 
-// 4. The retained era's runtime is reached only through the framework's loader,
+// 4. Ledger 8's runtime is reached only through the framework's loader,
 //    and must resolve to exactly one physical copy -- two would make objects
 //    minted by one unusable by the other (wasm-bindgen: `expected instance of`).
-if (personaName === 'retained') {
+if (personaName === 'ledger8') {
   try {
     const protocol = await import('@midnightntwrk/midnight-js-protocol');
     const ledger8 = await protocol.loadLedger8Protocol();
@@ -105,15 +105,15 @@ if (personaName === 'retained') {
     if (observed['loadLedger8Protocol'] !== 'ok') {
       failures.push(`loadLedger8Protocol returned ${observed['loadLedger8Protocol']}`);
     }
-    // `protocol` is the one package that may resolve the retained runtime, and it
+    // `protocol` is the one package that may resolve the ledger 8 runtime, and it
     // must see exactly one copy of it -- two would make objects minted by one
     // unusable by the other (wasm-bindgen: `expected instance of`). Unresolvable counts as
     // a failure, not as zero: an assertion that passes when it cannot look is
     // worse than no assertion.
-    let retainedRuntimePath;
+    let ledger8RuntimePath;
     try {
-      retainedRuntimePath = realPathOf('@midnight-ntwrk/onchain-runtime-v3', '@midnightntwrk/midnight-js-protocol');
-      observed['onchain-runtime-v3 via protocol'] = retainedRuntimePath;
+      ledger8RuntimePath = realPathOf('@midnight-ntwrk/onchain-runtime-v3', '@midnightntwrk/midnight-js-protocol');
+      observed['onchain-runtime-v3 via protocol'] = ledger8RuntimePath;
     } catch (error) {
       failures.push(
         `onchain-runtime-v3 is not resolvable from midnight-js-protocol, which owns it: ${
@@ -123,7 +123,7 @@ if (personaName === 'retained') {
     }
 
     // The AC6 structural claim, from the consumer's side: nothing outside
-    // `protocol` resolves the retained runtime. Under an isolated linker a
+    // `protocol` resolves the ledger 8 runtime. Under an isolated linker a
     // package cannot reach an undeclared dependency, so this has to fail.
     let leaked = false;
     try {
@@ -137,7 +137,7 @@ if (personaName === 'retained') {
       failures.push('onchain-runtime-v3 is resolvable directly from the dApp; only protocol should reach it');
     }
   } catch (error) {
-    failures.push(`retained-era load: ${error instanceof Error ? error.message : String(error)}`);
+    failures.push(`ledger 8 load: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

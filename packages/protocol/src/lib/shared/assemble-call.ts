@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
+import { encodeContractKeyLocation, hashVerifierKey } from '@midnightntwrk/compact-js';
 import type {
   AlignedValue,
   CallContext,

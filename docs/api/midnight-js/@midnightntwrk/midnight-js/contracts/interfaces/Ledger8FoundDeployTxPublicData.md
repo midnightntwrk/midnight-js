@@ -11,7 +11,7 @@ recorded by the ledger-8 runtime, i.e. a contract deployed before the ledger for
 
 ## Remarks
 
-Unlike the other `Ledger8*` types, it outlives the retained pipeline:
+Unlike the other `Ledger8*` types, it outlives the ledger 8 pipeline:
 it is part of `Ledger9FoundDeployTxData`.
 
 ## See

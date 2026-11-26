@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
+import { hashVerifierKey } from '@midnightntwrk/compact-js';
 import type { EncodedStateValue, TokenType } from '@midnightntwrk/ledger-v9';
 
 import { StateDecodeFailedError, StateInconsistentError } from '../../errors';
@@ -192,8 +192,8 @@ export interface ContractStatePojo {
   /**
    * The balances the contract holds, which are NOT part of the primary state:
    * the ledger keeps them beside it, so a caller reading only `state` cannot
-   * reach them. A retained-era call that executes without them runs every
-   * circuit against an empty balance — see {@link RetainedEraExecution}.
+   * reach them. A ledger 8 call that executes without them runs every
+   * circuit against an empty balance — see {@link Ledger8Execution}.
    */
   readonly balance: ContractBalance;
   readonly entryPoints: readonly ContractEntryPointPojo[];

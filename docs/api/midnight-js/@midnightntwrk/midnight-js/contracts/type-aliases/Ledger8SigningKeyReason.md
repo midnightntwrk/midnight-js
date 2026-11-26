@@ -8,4 +8,4 @@
 
 > **Ledger8SigningKeyReason** = `"unusable"` \| `"unavailable"`
 
-Why a retained-era signing key could not be used.
+Why a ledger 8 signing key could not be used.

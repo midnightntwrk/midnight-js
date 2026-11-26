@@ -6,7 +6,7 @@
 
 # Interface: Ledger8UnsubmittedCallTxData\<C, PCK\>
 
-The execution data of a retained-era call, before the chain has recorded it.
+The execution data of a ledger 8 call, before the chain has recorded it.
 
 The same two halves [Ledger8FinalizedCallTxData](Ledger8FinalizedCallTxData.md) carries, minus the
 finalized record — which is the one thing a submission that does not wait
@@ -38,7 +38,7 @@ pre-fork contract cannot make a cross-contract call.
 
 > `readonly` **era**: `"v8"`
 
-The pipeline that produced this result: always the retained era here, even
+The pipeline that produced this result: always ledger 8 here, even
 when the transaction that recorded it is a keep-state transaction tagged
 `'v9'`. Those are different facts, and only this one says which module
 produced the objects below.

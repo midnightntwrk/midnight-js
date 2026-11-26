@@ -10,8 +10,8 @@
 
 > **createContractMaintenanceTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`Ledger8ContractMaintenanceTxInterface`](../interfaces/Ledger8ContractMaintenanceTxInterface.md)
 
-Creates a [Ledger9ContractMaintenanceTxInterface](../interfaces/Ledger9ContractMaintenanceTxInterface.md), or the retained era's
-`Ledger8ContractMaintenanceTxInterface` for a contract the retained Compact toolchain produced.
+Creates a [Ledger9ContractMaintenanceTxInterface](../interfaces/Ledger9ContractMaintenanceTxInterface.md), or ledger 8's
+`Ledger8ContractMaintenanceTxInterface` for a contract the ledger 8 Compact toolchain produced.
 
 ### Type Parameters
 
@@ -55,8 +55,8 @@ EraMismatchError If `compiledContract` has neither toolchain's shape.
 
 > **createContractMaintenanceTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`Ledger9ContractMaintenanceTxInterface`](../interfaces/Ledger9ContractMaintenanceTxInterface.md)
 
-Creates a [Ledger9ContractMaintenanceTxInterface](../interfaces/Ledger9ContractMaintenanceTxInterface.md), or the retained era's
-`Ledger8ContractMaintenanceTxInterface` for a contract the retained Compact toolchain produced.
+Creates a [Ledger9ContractMaintenanceTxInterface](../interfaces/Ledger9ContractMaintenanceTxInterface.md), or ledger 8's
+`Ledger8ContractMaintenanceTxInterface` for a contract the ledger 8 Compact toolchain produced.
 
 ### Type Parameters
 
