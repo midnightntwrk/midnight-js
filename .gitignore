@@ -48,3 +48,6 @@ test-concurrency-db
 .claude/skills/gitnexus/
 .worktrees
 .gitnexus
+
+# Prover keys of the contracts unit tests compile; the tests never prove
+packages/contracts/src/test/resources/compiled/*/keys/*.prover

@@ -52,7 +52,8 @@ Its constructor is `TxFailedError(operation, record, details)`:
   and `signingKey` for a deploy or a replacement, `contractAddress` and
   `circuitId` for a verifier key update, `circuitId` for a call. A ledger 9
   call never sets `contractAddress`; a ledger 9 scope's `circuitId` is a list of
-  every circuit it merged. A ledger 8 scope sets `contractAddress`, and its
+  every circuit it recorded, and `pendingPrivateStates` holds the private states
+  its calls left, which were not stored (not enumerable). A ledger 8 scope sets `contractAddress`, and its
   `circuitId` names every merged circuit, joined by `', '`.
 
 ### Why the shared code sits on the class
@@ -85,7 +86,28 @@ the record:
 - `Ledger8AmbiguousEntryPointError` (`LEDGER8_AMBIGUOUS_ENTRY_POINT`,
   INTEGRITY).
 
-The four reason and stage types are exported flat, next to the classes:
+The ledger 9 scope adds four, each carrying the `Ledger9` prefix because only the
+ledger 9 path raises it
+([ADR 0018](../../../docs/adr/0018-name-single-ledger-code-after-its-ledger.md)):
+
+- `Ledger9ScopeFalliblePartError` (`LEDGER9_SCOPE_FALLIBLE_PART`, USAGE), `stage`
+  `'unproven'` or `'balanced'`.
+- `Ledger9ScopeOutsideTimeToDismissError` (`LEDGER9_SCOPE_OUTSIDE_TIME_TO_DISMISS`,
+  REJECTED).
+- `Ledger9SubmittedTxUnconfirmedError` (`LEDGER9_SUBMITTED_TX_UNCONFIRMED`,
+  UNCERTAIN).
+- `Ledger9PrivateStatesNotStoredError` (`LEDGER9_PRIVATE_STATES_NOT_STORED`,
+  ENVIRONMENT).
+
+The last two sit in the categories of `Ledger8UnconfirmedError` and
+`Ledger8NotStoredError` and are not cases of them: the ledger 8 classes carry the
+signing key of a deploy or an authority replacement, and their remediation is to
+check the contract's address before deploying again; the ledger 9 classes carry
+the private states a call left, and theirs is to store those states once the
+transaction is known to have succeeded. Merged, the caller would have to read a
+field to learn which of the two to do.
+
+The four ledger 8 reason and stage types are exported flat, next to the classes:
 `Ledger8SigningKeyReason`, `Ledger8KeyedOperation`, `Ledger8NotStoredStage` and
 `Ledger8CallUnsupportedReason`. There is no `Ledger8` namespace
 ([ADR 0018](../../../docs/adr/0018-name-single-ledger-code-after-its-ledger.md)).
@@ -102,7 +124,7 @@ that no diagnosis of it could be made.
 
 ## Refuse before the caller pays
 
-Four refusals exist to convert a late, paid-for failure into an early, free
+Six refusals exist to convert a late, paid-for failure into an early, free
 one. Each replaced a real failure mode, and the placement is the point.
 
 ### `LedgerParametersUnservedError`
@@ -199,6 +221,19 @@ that era's runtime is acquired. Both placements are load-bearing and must not
 move later. The message points at `withContractScopedTransaction`, which runs the
 scope of the era the head is on.
 
+### `Ledger9ScopeFalliblePartError` and `Ledger9ScopeOutsideTimeToDismissError`
+
+A ledger 9 scope of two or more calls lands whole or not at all. A fallible part
+would let the ledger land it in part, and a transaction over its time to dismiss
+is refused by the node; before proving, the scope refuses both, with nothing
+proven, balanced or booked. The time to dismiss is priced there only: the figure
+is an estimate made before the wallet's Dust spend, and the balanced transaction
+is left to the node, which refuses one over the limit at no fee while the wallet
+releases what it booked. The fallible-part check runs again on the balanced
+transaction, since a wallet could add a fallible part; that refusal carries the
+balanced transaction, not enumerable, for the caller's wallet to revert. A scope
+of one call takes neither check.
+
 ## After submission, the signing key rides along
 
 The ledger 8 deploy path has a region that begins the moment a deployment is
@@ -237,6 +272,22 @@ along.
 
 `Ledger8UnconfirmedError` is reachable only AFTER submission. Every refusal
 ahead of it is raised with no key having been sampled.
+
+### The ledger 9 private states ride along
+
+A ledger 9 call stores the private states its calls left only once its
+transaction succeeded entirely. Every error raised after the transaction left
+the client carries those states, as `pendingPrivateStates`:
+`Ledger9SubmittedTxUnconfirmedError` when the wait for the outcome failed,
+`TxFailedError` when the chain recorded another status, and the
+`ProviderFailedError` of a `submitTx` that rejected, which also carries the
+transaction's identifiers as `txIds`, since a rejected submission does not prove
+the node never took it. A coded error the midnight provider raised is passed on
+as itself and carries neither; a scoped transaction's `beforeSubmit` is handed
+the states and every identifier of the transaction before `submitTx` is called, whatever
+it then does. `Ledger9PrivateStatesNotStoredError` carries the states
+a provider refused to store, as `notStored`. Like the signing key below, they are
+named but never rendered into a message, and not enumerable.
 
 ### The key is named, never rendered
 

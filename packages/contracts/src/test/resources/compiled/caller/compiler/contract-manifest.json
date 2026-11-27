@@ -1,0 +1,79 @@
+{
+  "manifest-version": "1",
+  "compiler-version": "0.36.1",
+  "compiler-commit": "7fa3a117c5e7efe9d2c51da04263e5f0b3509144",
+  "language-version": "0.28.0",
+  "runtime-version": "0.21.0",
+  "compiler": {
+    "type": "directory",
+    "contract-info.json": {
+      "type": "file",
+      "size": 14293,
+      "hash": "5d481600e3c3539fe19cc9c8fbf4e2b346161e4b82d55509d83b1316a8cade3d"
+    }
+  },
+  "contract": {
+    "type": "directory",
+    "index.d.ts": {
+      "type": "file",
+      "size": 6375,
+      "hash": "1b60dde154ab5a268c857a5ac4108c36bc59fd640ed5e5f01ee88c6e68ed8500"
+    },
+    "index.js": {
+      "type": "file",
+      "size": 27804,
+      "hash": "6c1770de532fa358f5914e95747bbb2cf6e1cd835ecd87080db3b26459c5fabb"
+    },
+    "index.js.map": {
+      "type": "file",
+      "size": 1114,
+      "hash": "1456579f06f1ccd79bc88504b94b5c7bf8b6c46430bd31b5f0c625d79eabcd2f"
+    }
+  },
+  "zkir": {
+    "type": "directory",
+    "depositToCallee.bzkir": {
+      "type": "file",
+      "size": 663,
+      "hash": "b5289c8f5b224b285f29e032a93f8d2a173b3282e0d55194936d914031c2df00"
+    },
+    "depositToCallee.zkir": {
+      "type": "file",
+      "size": 2126,
+      "hash": "4b4ece259e5311f3490ea5e2917e0b38aa5c046759855e9fb3bf6d7a05037e6d"
+    },
+    "mintAndSendFromCallee.bzkir": {
+      "type": "file",
+      "size": 1246,
+      "hash": "d2442e79698802e59a6af45d24432b34dca04ad08755e845c086ea26df4950ef"
+    },
+    "mintAndSendFromCallee.zkir": {
+      "type": "file",
+      "size": 4833,
+      "hash": "1458fbc7be546fa5acfd8f1025eeeed5e662fedc5447ed79b1de59989b1b8a46"
+    }
+  },
+  "keys": {
+    "type": "directory",
+    "depositToCallee.prover": {
+      "type": "file",
+      "size": 445799,
+      "hash": "9336c21e0bf4c65d6920fd9ed7e4bc668c25428079a2a75245ce398211c62ec0"
+    },
+    "depositToCallee.verifier": {
+      "type": "file",
+      "size": 1353,
+      "hash": "aa5effc8643a9d61bf86cbc269393cc4f4f3a15315478406eb814520422c397e"
+    },
+    "mintAndSendFromCallee.prover": {
+      "type": "file",
+      "size": 1773486,
+      "hash": "2c67acc4060ac14b3725bcffbf06625a160cc6c5d4a08b146ef473bc0ef9b104"
+    },
+    "mintAndSendFromCallee.verifier": {
+      "type": "file",
+      "size": 1353,
+      "hash": "377005009f776d46a79fd198056a8283a36ddb861b6c3ca1d2360d9da03a254f"
+    }
+  }
+}

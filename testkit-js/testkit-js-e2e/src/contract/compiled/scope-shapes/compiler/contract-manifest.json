@@ -1,0 +1,99 @@
+{
+  "manifest-version": "1",
+  "compiler-version": "0.36.1",
+  "compiler-commit": "7fa3a117c5e7efe9d2c51da04263e5f0b3509144",
+  "language-version": "0.28.0",
+  "runtime-version": "0.21.0",
+  "compiler": {
+    "type": "directory",
+    "contract-info.json": {
+      "type": "file",
+      "size": 7127,
+      "hash": "98280b4f55193199fadd86f259a6b883ddc83256965da3c98b298223d2e58956"
+    }
+  },
+  "contract": {
+    "type": "directory",
+    "index.d.ts": {
+      "type": "file",
+      "size": 9063,
+      "hash": "8d1bd54f3d9e77a9b96bc1eb72357ac4910261ae1baf12296a018c2619afebee"
+    },
+    "index.js": {
+      "type": "file",
+      "size": 68335,
+      "hash": "f5f6d2753e863ac353e958c8eb02d9315c47c3864c7c7e183a681989acec3e51"
+    },
+    "index.js.map": {
+      "type": "file",
+      "size": 3113,
+      "hash": "47834c5a9a44dee9b8cdc6ebe0a08133e9d6e4fbd0ab3753be4b43a12783c5be"
+    }
+  },
+  "zkir": {
+    "type": "directory",
+    "mintToSelf.bzkir": {
+      "type": "file",
+      "size": 1727,
+      "hash": "08985d92ee61ea60467ed843b56936675900280ba4352f36eb0e7e1c5e01be4b"
+    },
+    "mintToSelf.zkir": {
+      "type": "file",
+      "size": 5778,
+      "hash": "a226733bf7e37883d42a76a2d76562b096931a9173d422f9b34b99f0d42bba9b"
+    },
+    "sendMinted.bzkir": {
+      "type": "file",
+      "size": 2143,
+      "hash": "dc27e0e3a25d102e226299c1f40885ed8e676b706d18eca517a892d0fa798819"
+    },
+    "sendMinted.zkir": {
+      "type": "file",
+      "size": 7538,
+      "hash": "ee0af87de7f58aaf37f060c705b02107c58fd76a0c4e5b6eff60e5c5153426c2"
+    },
+    "stampThriceAndMint.bzkir": {
+      "type": "file",
+      "size": 2412,
+      "hash": "73219b18864a33fe525904c0a47f62eeac2404c3aa30b213e09fab4c670468ae"
+    },
+    "stampThriceAndMint.zkir": {
+      "type": "file",
+      "size": 8038,
+      "hash": "2839d5f0c09d54d7f8dc35069369c37b81d34ae90d5a530cc17c418eaa4a8e5c"
+    }
+  },
+  "keys": {
+    "type": "directory",
+    "mintToSelf.prover": {
+      "type": "file",
+      "size": 22550479,
+      "hash": "f0295182f8f7ea3dd37fd1d6ebfd86db99492ef1d7b93b9960ab2aeebe56196e"
+    },
+    "mintToSelf.verifier": {
+      "type": "file",
+      "size": 2121,
+      "hash": "f15df42f0bb13b0b9cce29a88c691a0f9fc0a515d95e91d41f5ea9ea3b05d0c9"
+    },
+    "sendMinted.prover": {
+      "type": "file",
+      "size": 45095279,
+      "hash": "e1f84fbe767bb2dc2c451050c81f25d367bfece39f11709d541f4470bc45009a"
+    },
+    "sendMinted.verifier": {
+      "type": "file",
+      "size": 2121,
+      "hash": "20297e35f49df5b895f1f7f32c2538608b1d66605ce1f78d764a09c8557dc012"
+    },
+    "stampThriceAndMint.prover": {
+      "type": "file",
+      "size": 22551164,
+      "hash": "c629314103a1422ba5950c27001f55719df04ffed098be841286246814e08a0a"
+    },
+    "stampThriceAndMint.verifier": {
+      "type": "file",
+      "size": 2121,
+      "hash": "ae4462465611d18c5fd11e28a02c5085b52564277be1ee1f3eae2150a0b8f4ee"
+    }
+  }
+}

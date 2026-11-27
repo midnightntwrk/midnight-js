@@ -96,6 +96,24 @@ describe('makeCalleeStateResolver', () => {
     });
   });
 
+  it('serves a callee the states a scope holds for it, without reading the provider', async () => {
+    // Arrange
+    const query = vi.fn().mockResolvedValue(ledger9States(ZSWAP_STATE, STATE));
+    const held = { contractState: OTHER_STATE, zswapChainState: OTHER_ZSWAP_STATE };
+    const resolver = makeCalleeStateResolver(providerWith(query), BLOCK_HASH, (address) => (address === OTHER_ADDRESS ? held : undefined));
+
+    // Act
+    const heldState = await resolver.stateProvider.getContractState(BLOCK_HASH, OTHER_ADDRESS);
+    const readState = await resolver.stateProvider.getContractState(BLOCK_HASH, ADDRESS);
+
+    // Assert: RED WHEN a callee the scope holds is read from the chain.
+    expect(heldState).toBe(OTHER_STATE);
+    expect(resolver.resolvedStates.get(OTHER_ADDRESS)).toBe(held);
+    expect(readState).toBe(STATE);
+    expect(query).toHaveBeenCalledOnce();
+    expect(query).toHaveBeenCalledWith(ADDRESS, { type: 'blockHash', blockHash: BLOCK_HASH });
+  });
+
   it('memoizes a resolved state and serves subsequent reads from the cache', async () => {
     const query = vi.fn().mockResolvedValue(ledger9States(ZSWAP_STATE, STATE));
     const resolver = makeCalleeStateResolver(providerWith(query), BLOCK_HASH);

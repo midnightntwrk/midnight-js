@@ -15,11 +15,11 @@
 
 import { ContractExecutionError, InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { ContractAddress } from '@midnightntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { type EncPublicKey, type ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
 import { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
-import { exitResultOrError, LedgerTransaction, makeLedger9ContractExecutableRuntime, type MidnightConfig, type MidnightProviders, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnightntwrk/midnight-js-types';
+import { type CoinPublicKey, type ContractModuleProvider } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { exitResultOrError, makeLedger9ContractExecutableRuntime, type MidnightConfig, type MidnightProviders, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnightntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, assertNever, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 
 import type {
@@ -49,10 +49,7 @@ import {
 } from './internal/ledger8-entry';
 import { ledger8ScopeOf } from './internal/ledger8-scope';
 import * as Transaction from './internal/transaction';
-import {
-  createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
-  zswapCallsToNewCoins
-} from './internal/utils';
+import { makeCalleeStateResolver, zswapCallsToNewCoins } from './internal/utils';
 import type {
   AnyLedger8CallOptionsWithInitialStates,
   AnyLedger8CallTxOptions,
@@ -64,7 +61,7 @@ import type {
   Ledger8ContractProviders,
   Ledger8UnsubmittedCallTxData
 } from './ledger8-contract';
-import { type AnyLedger8TransactionContext, type Ledger8TransactionContext, type Ledger9TransactionContext } from './transaction';
+import { type AnyLedger8TransactionContext, type AnyLedger9TransactionContext, type Ledger8TransactionContext } from './transaction';
 import type { Ledger9UnsubmittedCallTxData } from './tx-model';
 
 /**
@@ -94,14 +91,34 @@ export interface Ledger9CrossContractConfig {
 type Ledger9CallRequest<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = Ledger9CallOptionsWithArguments<C, PCK> &
   Pick<Ledger9CallOptionsProviderDataDependencies, 'coinPublicKey' | 'config'>;
 
-const runLedger9Call = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+/**
+ * The states each contract of a call tree ran against: each callee's as resolved while the circuit
+ * ran, and the root's as given to the call.
+ */
+const statesBuiltAgainst = (
+  rootAddress: ContractExecutable.ContractExecutable.ContractCall['contractAddress'],
+  rootStates: Transaction.ScopeContractStates,
+  calleeStates: ReadonlyMap<string, Transaction.ScopeContractStates> | undefined
+): ReadonlyMap<string, Transaction.ScopeContractStates> =>
+  new Map([
+    ...Array.from(calleeStates ?? [], ([address, states]) => [Transaction.contractAddressKey(address), states] as const),
+    [Transaction.contractAddressKey(rootAddress), rootStates]
+  ]);
+
+/**
+ * The execute step of a ledger 9 call: runs the circuit against the given states and returns the
+ * call's result, the coins it creates for the caller, and what assembling its transaction needs.
+ * Builds no transaction.
+ */
+const executeLedger9Call = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: Ledger9CallRequest<C, PCK>,
   states: Ledger9PublicStates,
   initialPrivateState: Contract.PrivateState<C> | undefined,
   walletEncryptionPublicKey: EncPublicKey,
-  crossContract?: Ledger9CrossContractConfig
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> => {
+  crossContract?: Ledger9CrossContractConfig,
+  heldStatesOf?: (contractAddress: string) => Transaction.ScopeContractStates | undefined
+): Promise<Transaction.Ledger9ExecutedCall<C, PCK>> => {
   const { compiledContract, contractAddress, coinPublicKey, config } = options;
   const { contractState: initialContractState, zswapChainState: initialZswapChainState, ledgerParameters } = states;
   assertValidMidnightConfig(config, 'options.config');
@@ -123,11 +140,12 @@ const runLedger9Call = async <C extends Contract.Any, PCK extends Contract.Prova
   // When cross-contract calls are enabled, callee states are resolved lazily, on demand, from the
   // provider (and memoized for tx assembly), pinned — along with the circuit's `parentBlockHash` —
   // to the block at which the initial states were read, so the whole call tree (root and callees)
-  // is read from one coherent chain snapshot.
+  // is read from one coherent chain snapshot. In a scope, a callee the scope holds is served the
+  // state the scope's earlier calls left it in, not the chain's.
   const calleeResolver =
     crossContract === undefined
       ? undefined
-      : makeCalleeStateResolver(crossContract.publicDataProvider, crossContract.blockHash);
+      : makeCalleeStateResolver(crossContract.publicDataProvider, crossContract.blockHash, heldStatesOf);
   const baseCircuitContext = {
     address: ContractAddress(contractAddress),
     contractState: initialContractState,
@@ -163,68 +181,52 @@ const runLedger9Call = async <C extends Contract.Any, PCK extends Contract.Prova
     const rootCall = calls[calls.length - 1];
     assertDefined(rootCall, 'Circuit execution produced no contract calls');
 
-    // Resolves the on-chain state for any contract in the call tree: the root contract from the
-    // input state, and each cross-contract callee from the state the provider resolved during
-    // execution.
-    const contractStateFor = (
-      address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']
-    ): ContractState | undefined =>
-      address === rootCall.contractAddress
-        ? initialContractState
-        : calleeResolver?.resolvedStates.get(String(address))?.contractState;
-
-    // Same split for the Zswap chain state, which a call needs only when it spends a coin already
-    // settled on chain. Each contract's view has every other contract's commitments collapsed out,
-    // so a callee's spend cannot be built against the root's.
-    const chainStateFor = (
-      address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']
-    ): ZswapChainState | undefined =>
-      address === rootCall.contractAddress
-        ? initialZswapChainState
-        : calleeResolver?.resolvedStates.get(String(address))?.zswapChainState;
-
     return {
-      era: 'v9',
-      public: {
-        nextContractState: rootCall.public.contractState,
-        nextContractStateEncoded: rootCall.public.contractState.encode(),
-        partitionedTranscript: rootCall.public.partitionedTranscript,
-        publicTranscript: rootCall.public.publicTranscript,
-        logEvents: events
+      result: {
+        era: 'v9',
+        public: {
+          nextContractState: rootCall.public.contractState,
+          nextContractStateEncoded: rootCall.public.contractState.encode(),
+          partitionedTranscript: rootCall.public.partitionedTranscript,
+          publicTranscript: rootCall.public.publicTranscript,
+          logEvents: events
+        },
+        private: {
+          input: rootCall.private.input,
+          output: rootCall.private.output,
+          result: result as unknown as Contract.CircuitReturnType<C, PCK>, // eslint-disable-line no-restricted-syntax
+          nextPrivateState: privateState,
+          nextZswapLocalState: zswapLocalState,
+          privateTranscriptOutputs: rootCall.private.privateTranscriptOutputs
+        },
+        calls
       },
-      private: {
-        input: rootCall.private.input,
-        output: rootCall.private.output,
-        result: result as unknown as Contract.CircuitReturnType<C, PCK>, // eslint-disable-line no-restricted-syntax
-        nextPrivateState: privateState,
-        nextZswapLocalState: zswapLocalState,
-        privateTranscriptOutputs: rootCall.private.privateTranscriptOutputs,
-        unprovenTx: LedgerTransaction.seal(
-          'v9',
-          'Unproven',
-          createUnprovenLedgerCallTx(
-            calls,
-            contractStateFor,
-            chainStateFor,
-            encryptionPublicKeyResolverForZswapState(
-              networkId,
-              zswapLocalState,
-              options.coinPublicKey,
-              walletEncryptionPublicKey,
-              options.additionalCoinEncPublicKeyMappings
-            ),
-            config
-          )
+      // Every call, not just the root: the offers are assembled from the whole tree, so a coin a
+      // callee addresses to this wallet is genuinely created and belongs in what the caller is
+      // handed. `calls` carries the root as its last entry.
+      newCoins: zswapCallsToNewCoins(
+        parseCoinPublicKeyToHex(coinPublicKey, networkId),
+        calls.map((call) => call.private.zswapLocalState)
+      ),
+      assembly: {
+        calls,
+        // The root contract's states are the ones given to the call; each cross-contract callee's
+        // are the ones the provider resolved during execution. A callee's Zswap chain state is its
+        // own view, with every other contract's commitments collapsed out, so a callee's spend
+        // cannot be built against the root's.
+        statesBuiltAgainst: statesBuiltAgainst(
+          rootCall.contractAddress,
+          { contractState: initialContractState, zswapChainState: initialZswapChainState },
+          calleeResolver?.resolvedStates
         ),
-        // Every call, not just the root: the offers are assembled from the whole tree, so a coin a
-        // callee addresses to this wallet is genuinely created and belongs in what the caller is
-        // handed. `calls` carries the root as its last entry.
-        newCoins: zswapCallsToNewCoins(
-          parseCoinPublicKeyToHex(coinPublicKey, networkId),
-          calls.map((call) => call.private.zswapLocalState)
-        )
-      },
-      calls
+        encryption: {
+          networkId,
+          zswapLocalState,
+          coinPublicKey: options.coinPublicKey,
+          walletEncryptionPublicKey,
+          additionalCoinEncPublicKeyMappings: options.additionalCoinEncPublicKeyMappings
+        }
+      }
     };
   } catch (error: unknown) {
     if (!isEffectContractError(error) || error._tag !== 'ContractRuntimeError') throw error;
@@ -236,6 +238,24 @@ const runLedger9Call = async <C extends Contract.Any, PCK extends Contract.Prova
     throw new ContractExecutionError(error.cause.message, { cause: error });
   }
 };
+
+/**
+ * A ledger 9 call made on its own: the execute step, then the assemble step, which builds the
+ * transaction of this call alone with `createUnprovenLedgerCallTx`, which checks what its transcripts
+ * claim against that transaction.
+ */
+const runLedger9Call = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger9CallRequest<C, PCK>,
+  states: Ledger9PublicStates,
+  initialPrivateState: Contract.PrivateState<C> | undefined,
+  walletEncryptionPublicKey: EncPublicKey,
+  crossContract?: Ledger9CrossContractConfig
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> =>
+  Transaction.withOwnTransaction(
+    await executeLedger9Call(zkConfigProvider, options, states, initialPrivateState, walletEncryptionPublicKey, crossContract),
+    options.config
+  );
 
 export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
@@ -352,24 +372,25 @@ const pinLatestBlockHash = async (publicDataProvider: PublicDataProvider): Promi
   return latestBlock.hash;
 };
 
-// The state read owns the block pin. On a cache miss it pins the scope to the current latest block
-// and reads the states as of it; on a scoped-transaction cache hit it returns the cached states and
-// the block the scope was first read at. Either way the returned `blockHash` is the block the
-// returned states correspond to, so callers pin `parentBlockHash` and cross-contract callee reads
-// to a block coherent with the root states — including across cache hits, which previously paired
-// cached states with a freshly-queried latest block.
+// The state read owns the block pin. Outside a scope, and on a scope's first read, it pins the
+// current latest block and reads the states as of it; a scope's later reads, of any contract, are
+// made at the block the scope was first read at, and a scope that holds the states a call needs
+// returns them without reading. Either way the returned `blockHash` is the block the returned states
+// correspond to, so callers pin `parentBlockHash` and cross-contract callee reads to a block coherent
+// with the root states. In a scope, the states returned are the scope's: a contract the scope holds
+// keeps the public state its calls left, which every private state id of it shares.
 const getContractStates = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9UnprovenCallTxProvidersWithPrivateState<C>,
   options: Ledger9CallTxOptionsWithPrivateStateId<C, PCK>,
-  transactionContext?: Ledger9TransactionContext<C, PCK>
+  transactionContext?: AnyLedger9TransactionContext
 ): Promise<{ readonly states: Ledger9ContractStates<Contract.PrivateState<C>>; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress, privateStateId: options.privateStateId };
   const cache = Transaction.scopeStateCacheOf(transactionContext);
-  const cached = cache?.[Transaction.GetCurrentStatesForIdentity](identity);
+  const cached = cache?.[Transaction.GetCurrentStatesForIdentity](identity, providers.privateStateProvider);
   if (cached) {
     return { states: cached.states as Ledger9ContractStates<Contract.PrivateState<C>>, blockHash: cached.blockHash };
   }
-  const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
+  const blockHash = cache?.[Transaction.PinnedBlockHash]() ?? (await pinLatestBlockHash(providers.publicDataProvider));
   const { privateState, ...publicStates } = await getStates(
     providers.publicDataProvider,
     providers.privateStateProvider,
@@ -381,14 +402,15 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
     ...decodeLedger9PublicStates(publicStates, options.contractAddress, 'createUnprovenCallTx'),
     privateState
   };
-  cache?.[Transaction.CacheStates](states, publicStates, identity, blockHash);
-  return { states, blockHash };
+  cache?.[Transaction.CacheStates](states, publicStates, identity, blockHash, providers.privateStateProvider);
+  const held = cache?.[Transaction.GetCurrentStatesForIdentity](identity, providers.privateStateProvider);
+  return held ? { states: held.states as Ledger9ContractStates<Contract.PrivateState<C>>, blockHash: held.blockHash } : { states, blockHash };
 };
 
 const getContractPublicStates = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
   options: Ledger9CallTxOptionsBase<C, PCK>,
-  transactionContext?: Ledger9TransactionContext<C, PCK>
+  transactionContext?: AnyLedger9TransactionContext
 ): Promise<{ readonly states: Ledger9PublicStates; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress };
   const cache = Transaction.scopeStateCacheOf(transactionContext);
@@ -396,11 +418,12 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
   if (cached) {
     return { states: cached.states, blockHash: cached.blockHash };
   }
-  const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
+  const blockHash = cache?.[Transaction.PinnedBlockHash]() ?? (await pinLatestBlockHash(providers.publicDataProvider));
   const read = await getPublicStates(providers.publicDataProvider, options.contractAddress, blockHash);
   const states = decodeLedger9PublicStates(read, options.contractAddress, 'createUnprovenCallTx');
   cache?.[Transaction.CacheStates]({ ...states, privateState: undefined }, read, identity, blockHash);
-  return { states, blockHash };
+  const held = cache?.[Transaction.GetCurrentStatesForIdentity](identity);
+  return held ? { states: held.states, blockHash: held.blockHash } : { states, blockHash };
 };
 
 /**
@@ -429,16 +452,85 @@ export type UnprovenCallTxProviders<C extends Contract.Any> =
   | UnprovenCallTxProvidersBase
   | Ledger9UnprovenCallTxProvidersWithPrivateState<C>;
 
+/**
+ * The execute step of {@link createLedger9UnprovenCallTx}: the same checks and the same state reads,
+ * then the circuit run. Builds no transaction. A call recorded into a ledger 9 scope runs this, and
+ * the scope builds one transaction of all its calls when it submits.
+ *
+ * @internal
+ */
+export const executeLedger9CallWithProviders = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: UnprovenCallTxProviders<C>,
+  options: Ledger9CallTxOptions<C, PCK>,
+  transactionContext?: AnyLedger9TransactionContext
+): Promise<Transaction.Ledger9ExecutedCall<C, PCK>> => {
+  await requireLedger9Contract(options.compiledContract, providers.zkConfigProvider, 'createLedger9UnprovenCallTx');
+  const scope = Transaction.ledger9ScopeOf<C, PCK>(transactionContext, options.circuitId, 'createLedger9UnprovenCallTx');
+  const cache = Transaction.scopeStateCacheOf(scope);
+  const heldStatesOf =
+    cache === undefined ? undefined : (contractAddress: string) => cache[Transaction.PublicStatesOf](contractAddress);
+  assertValidMidnightConfig(providers.config);
+  assertIsContractAddress(options.contractAddress);
+  const declaredCircuitId = ContractExecutable.make(options.compiledContract)
+    .getProvableCircuitIds()
+    .find((a) => a as unknown as PCK === options.circuitId); // eslint-disable-line no-restricted-syntax
+  if (declaredCircuitId === undefined) {
+    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
+  }
+
+  const hasPrivateStateProvider = 'privateStateProvider' in providers;
+  const hasPrivateStateId = 'privateStateId' in options;
+
+  if (hasPrivateStateId && !hasPrivateStateProvider) {
+    throw new IncompleteCallTxPrivateStateConfig();
+  }
+
+  // The whole transaction is read from one coherent chain snapshot: the state read pins the block
+  // (the current latest block on a fresh read, or the scope's original block on a cache hit) and
+  // returns it, and that same block is used for `parentBlockHash` and cross-contract callee reads.
+  if (hasPrivateStateId && hasPrivateStateProvider) {
+    const { states, blockHash } = await getContractStates(providers, options, scope);
+    return executeLedger9Call(
+      providers.zkConfigProvider,
+      createCallRequest(
+        options,
+        parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
+        providers.config
+      ),
+      states,
+      states.privateState,
+      providers.walletProvider.getEncryptionPublicKey(),
+      { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider },
+      heldStatesOf
+    );
+  }
+
+  const { states, blockHash } = await getContractPublicStates(providers, options, scope);
+  return executeLedger9Call(
+    providers.zkConfigProvider,
+    createCallRequest(
+      options,
+      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
+      providers.config
+    ),
+    states,
+    undefined,
+    providers.walletProvider.getEncryptionPublicKey(),
+    { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider },
+    heldStatesOf
+  );
+};
+
 export async function createLedger9UnprovenCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
   options: Ledger9CallTxOptionsBase<C, PCK>,
-  transactionContext?: Ledger9TransactionContext<C, PCK>
+  transactionContext?: AnyLedger9TransactionContext
 ): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
 
 export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9UnprovenCallTxProvidersWithPrivateState<C>,
   options: Ledger9CallTxOptionsWithPrivateStateId<C, PCK>,
-  transactionContext?: Ledger9TransactionContext<C, PCK>
+  transactionContext?: AnyLedger9TransactionContext
 ): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
 
 /**
@@ -475,59 +567,14 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
 export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,
   options: Ledger9CallTxOptions<C, PCK>,
-  transactionContext?: Ledger9TransactionContext<C, PCK>
+  transactionContext?: AnyLedger9TransactionContext
 ): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
-  await requireLedger9Contract(options.compiledContract, providers.zkConfigProvider, 'createLedger9UnprovenCallTx');
-  const scope = Transaction.ledger9ScopeOf<C, PCK>(transactionContext, options.circuitId, 'createLedger9UnprovenCallTx');
-  assertValidMidnightConfig(providers.config);
-  assertIsContractAddress(options.contractAddress);
-  const declaredCircuitId = ContractExecutable.make(options.compiledContract)
-    .getProvableCircuitIds()
-    .find((a) => a as unknown as PCK === options.circuitId); // eslint-disable-line no-restricted-syntax
-  if (declaredCircuitId === undefined) {
-    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
-  }
-
-  const hasPrivateStateProvider = 'privateStateProvider' in providers;
-  const hasPrivateStateId = 'privateStateId' in options;
-
-  if (hasPrivateStateId && !hasPrivateStateProvider) {
-    throw new IncompleteCallTxPrivateStateConfig();
-  }
-
-  // The whole transaction is read from one coherent chain snapshot: the state read pins the block
-  // (the current latest block on a fresh read, or the scope's original block on a cache hit) and
-  // returns it, and that same block is used for `parentBlockHash` and cross-contract callee reads.
-  if (hasPrivateStateId && hasPrivateStateProvider) {
-    const { states, blockHash } = await getContractStates(providers, options, scope);
-    return runLedger9Call(
-      providers.zkConfigProvider,
-      createCallRequest(
-        options,
-        parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
-        providers.config
-      ),
-      states,
-      states.privateState,
-      providers.walletProvider.getEncryptionPublicKey(),
-      { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }
-    );
-  }
-
-  const { states, blockHash } = await getContractPublicStates(providers, options, scope);
-  return runLedger9Call(
-    providers.zkConfigProvider,
-    createCallRequest(
-      options,
-      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
-      providers.config
-    ),
-    states,
-    undefined,
-    providers.walletProvider.getEncryptionPublicKey(),
-    { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }
+  return Transaction.withOwnTransaction(
+    await executeLedger9CallWithProviders(providers, options, transactionContext),
+    providers.config
   );
 }
+
 
 export async function createLedger8UnprovenCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
   providers: Ledger8ContractProviders<C, PCK>,
@@ -705,13 +752,13 @@ export async function createUnprovenCallTx<C extends Ledger8Contract, PCK extend
 export async function createUnprovenCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
   options: Ledger9CallTxOptionsBase<C, PCK>,
-  transactionContext?: Ledger9TransactionContext<C, PCK>
+  transactionContext?: AnyLedger9TransactionContext
 ): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
 
 export async function createUnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9UnprovenCallTxProvidersWithPrivateState<C>,
   options: Ledger9CallTxOptionsWithPrivateStateId<C, PCK>,
-  transactionContext?: Ledger9TransactionContext<C, PCK>
+  transactionContext?: AnyLedger9TransactionContext
 ): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
 
 /**
@@ -734,7 +781,7 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
 export async function createUnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,
   options: Ledger9CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
-  transactionContext?: Ledger9TransactionContext<C, PCK> | AnyLedger8TransactionContext
+  transactionContext?: AnyLedger9TransactionContext | AnyLedger8TransactionContext
 ): Promise<Ledger9UnsubmittedCallTxData<C, PCK> | AnyLedger8UnsubmittedCallTxData> {
   const request = await resolveEraRequest<AnyLedger8CallTxOptions, Ledger9CallTxOptions<C, PCK>>(
     options,
