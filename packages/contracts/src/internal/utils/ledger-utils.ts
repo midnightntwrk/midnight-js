@@ -17,19 +17,26 @@ import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors
 import {
   ChargedState,
   communicationCommitmentRandomness,
+  ContractCall,
   ContractCallPrototype,
   ContractDeploy,
   type ContractState as LedgerContractState,
   type EncPublicKey,
+  entryPointHash,
   Intent,
+  type PreProof,
+  type PublicAddress,
   QueryContext as LedgerQueryContext,
+  type TokenType,
   Transaction,
   type Transcript,
+  type UnprovenIntent,
   type UnprovenOffer,
   type UnprovenTransaction,
   UnshieldedOffer,
   type UtxoOutput,
-  type ZswapChainState
+  type ZswapChainState,
+  type ZswapSecretKeys
 } from '@midnightntwrk/midnight-js-protocol/v9';
 import type { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
 import {
@@ -48,7 +55,8 @@ import {
   decodeLedger9StateValue,
   deserializeLedger9CompactContractState,
   deserializeLedger9ContractState,
-  intentTtl
+  intentTtl,
+  toHex
 } from '@midnightntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
@@ -111,73 +119,293 @@ export const extractUserAddressedOutputs = (
   return outputs;
 };
 
-/**
- * Offers and transcripts come from the same execution but different code, so they can disagree — and
- * must not. For each contract-addressed coin, the number of times the offers carry it has to equal
- * the number of times that contract's transcripts claim to receive it. Claims sum across
- * transcripts, so a coin two calls both claim counts twice against an offer that carries it once.
- *
- * The chain enforces the same equality but reports only an error code, after proving, naming neither
- * side (`midnight-ledger/ledger/src/verify.rs:1499-1560`). Both sides are in hand here, so compare
- * them first and say what differs.
- */
-const assertReceivesMatchClaims = (
-  calls: readonly ContractExecutable.ContractExecutable.ContractCall[],
-  segmentedOffers: { guaranteed: UnprovenOffer | undefined; fallible: UnprovenOffer | undefined }
-): void => {
-  const tally = (entries: readonly string[]): Map<string, number> => {
-    const counts = new Map<string, number>();
-    for (const entry of entries) counts.set(entry, (counts.get(entry) ?? 0) + 1);
-    return counts;
-  };
-  const key = (segment: number, commitment: string, address: string): string =>
-    `segment ${segment} / ${commitment} / ${address}`;
+/** How many times each entry occurs. */
+type Multiset = Map<string, number>;
 
-  const offered: string[] = [];
-  for (const [segment, offer] of [
-    [0, segmentedOffers.guaranteed],
-    [1, segmentedOffers.fallible]
-  ] as const) {
-    if (offer === undefined) continue;
-    for (const item of [...offer.outputs, ...offer.transients]) {
-      if (item.contractAddress === undefined) continue;
-      offered.push(key(segment, String(item.commitment), String(item.contractAddress)));
-    }
-  }
+const multisetOf = (entries: Iterable<string>): Multiset => {
+  const counts: Multiset = new Map();
+  for (const entry of entries) counts.set(entry, (counts.get(entry) ?? 0) + 1);
+  return counts;
+};
 
-  const claimed: string[] = [];
-  for (const call of calls) {
-    call.public.partitionedTranscript.forEach((half, segment) => {
-      if (half === undefined) return;
-      for (const commitment of half.effects.claimedShieldedReceives) {
-        claimed.push(key(segment, String(commitment), String(call.contractAddress)));
-      }
-    });
-  }
+/** The entries whose counts differ between `left` and `right`, with both counts. */
+const differencesOf = (left: Multiset, right: Multiset): { entry: string; left: number; right: number }[] =>
+  Array.from(new Set([...left.keys(), ...right.keys()]))
+    .map((entry) => ({ entry, left: left.get(entry) ?? 0, right: right.get(entry) ?? 0 }))
+    .filter((difference) => difference.left !== difference.right);
 
-  const offeredCounts = tally(offered);
-  const claimedCounts = tally(claimed);
-  const differences = Array.from(new Set([...offeredCounts.keys(), ...claimedCounts.keys()]))
-    .map((entry) => ({ entry, offered: offeredCounts.get(entry) ?? 0, claimed: claimedCounts.get(entry) ?? 0 }))
-    .filter(({ offered: o, claimed: c }) => o !== c);
-  if (differences.length === 0) return;
+/** The entries of `subset` that `superset` holds fewer times, with both counts. */
+const missingFrom = (superset: Multiset, subset: Multiset): { entry: string; left: number; right: number }[] =>
+  Array.from(subset)
+    .map(([entry, count]) => ({ entry, left: superset.get(entry) ?? 0, right: count }))
+    .filter((difference) => difference.left < difference.right);
 
-  throw new ZswapOutputResolutionError(
-    `A shielded coin addressed to a contract must be claimed as received by that contract as many ` +
-      `times as the offers carry it, and these do not match. A transaction like this is rejected ` +
-      `after proving. Offer count vs claim count:\n` +
-      differences
-        .map(({ entry, offered: o, claimed: c }) => `  ${entry}: offered ${o}, claimed ${c}`)
-        .join('\n')
+/** The entries `entries` holds more than once. */
+const duplicatesOf = (entries: Multiset): string[] =>
+  Array.from(entries)
+    .filter(([, count]) => count > 1)
+    .map(([entry, count]) => `  ${entry}: claimed ${count} times`);
+
+const listed = (
+  differences: { entry: string; left: number; right: number }[],
+  leftName: string,
+  rightName: string
+): string => differences.map(({ entry, left, right }) => `  ${entry}: ${leftName} ${left}, ${rightName} ${right}`).join('\n');
+
+/** A transcript of an assembled transaction, with the intent it is in and the segment it runs in. */
+interface PlacedTranscript {
+  /** The segment of the intent the call is in. */
+  readonly intentSegment: number;
+  /** The segment the transcript runs in: 0 for a guaranteed half, the intent's segment for a fallible one. */
+  readonly logicalSegment: number;
+  readonly guaranteed: boolean;
+  readonly address: string;
+  readonly effects: Transcript<AlignedValue>['effects'];
+}
+
+const contractCallsOf = (tx: UnprovenTransaction): { segment: number; call: ContractCall<PreProof> }[] =>
+  Array.from(tx.intents ?? new Map<number, UnprovenIntent>()).flatMap(([segment, intent]) =>
+    intent.actions
+      .filter((action): action is ContractCall<PreProof> => action instanceof ContractCall)
+      .map((call) => ({ segment, call }))
   );
+
+const placedTranscriptsOf = (calls: { segment: number; call: ContractCall<PreProof> }[]): PlacedTranscript[] =>
+  calls.flatMap(({ segment, call }) => [
+    ...(call.guaranteedTranscript === undefined
+      ? []
+      : [{ intentSegment: segment, logicalSegment: 0, guaranteed: true, address: String(call.address), effects: call.guaranteedTranscript.effects }]),
+    ...(call.fallibleTranscript === undefined
+      ? []
+      : [{ intentSegment: segment, logicalSegment: segment, guaranteed: false, address: String(call.address), effects: call.fallibleTranscript.effects }])
+  ]);
+
+/** The transaction's Zswap offers, each with the segment it is applied in: 0 for the guaranteed one. */
+const offersOf = (tx: UnprovenTransaction): [number, UnprovenOffer][] => [
+  ...(tx.guaranteedOffer === undefined ? [] : [[0, tx.guaranteedOffer] as [number, UnprovenOffer]]),
+  ...Array.from(tx.fallibleOffer ?? new Map<number, UnprovenOffer>())
+];
+
+/** @internal One key per token type, for comparing token types by value. */
+export const tokenTypeKey = (tokenType: TokenType): string =>
+  'raw' in tokenType ? `${tokenType.tag}:${tokenType.raw}` : tokenType.tag;
+
+const publicAddressKey = (address: PublicAddress): string => `${address.tag}:${String(address.address)}`;
+
+const unshieldedKey = (intentSegment: number, guaranteed: boolean, token: string, owner: string, value: bigint): string =>
+  `segment ${intentSegment} ${guaranteed ? 'guaranteed' : 'fallible'} / ${token} / ${owner} / ${value}`;
+
+/**
+ * Shielded receives: each contract-addressed coin the offers carry, and the contract's claims to
+ * receive it, as many times each, per segment the coin is applied in.
+ */
+const assertReceivesClaimed = (offers: [number, UnprovenOffer][], transcripts: PlacedTranscript[]): void => {
+  const offered = multisetOf(
+    offers.flatMap(([segment, offer]) =>
+      [...offer.outputs, ...offer.transients]
+        .filter((item) => item.contractAddress !== undefined)
+        .map((item) => `segment ${segment} / ${String(item.commitment)} / ${String(item.contractAddress)}`)
+    )
+  );
+  const claimedReceives = multisetOf(
+    transcripts.flatMap(({ logicalSegment, address, effects }) =>
+      effects.claimedShieldedReceives.map((commitment) => `segment ${logicalSegment} / ${String(commitment)} / ${address}`)
+    )
+  );
+  const receives = differencesOf(offered, claimedReceives);
+  if (receives.length > 0) {
+    throw new ZswapOutputResolutionError(
+      `A shielded coin addressed to a contract must be claimed as received by that contract as many ` +
+        `times as the offers carry it, and these do not match. A transaction like this is rejected ` +
+        `after proving. Offer count vs claim count:\n${listed(receives, 'offered', 'claimed')}`
+    );
+  }
+};
+
+/**
+ * Nullifiers: each coin a contract spends, and the contract's claims of its nullifier, as many times
+ * each, per segment.
+ */
+const assertNullifiersClaimed = (offers: [number, UnprovenOffer][], transcripts: PlacedTranscript[]): void => {
+  const spentByContracts = multisetOf(
+    offers.flatMap(([segment, offer]) =>
+      [...offer.inputs, ...offer.transients]
+        .filter((item) => item.contractAddress !== undefined)
+        .map((item) => `segment ${segment} / ${String(item.nullifier)} / ${String(item.contractAddress)}`)
+    )
+  );
+  const claimedNullifiers = multisetOf(
+    transcripts.flatMap(({ logicalSegment, address, effects }) =>
+      effects.claimedNullifiers.map((nullifier) => `segment ${logicalSegment} / ${String(nullifier)} / ${address}`)
+    )
+  );
+  const nullifiers = differencesOf(spentByContracts, claimedNullifiers);
+  if (nullifiers.length > 0) {
+    throw new ZswapOutputResolutionError(
+      `A shielded coin a contract spends must be claimed as spent by that contract, by its nullifier, as ` +
+        `many times as the offers spend it, and these do not match. A transaction like this is rejected ` +
+        `after proving. Spend count vs claim count:\n${listed(nullifiers, 'spent', 'claimed')}`
+    );
+  }
+};
+
+/**
+ * Claimed shielded spends: none claimed twice in a segment, and each one a coin the offers carry in
+ * that segment, to any owner.
+ */
+const assertClaimedSpendsCreated = (offers: [number, UnprovenOffer][], transcripts: PlacedTranscript[]): void => {
+  const claimedSpends = multisetOf(
+    transcripts.flatMap(({ logicalSegment, effects }) =>
+      effects.claimedShieldedSpends.map((commitment) => `segment ${logicalSegment} / ${String(commitment)}`)
+    )
+  );
+  const spendsClaimedTwice = duplicatesOf(claimedSpends);
+  if (spendsClaimedTwice.length > 0) {
+    throw new ZswapOutputResolutionError(
+      `A shielded coin may be claimed as sent by one call of a transaction only, and these are claimed ` +
+        `more than once. A transaction like this is rejected after proving:\n${spendsClaimedTwice.join('\n')}`
+    );
+  }
+  const created = multisetOf(
+    offers.flatMap(([segment, offer]) =>
+      [...offer.outputs, ...offer.transients].map((item) => `segment ${segment} / ${String(item.commitment)}`)
+    )
+  );
+  const unsentSpends = missingFrom(created, claimedSpends);
+  if (unsentSpends.length > 0) {
+    throw new ZswapOutputResolutionError(
+      `A shielded coin a call claims to send must be among the coins the offers create in the same ` +
+        `segment, and these are not. A transaction like this is rejected after proving. Offer count vs ` +
+        `claim count:\n${listed(unsentSpends, 'offered', 'claimed')}`
+    );
+  }
+};
+
+/**
+ * Claimed contract calls: none claimed twice in an intent, and each one a call of that intent.
+ */
+const assertClaimedCallsMade = (calls: { segment: number; call: ContractCall<PreProof> }[], transcripts: PlacedTranscript[]): void => {
+  const claimedCalls = multisetOf(
+    transcripts.flatMap(({ intentSegment, effects }) =>
+      effects.claimedContractCalls.map(
+        ([, address, entryPoint, commitment]) => `segment ${intentSegment} / ${String(address)} / ${entryPoint} / ${toHex(commitment)}`
+      )
+    )
+  );
+  const callsClaimedTwice = duplicatesOf(claimedCalls);
+  if (callsClaimedTwice.length > 0) {
+    throw new InvalidArgumentError(
+      `A contract call may be claimed by one call of a transaction only, and these are claimed more ` +
+        `than once. A transaction like this is rejected after proving:\n${callsClaimedTwice.join('\n')}`
+    );
+  }
+  const madeCalls = multisetOf(
+    calls.map(
+      ({ segment, call }) =>
+        `segment ${segment} / ${String(call.address)} / ${entryPointHash(call.entryPoint)} / ${String(call.communicationCommitment)}`
+    )
+  );
+  const unmadeCalls = missingFrom(madeCalls, claimedCalls);
+  if (unmadeCalls.length > 0) {
+    throw new InvalidArgumentError(
+      `A contract call a transcript claims must be a call of the same intent, and these are not. A ` +
+        `transaction like this is rejected after proving. Call count vs claim count:\n${listed(unmadeCalls, 'made', 'claimed')}`
+    );
+  }
+};
+
+/**
+ * Claimed unshielded spends: each one, to a contract, taken in as an unshielded input by a transcript
+ * of that contract, or, to a user, paid by an output of the intent's unshielded offers, in the same
+ * intent and half.
+ */
+const assertClaimedUnshieldedPaid = (tx: UnprovenTransaction, transcripts: PlacedTranscript[]): void => {
+  const claimedUnshielded = multisetOf(
+    transcripts.flatMap(({ intentSegment, guaranteed, effects }) =>
+      Array.from(effects.claimedUnshieldedSpends, ([[tokenType, owner], value]) =>
+        unshieldedKey(intentSegment, guaranteed, tokenTypeKey(tokenType), publicAddressKey(owner), value)
+      )
+    )
+  );
+  const paidUnshielded = multisetOf([
+    ...transcripts.flatMap(({ intentSegment, guaranteed, address, effects }) =>
+      Array.from(effects.unshieldedInputs, ([tokenType, value]) =>
+        unshieldedKey(intentSegment, guaranteed, tokenTypeKey(tokenType), publicAddressKey({ tag: 'contract', address }), value)
+      )
+    ),
+    ...Array.from(tx.intents ?? new Map<number, UnprovenIntent>()).flatMap(([segment, intent]) =>
+      [
+        ...(intent.guaranteedUnshieldedOffer?.outputs ?? []).map((output) => ({ guaranteed: true, output })),
+        ...(intent.fallibleUnshieldedOffer?.outputs ?? []).map((output) => ({ guaranteed: false, output }))
+      ].map(({ guaranteed, output }) =>
+        unshieldedKey(
+          segment,
+          guaranteed,
+          tokenTypeKey({ tag: 'unshielded', raw: output.type }),
+          publicAddressKey({ tag: 'user', address: output.owner }),
+          output.value
+        )
+      )
+    )
+  ]);
+  const unpaidUnshielded = missingFrom(paidUnshielded, claimedUnshielded);
+  if (unpaidUnshielded.length > 0) {
+    throw new InvalidArgumentError(
+      `An unshielded payment a transcript claims must be met in the same intent and half: one to a ` +
+        `contract by an unshielded input of a transcript of that contract, one to a user by an output of ` +
+        `the intent's unshielded offer, and these are not. A transaction like this is rejected after proving. Paid count vs claim ` +
+        `count:\n${listed(unpaidUnshielded, 'paid', 'claimed')}`
+    );
+  }
+};
+
+/**
+ * Compares, before anything is proven, what the transcripts of an assembled transaction claim with
+ * what the transaction carries, as the ledger compares them for the whole transaction
+ * (`midnight-ledger/ledger/src/verify.rs:1508-1796`). The ledger refuses a transaction that fails any
+ * of these comparisons when it is submitted, after it was proven; here they are made before proving,
+ * and the refusal says what differs. The facts are read from the transaction itself, where the ledger
+ * reads them, so the two cannot key them differently.
+ *
+ * - Shielded receives: each contract-addressed coin the offers carry, and the contract's claims to
+ *   receive it, as many times each, per segment the coin is applied in.
+ * - Nullifiers: each coin a contract spends, and the contract's claims of its nullifier, as many times
+ *   each, per segment.
+ * - Claimed shielded spends: none claimed twice in a segment, and each one a coin the offers carry
+ *   in that segment, to any owner.
+ * - Claimed contract calls: none claimed twice in an intent, and each one a call of that intent.
+ * - Claimed unshielded spends: each one, to a contract, taken in as an unshielded input by a
+ *   transcript of that contract, or, to a user, paid by an output of the intent's unshielded offers,
+ *   in the same intent and half.
+ *
+ * Coins the wallet adds when it balances the transaction are its own, so they never enter the
+ * contract-keyed comparisons, and only add to the coins a claimed spend can be among.
+ *
+ * @throws ZswapOutputResolutionError if the shielded receives, the nullifiers or the claimed shielded
+ *         spends do not match the offers.
+ * @throws InvalidArgumentError if the claimed contract calls or the claimed unshielded spends do not
+ *         match the transaction's calls and unshielded offers.
+ */
+export const assertEffectsMatchTransaction = (tx: UnprovenTransaction): void => {
+  const calls = contractCallsOf(tx);
+  const transcripts = placedTranscriptsOf(calls);
+  const offers = offersOf(tx);
+  assertReceivesClaimed(offers, transcripts);
+  assertNullifiersClaimed(offers, transcripts);
+  assertClaimedSpendsCreated(offers, transcripts);
+  assertClaimedCallsMade(calls, transcripts);
+  assertClaimedUnshieldedPaid(tx, transcripts);
 };
 
 /**
  * Assembles an unproven call transaction from the proof data of every contract call made while
- * executing a circuit.
+ * executing a circuit, or while executing every circuit of a scoped transaction, and checks what
+ * their transcripts claim against it (see {@link assertEffectsMatchTransaction}) before anything is
+ * proven.
  *
  * @param calls Proof data for each contract call, in execution-trace order: cross-contract callees
- * first, the root call last. For a circuit with no cross-contract calls this is a single entry.
+ * first, the root call last. For a circuit with no cross-contract calls this is a single entry. For a
+ * scoped transaction, every circuit's calls in that order, the circuits in the order they were called.
  * @param contractStateFor Resolves the on-chain contract state for a given address — the root
  * contract's input state, and each cross-contract callee's resolved state.
  * @param chainStateFor Resolves the Zswap chain state for a given address — the root contract's
@@ -185,6 +413,9 @@ const assertReceivesMatchClaims = (
  * during execution. Only consulted for a call that spends a coin already settled on chain.
  * @param encryptionPublicKey Resolver for output encryption keys.
  * @param config The network the transaction is built for and how long it stays valid.
+ * @param spentHere One-time keys whose coins, made by these calls, are spent again in the same
+ * transaction as transients, before the claim check runs.
+ * @throws InvalidArgumentError if `spentHere` is given and the calls make no coin for it.
  *
  * @remarks Precondition: every operation resolved via `contractStateFor` for an invoked circuit must
  * carry its deployed verifier key — the call's key location embeds the key's hash so provers resolve
@@ -198,7 +429,8 @@ export const createUnprovenLedgerCallTx = (
     address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']
   ) => ZswapChainState | undefined,
   encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver,
-  config: MidnightConfig
+  config: MidnightConfig,
+  spentHere?: ZswapSecretKeys
 ): UnprovenTransaction => {
   const ttl = intentTtl(config);
   const { networkId } = config;
@@ -276,15 +508,16 @@ export const createUnprovenLedgerCallTx = (
       zswapChainState: chainStateFor(call.contractAddress),
       partitionedTranscript: call.public.partitionedTranscript
     })),
-    encryptionPublicKey
+    encryptionPublicKey,
+    spentHere
   );
 
-  assertReceivesMatchClaims(calls, segmentedOffers);
-
-  return Transaction.fromPartsRandomized(
+  const tx = Transaction.fromPartsRandomized(
     networkId,
     segmentedOffers.guaranteed,
     segmentedOffers.fallible,
     intent
   );
+  assertEffectsMatchTransaction(tx);
+  return tx;
 };

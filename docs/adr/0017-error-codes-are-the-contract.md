@@ -200,6 +200,10 @@ in both directions. Every registered code appears here exactly once, with its ca
 | C | `INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteDeployContractPrivateStateConfig` |
 | C | `INCOMPLETE_FIND_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteFindContractPrivateStateConfig` |
 | C | `SCOPED_TRANSACTION_IDENTITY_MISMATCH` | USAGE | `ScopedTransactionIdentityMismatchError` |
+| C | `LEDGER9_PRIVATE_STATES_NOT_STORED` | ENVIRONMENT | `Ledger9PrivateStatesNotStoredError` |
+| C | `LEDGER9_SUBMITTED_TX_UNCONFIRMED` | UNCERTAIN | `Ledger9SubmittedTxUnconfirmedError` |
+| C | `LEDGER9_SCOPE_FALLIBLE_PART` | USAGE | `Ledger9ScopeFalliblePartError` |
+| C | `LEDGER9_SCOPE_OUTSIDE_TIME_TO_DISMISS` | REJECTED | `Ledger9ScopeOutsideTimeToDismissError` |
 | C | `LEDGER8_AMBIGUOUS_ENTRY_POINT` | INTEGRITY | `Ledger8AmbiguousEntryPointError` |
 | C | `LEDGER8_SIGNING_KEY` | USAGE | `Ledger8SigningKeyError` |
 | C | `LEDGER8_UNCONFIRMED` | UNCERTAIN | `Ledger8UnconfirmedError` |

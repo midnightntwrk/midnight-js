@@ -37,6 +37,7 @@ import { hasErrorCode, intentTtl } from '@midnightntwrk/midnight-js-utils';
 import { Cause, Runtime } from 'effect';
 
 import { ProviderFailedError } from '../errors';
+import type { Ledger9PendingPrivateState } from '../transaction';
 import { requireProviderResult } from './era';
 
 declare const __DEBUG__: boolean;
@@ -218,6 +219,16 @@ const sanitizeProviderCause = (cause: unknown, depth = 0): Error => {
 };
 
 /**
+ * What a rejected `submitTx` of a ledger 9 call's transaction carries, hidden, on the
+ * {@link ProviderFailedError} built for it: the private states the calls left and the transaction's
+ * identifiers.
+ */
+export interface SubmissionCarry {
+  readonly pendingPrivateStates: readonly Ledger9PendingPrivateState[];
+  readonly txIds: readonly string[];
+}
+
+/**
  * Runs one provider method call, converting a rejection from the provider into
  * {@link ProviderFailedError} with the failure sanitized onto `cause`.
  *
@@ -231,13 +242,16 @@ const sanitizeProviderCause = (cause: unknown, depth = 0): Error => {
  * @param method The provider method being called.
  * @param circuitId The circuit this flow is running.
  * @param call The provider call to run.
+ * @param carry What the {@link ProviderFailedError} built here carries, hidden; a coded error passed
+ *        through carries nothing.
  * @returns Whatever the provider returned.
  * @throws ProviderFailedError for any external rejection.
  */
 export const atProviderMethod = async <T>(
   method: ProviderMethod,
   circuitId: CircuitIds,
-  call: () => Promise<T>
+  call: () => Promise<T>,
+  carry?: SubmissionCarry
 ): Promise<T> => {
   try {
     return await call();
@@ -245,7 +259,7 @@ export const atProviderMethod = async <T>(
     if (hasErrorCode(cause) && cause.cause === undefined) {
       throw cause;
     }
-    throw new ProviderFailedError(method, circuitId, sanitizeProviderCause(cause));
+    throw new ProviderFailedError(method, circuitId, sanitizeProviderCause(cause), carry);
   }
 };
 
@@ -256,12 +270,19 @@ export const atProviderMethod = async <T>(
  * crossing shows, and every other caller gets the same sanitizing wrapper by default. Two copies
  * of the submit step are how failure handling drifts apart.
  */
-export type SubmitRunner = (call: () => Promise<string>) => Promise<string>;
+export type SubmitRunner = (call: () => Promise<string>, carry?: SubmissionCarry) => Promise<string>;
+
+/**
+ * Awaited with the transaction the wallet balanced, before it is submitted. It refuses by throwing,
+ * and what it throws reaches the caller as it is, with nothing submitted. What it returns is carried
+ * by the {@link ProviderFailedError} of a rejected submission.
+ */
+export type PrepareSubmission = (balanced: FinalizedTx) => Promise<SubmissionCarry | undefined>;
 
 const sanitizedSubmit =
   (circuitId: CircuitIds): SubmitRunner =>
-  (call) =>
-    atProviderMethod('submitTx', circuitId, call);
+  (call, carry) =>
+    atProviderMethod('submitTx', circuitId, call, carry);
 
 const logTransaction = (circuitId: CircuitIds, tx: FinalizedTx): void => {
   if (process.env.MN_DEBUG?.toLowerCase() !== 'true') {
@@ -286,6 +307,8 @@ const logTransaction = (circuitId: CircuitIds, tx: FinalizedTx): void => {
  * @param unprovenTx The unproven transaction handle.
  * @param circuitId The circuit, or circuits, named in any refusal.
  * @param submit How the `submitTx` call is run. Defaults to the sanitizing wrapper.
+ * @param prepareSubmission Awaited with the balanced transaction after the wallet answers and before
+ *        it is submitted, outside the provider wrapper. Passed only by a ledger 9 scope.
  * @returns The transaction id the network assigned.
  * @throws ProviderFailedError if a provider rejects.
  * @throws InvalidTransactionHandleError if a provider answers with something
@@ -296,7 +319,8 @@ export const proveBalanceSubmit = async (
   providers: PayloadSubmitProviders,
   unprovenTx: UnprovenTx,
   circuitId: CircuitIds,
-  submit: SubmitRunner = sanitizedSubmit(circuitId)
+  submit: SubmitRunner = sanitizedSubmit(circuitId),
+  prepareSubmission?: PrepareSubmission
 ): Promise<string> => {
   const { era } = unprovenTx;
   const proven = requireProviderResult(
@@ -317,5 +341,7 @@ export const proveBalanceSubmit = async (
   if (__DEBUG__) {
     logTransaction(circuitId, balanced);
   }
-  return submit(() => providers.midnightProvider.submitTx(balanced));
+  // Outside the provider wrapper: a refusal here is the caller's, not a provider failure.
+  const carry = await prepareSubmission?.(balanced);
+  return submit(() => providers.midnightProvider.submitTx(balanced), carry);
 };

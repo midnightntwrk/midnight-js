@@ -25,8 +25,9 @@
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
-    "compact": "yarn fetch-compactc && yarn compact-shielded",
+    "compact": "yarn fetch-compactc && yarn compact-shielded && yarn compact-scoped",
     "compact-shielded": "run-compactc src/test/resources/shielded-map.compact ./src/test/resources/compiled/shielded-map",
+    "compact-scoped": "run-compactc src/test/resources/callee.compact ./src/test/resources/compiled/callee && run-compactc src/test/resources/caller.compact ./src/test/resources/compiled/caller && run-compactc src/test/resources/unshielded-balance.compact ./src/test/resources/compiled/unshielded-balance && run-compactc src/test/resources/checkpointed.compact ./src/test/resources/compiled/checkpointed && run-compactc src/test/resources/stamps.compact ./src/test/resources/compiled/stamps",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run",
     "test-no-utils": "vitest run --exclude src/test/*.test.ts"

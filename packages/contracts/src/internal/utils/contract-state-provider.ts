@@ -88,11 +88,14 @@ export interface CalleeStateResolver {
  * @param publicDataProvider The data provider used to fetch contract states.
  * @param blockHash The block hash at which to resolve callee states — the same block at which the
  * root contract's state was read, so the whole call tree is read from one coherent chain snapshot.
+ * @param heldStatesOf The states a scoped transaction holds for a contract, as its earlier calls left
+ * them. A callee it answers for is served those states and not read from the provider.
  * @returns A {@link CalleeStateResolver}.
  */
 export const makeCalleeStateResolver = (
   publicDataProvider: PublicDataProvider,
-  blockHash: string
+  blockHash: string,
+  heldStatesOf?: (contractAddress: string) => ResolvedCalleeState | undefined
 ): CalleeStateResolver => {
   const resolvedStates = new Map<string, ResolvedCalleeState>();
   const stateProvider: ContractStateProvider = {
@@ -101,6 +104,11 @@ export const makeCalleeStateResolver = (
       const cached = resolvedStates.get(key);
       if (cached !== undefined) {
         return cached.contractState;
+      }
+      const held = heldStatesOf?.(key);
+      if (held !== undefined) {
+        resolvedStates.set(key, held);
+        return held.contractState;
       }
       const resolved = await publicDataProvider.queryZSwapAndContractState(address, {
         type: 'blockHash',

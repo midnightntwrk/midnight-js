@@ -14,7 +14,7 @@
  */
 
 import { fc } from '@fast-check/vitest';
-import { InvariantViolationError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, InvariantViolationError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   type AlignedValue,
   type CoinCommitment,
@@ -35,8 +35,10 @@ import {
   type Transcript,
   ZswapChainState,
   ZswapInput,
+  ZswapLocalState,
   ZswapOffer,
-  ZswapOutput
+  ZswapOutput,
+  ZswapSecretKeys
 } from '@midnightntwrk/midnight-js-protocol/v9';
 import { type Recipient } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import { parseEncPublicKeyToHex, toHex } from '@midnightntwrk/midnight-js-utils';
@@ -52,6 +54,8 @@ import {
   deserializeCoinInfo,
   type EncryptionPublicKeyResolver,
   encryptionPublicKeyResolverForZswapState,
+  FALLIBLE_SEGMENT_NUMBER,
+  GUARANTEED_SEGMENT_NUMBER,
   serializeCoinInfo,
   serializeQualifiedShieldedCoinInfo,
   SHIELDED_BURN_COIN_PUBLIC_KEY,
@@ -1983,6 +1987,107 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
     expect(transientsOf(result.guaranteed)[0].commitment).toBe(commitment);
     expect(outputsOf(result.guaranteed)).toHaveLength(0);
     expect(result.guaranteed!.deltas.get(nativeToken().raw)).toBeUndefined();
+  });
+
+  describe('given one-time keys (spentHere)', () => {
+    const keys = ZswapSecretKeys.fromSeed(new Uint8Array(32).fill(5));
+    const otherKey = sampleCoinPublicKey();
+    const toUser = (cpk: CoinPublicKey): Recipient => ({ is_left: true, left: cpk, right: sampleContractAddress() });
+    const resolve: EncryptionPublicKeyResolver = (cpk) =>
+      cpk === keys.coinPublicKey ? keys.encryptionPublicKey : sampleEncryptionPublicKey();
+    const commitmentsIn = (items: readonly { commitment: string }[]) => items.map(({ commitment }) => String(commitment));
+    /**
+     * The proof preimage of a transient's input with every 32-byte value (hashes and randomness, which
+     * print without their leading zeros) masked; what is left differs by the segment the input was
+     * built for.
+     */
+    const inputPreimageShape = (transient: { readonly inputProof: { toString(compact?: boolean): string } }): string =>
+      transient.inputProof.toString(false).replace(/\b[0-9a-f]{48,64}\b/g, '#');
+    /** {@link inputPreimageShape} of `coin`'s output to the one-time keys, spent again for `segment`. */
+    const spentFor = (coin: ShieldedCoinInfo, segment: number): string =>
+      inputPreimageShape(
+        new ZswapLocalState().spendFromOutput(
+          keys,
+          { ...coin, mt_index: 0n },
+          segment,
+          ZswapOutput.new(coin, segment, keys.coinPublicKey, keys.encryptionPublicKey)
+        )[1]
+      );
+
+    it('spends an output to their coin key again as a transient in the segment it was placed in, and leaves every other output', () => {
+      // The coin for the one-time keys is claimed in the fallible half, the others in the guaranteed half.
+      const minter = sampleContractAddress();
+      const oneTime = createShieldedCoinInfo(nativeToken().raw, 50n);
+      const other = createShieldedCoinInfo(nativeToken().raw, 60n);
+      const owned = createShieldedCoinInfo(nativeToken().raw, 70n);
+      const oneTimeCommitment = coinCommitment(oneTime, keys.coinPublicKey);
+      const otherCommitment = coinCommitment(other, otherKey);
+      const ownedCommitment = contractCommitment(owned, minter);
+
+      const result = zswapCallsToSegmentedOffer(
+        [
+          {
+            contractAddress: minter,
+            zswapLocalState: {
+              currentIndex: 0n,
+              coinPublicKey: sampleCoinPublicKey(),
+              inputs: [],
+              outputs: [
+                { coinInfo: oneTime, recipient: toUser(keys.coinPublicKey) },
+                { coinInfo: other, recipient: toUser(otherKey) },
+                { coinInfo: owned, recipient: toContract(minter) }
+              ]
+            },
+            zswapChainState: undefined,
+            partitionedTranscript: [
+              makeTranscript([ownedCommitment], [otherCommitment, ownedCommitment]),
+              makeTranscript([], [oneTimeCommitment])
+            ]
+          }
+        ],
+        resolve,
+        keys
+      );
+
+      // RED WHEN the output stays an output, the transient lands in another segment, or another output is spent.
+      expect(commitmentsIn(transientsOf(result.fallible))).toEqual([oneTimeCommitment]);
+      expect(outputsOf(result.fallible)).toHaveLength(0);
+      expect(transientsOf(result.guaranteed)).toHaveLength(0);
+      expect(commitmentsIn(outputsOf(result.guaranteed)).sort()).toEqual([otherCommitment, ownedCommitment].sort());
+      // RED WHEN the transient's input is built for another segment than the offer it sits in.
+      expect(spentFor(oneTime, FALLIBLE_SEGMENT_NUMBER)).not.toEqual(spentFor(oneTime, GUARANTEED_SEGMENT_NUMBER));
+      expect(inputPreimageShape(transientsOf(result.fallible)[0])).toEqual(spentFor(oneTime, FALLIBLE_SEGMENT_NUMBER));
+    });
+
+    it('refuses keys that spend no coin the calls make, naming no key', () => {
+      const minter = sampleContractAddress();
+      const other = createShieldedCoinInfo(nativeToken().raw, 60n);
+      const otherCommitment = coinCommitment(other, otherKey);
+
+      const build = () =>
+        zswapCallsToSegmentedOffer(
+          [
+            {
+              contractAddress: minter,
+              zswapLocalState: {
+                currentIndex: 0n,
+                coinPublicKey: sampleCoinPublicKey(),
+                inputs: [],
+                outputs: [{ coinInfo: other, recipient: toUser(otherKey) }]
+              },
+              zswapChainState: undefined,
+              partitionedTranscript: guaranteedOnly([otherCommitment])
+            }
+          ],
+          resolve,
+          keys
+        );
+
+      // RED WHEN keys that spend nothing are accepted, or the refusal names their key.
+      expect(build).toThrow(InvalidArgumentError);
+      expect(build).toThrow(/spend no coin/);
+      expect(build).not.toThrow(keys.coinPublicKey);
+    });
   });
 });
 

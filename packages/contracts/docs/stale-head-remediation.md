@@ -154,7 +154,8 @@ Nothing is cached ACROSS scopes.
 era: the ledger 8 scope before the fork, the ledger 9 scope after it.
 
 The ledger 8 scope composes each call as its own ledger 8 transaction and merges
-them with `Transaction.merge()` of the framework's ledger 8 copy, as 4.1.1 did.
+them with `Transaction.merge()` of the framework's ledger 8 copy, as 4.1.1 did, after moving a
+segment id a later call shares with an earlier one to a free one.
 This is not a call tree: `composeCallTx` still composes exactly one call per
 ledger 8 transaction (see `packages/protocol/docs/era-boundary.md`). A scope
 merges whole transactions, which ledger 8 accepts.
@@ -164,7 +165,11 @@ function runs. The first call added to the scope reads the contract state and th
 stored private state, and fixes the contract and private state the scope runs
 against. Every later call runs on the contract state and private state the call
 before it ended on. `createUnprovenCallTx` builds against the same states and adds
-nothing to the scope, so it fixes nothing either. Three limits hold in both eras:
+nothing to the scope, so it fixes nothing either. Three limits hold in the ledger 8
+scope. The ledger 9 scope has none of them: it builds one transaction over its
+calls in the order they were made, advances each contract's balance, and takes
+several contracts and private states
+([ADR 0027](../../../docs/adr/0027-build-a-ledger-9-contract-scoped-transaction-once-in-call-order.md)).
 
 - The contract's balance stays as the first call read it.
 - The ledger does not keep the order of merged calls. A circuit whose transcript

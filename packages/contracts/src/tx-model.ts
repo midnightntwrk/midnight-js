@@ -336,7 +336,9 @@ export interface Ledger9FinalizedCallTxData<C extends Contract.Any, PCK extends 
    *
    * In a scope that made several calls this names the LAST one, which is the
    * call `public`, `private` and `calls` also describe: this type is one
-   * call's result, not the transaction's. The transaction may carry more, and
+   * call's result, not the transaction's, but for `private.unprovenTx`, which is
+   * the transaction the scope submitted, and `private.newCoins`, which holds the
+   * new coins of every call. The transaction may carry more, and
    * a failure reports all of them -- `TxFailedError`'s `circuitId` is the
    * accumulated list. The two are answering different questions, and a caller
    * routing on this one is routing on the call, not the transaction.
