@@ -57,6 +57,7 @@ const cases: readonly Case[] = [
   ['ForkCrossedDuringOperationError', new errors.ForkCrossedDuringOperationError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, 'v9', CAUSE), CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION, 'UNCERTAIN'],
   ['SubmitRejectionUndiagnosedError', new errors.SubmitRejectionUndiagnosedError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, CAUSE, { reason: 'network-version-read-failed', networkVersionReadFailure: CAUSE }), CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED, 'UNCERTAIN'],
   ['TxFailedError', new errors.TxFailedError('call', finalizedTxData, { circuitId: 'increment' }), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['TxNotWellFormedError', new errors.TxNotWellFormedError('not well formed', { cause: CAUSE }), CONTRACTS_ERROR_CODES.TX_NOT_WELL_FORMED, 'REJECTED'],
   ['ContractTypeError', new errors.ContractTypeError(SerializedContractState.fromBytes('v9', new ContractState().serialize()), noMismatch, ADDRESS), CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH, 'USAGE'],
   ['IncompleteCallTxPrivateStateConfig', new errors.IncompleteCallTxPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG, 'USAGE'],
   ['IncompleteDeployContractPrivateStateConfig', new errors.IncompleteDeployContractPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG, 'USAGE'],
@@ -77,7 +78,7 @@ const cases: readonly Case[] = [
 
 describe('contracts error classes', () => {
   it('every error class in errors.ts extends MidnightJsError', () => {
-    expect(errorClasses.length).toBe(26);
+    expect(errorClasses.length).toBe(27);
     expect(errorClasses.filter((c) => !(c.prototype instanceof MidnightJsError)).map((c) => c.name)).toEqual([]);
   });
 

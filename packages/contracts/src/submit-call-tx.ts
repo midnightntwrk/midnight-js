@@ -230,6 +230,7 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *
  * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
+ * @throws {TxNotWellFormedError} If the ledger refuses the call's transaction; nothing is proven.
  * @throws {EraMismatchError} When `options.compiledContract` belongs to neither Compact
  *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
  *         container, or its artifacts declare no toolchain this framework can place or the other

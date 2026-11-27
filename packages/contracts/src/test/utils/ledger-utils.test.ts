@@ -24,6 +24,7 @@ import {
   createShieldedCoinInfo,
   feeToken,
   Intent,
+  LedgerParameters,
   nativeToken,
   type PartitionedTranscript,
   type PublicAddress,
@@ -64,8 +65,9 @@ import { Option } from 'effect';
 import { readFileSync } from 'fs';
 import { beforeAll } from 'vitest';
 
-import { ZswapOutputResolutionError } from '../../errors';
+import { TxNotWellFormedError, ZswapOutputResolutionError } from '../../errors';
 import {
+  assertCallTxWellFormed,
   createUnprovenLedgerCallTx,
   createUnprovenLedgerDeployTx,
   createZswapOutput,
@@ -519,6 +521,60 @@ describe('ledger-utils', () => {
         dummyEncPublicKey
       );
       expect(tx).toBeInstanceOf(Transaction);
+      expect(() => assertCallTxWellFormed(tx, MOCK_CONFIG.networkId, LedgerParameters.initialParameters())).not.toThrow();
+    });
+
+    it('refuses a deposit whose transcript claims to spend a coin no offer carries, with the ledger refusal as cause', async () => {
+      const coin = { nonce: new Uint8Array(32).fill(1), color: new Uint8Array(32).fill(2), value: 100n };
+      const ctx = createCircuitContext({
+        circuitId: 'deposit',
+        contractAddress: shieldedAddr,
+        coinPublicKeyOrZswapState: shieldedCpk,
+        contractState: shieldedInitialState,
+        privateState: undefined
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { context, gasCost } = await (shieldedContract.circuits as any).deposit(ctx, coin);
+      const proofData = context.callProofDataTrace[context.callProofDataTrace.length - 1];
+      const { effects } = context.callContext.currentQueryContext;
+      const transcript: Transcript<AlignedValue> = {
+        gas: gasCost,
+        effects: { ...effects, claimedShieldedSpends: [...effects.claimedShieldedSpends, toHex(randomBytes(32))] },
+        program: proofData.publicTranscript
+      };
+      const tx = callTxWithSingleState(
+        [
+          {
+            contractAddress: PlatformContractAddress.ContractAddress(shieldedAddr),
+            circuitId: 'deposit',
+            public: { contractState: shieldedInitialState.data.state, publicTranscript: [], partitionedTranscript: [transcript, undefined], partitionInputs: makePartitionInputs() },
+            private: {
+              input: proofData.input,
+              output: proofData.output,
+              privateTranscriptOutputs: proofData.privateTranscriptOutputs
+            },
+            communicationCommitment: Option.none()
+          }
+        ],
+        () => shieldedInitialState,
+        new ZswapChainState(),
+        decodeZswapLocalState(context.callContext.currentZswapLocalState),
+        dummyEncPublicKey
+      );
+
+      let refusal: unknown;
+      try {
+        assertCallTxWellFormed(tx, MOCK_CONFIG.networkId, LedgerParameters.initialParameters());
+      } catch (error) {
+        refusal = error;
+      }
+
+      expect(refusal).toBeInstanceOf(TxNotWellFormedError);
+      expect(refusal).toMatchObject({ code: CONTRACTS_ERROR_CODES.TX_NOT_WELL_FORMED, category: 'REJECTED' });
+      const { message, cause } = refusal as TxNotWellFormedError;
+      expect(cause).toBeInstanceOf(Error);
+      expect((cause as Error).message).toContain('claimed_shielded_spends');
+      expect(message).toContain((cause as Error).message);
     });
   });
 

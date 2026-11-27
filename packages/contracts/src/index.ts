@@ -89,6 +89,7 @@ export {
   type TxFailedDetails,
   TxFailedError,
   type TxFailedOperation,
+  TxNotWellFormedError,
   VerifierKeyMismatchError,
   ZswapOutputResolutionError} from './errors';
 export {

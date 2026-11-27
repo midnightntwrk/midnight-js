@@ -50,8 +50,8 @@ import {
 import { ledger8ScopeOf } from './internal/ledger8-scope';
 import * as Transaction from './internal/transaction';
 import {
-  createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
-  zswapCallsToNewCoins
+  assertCallTxWellFormed, createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState,
+  makeCalleeStateResolver, zswapCallsToNewCoins
 } from './internal/utils';
 import type {
   AnyLedger8CallOptionsWithInitialStates,
@@ -183,6 +183,21 @@ const runLedger9Call = async <C extends Contract.Any, PCK extends Contract.Prova
         ? initialZswapChainState
         : calleeResolver?.resolvedStates.get(String(address))?.zswapChainState;
 
+    const unprovenTx = createUnprovenLedgerCallTx(
+      calls,
+      contractStateFor,
+      chainStateFor,
+      encryptionPublicKeyResolverForZswapState(
+        networkId,
+        zswapLocalState,
+        options.coinPublicKey,
+        walletEncryptionPublicKey,
+        options.additionalCoinEncPublicKeyMappings
+      ),
+      config
+    );
+    assertCallTxWellFormed(unprovenTx, networkId, ledgerParameters);
+
     return {
       era: 'v9',
       public: {
@@ -199,23 +214,7 @@ const runLedger9Call = async <C extends Contract.Any, PCK extends Contract.Prova
         nextPrivateState: privateState,
         nextZswapLocalState: zswapLocalState,
         privateTranscriptOutputs: rootCall.private.privateTranscriptOutputs,
-        unprovenTx: LedgerTransaction.seal(
-          'v9',
-          'Unproven',
-          createUnprovenLedgerCallTx(
-            calls,
-            contractStateFor,
-            chainStateFor,
-            encryptionPublicKeyResolverForZswapState(
-              networkId,
-              zswapLocalState,
-              options.coinPublicKey,
-              walletEncryptionPublicKey,
-              options.additionalCoinEncPublicKeyMappings
-            ),
-            config
-          )
-        ),
+        unprovenTx: LedgerTransaction.seal('v9', 'Unproven', unprovenTx),
         // Every call, not just the root: the offers are assembled from the whole tree, so a coin a
         // callee addresses to this wallet is genuinely created and belongs in what the caller is
         // handed. `calls` carries the root as its last entry.
@@ -275,6 +274,7 @@ export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.
  * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
  *         whitespace.
  * @throws InvalidArgumentError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
+ * @throws TxNotWellFormedError If the ledger refuses the call's transaction; nothing is proven.
  *
  * @remarks
  * The returned {@link Ledger9UnsubmittedCallTxData} is privacy-sensitive and carries
@@ -465,6 +465,7 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
  * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
  *         whitespace.
  * @throws InvalidArgumentError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
+ * @throws TxNotWellFormedError If the ledger refuses the call's transaction; nothing is proven.
  *
  * @remarks
  * The returned {@link Ledger9UnsubmittedCallTxData} is privacy-sensitive and carries
