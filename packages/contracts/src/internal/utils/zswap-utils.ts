@@ -34,6 +34,7 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput,
+  type ZswapSecretKeys,
   ZswapTransient} from '@midnightntwrk/midnight-js-protocol/v9';
 import { type Recipient, type ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { NetworkId } from '@midnightntwrk/midnight-js-types';
@@ -45,6 +46,7 @@ import {
 } from '@midnightntwrk/midnight-js-utils';
 
 import { ZswapOutputResolutionError } from '../../errors';
+import { spendOutputsInside } from './one-time-keys';
 
 /**
  * Resolves a CoinPublicKey to the corresponding EncPublicKey for output encryption.
@@ -194,6 +196,25 @@ export const zswapCallsToNewCoins = (
   );
 
 /**
+ * Refuses a ZswapLocalState whose coin public key is not the wallet's: its coins could not be
+ * encrypted to a key the wallet holds.
+ *
+ * @throws ZswapOutputResolutionError if the state's coin public key is not the wallet's.
+ */
+export const assertZswapStateOfWallet = (
+  networkId: NetworkId,
+  zswapState: ZswapLocalState,
+  walletCoinPublicKey: CoinPublicKey
+): void => {
+  const walletCpkHex = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
+  const localCpkHex = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
+
+  if (localCpkHex !== walletCpkHex) {
+    throw new ZswapOutputResolutionError('Unable to lookup encryption public key (Unsupported coin)');
+  }
+};
+
+/**
  * Creates an EncryptionPublicKeyResolver for a ZswapLocalState, validating that the
  * state's coin public key matches the wallet's. Handles the burn address and optional
  * additional recipient mappings.
@@ -205,12 +226,7 @@ export const encryptionPublicKeyResolverForZswapState = (
   walletEncryptionPublicKey: EncPublicKey,
   additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>
 ): EncryptionPublicKeyResolver => {
-  const walletCpkHex = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
-  const localCpkHex = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
-
-  if (localCpkHex !== walletCpkHex) {
-    throw new ZswapOutputResolutionError('Unable to lookup encryption public key (Unsupported coin)');
-  }
+  assertZswapStateOfWallet(networkId, zswapState, walletCoinPublicKey);
 
   return createEncryptionPublicKeyResolver(
     networkId,
@@ -526,10 +542,19 @@ const soleCommitmentFor = (
  * - Inputs: nullifier ∈ that call's `claimedNullifiers`.
  * - Transients: an input pairs with an output for the same coin *and the same owner*, found
  *   anywhere in the call tree — the coin a callee re-spends was typically created by its caller.
+ * - Given `spentHere`, every output to its coin key is spent again as a transient in the segment
+ *   the output was placed in, and no longer appears as an output ({@link spendOutputsInside}).
+ *
+ * @param contributions The shielded activity of every contract call.
+ * @param encryptionPublicKeyOrResolver The encryption key of every user output, or how to find it.
+ * @param spentHere One-time keys whose coins, made by these calls, are spent again in the same
+ *        transaction.
+ * @throws InvalidArgumentError if `spentHere` is given and the calls make no coin for it.
  */
 export const zswapCallsToSegmentedOffer = (
   contributions: readonly ZswapCallContribution[],
-  encryptionPublicKeyOrResolver: EncPublicKey | EncryptionPublicKeyResolver
+  encryptionPublicKeyOrResolver: EncPublicKey | EncryptionPublicKeyResolver,
+  spentHere?: ZswapSecretKeys
 ): { guaranteed: UnprovenOffer | undefined; fallible: UnprovenOffer | undefined } => {
   const resolver: EncryptionPublicKeyResolver =
     typeof encryptionPublicKeyOrResolver === 'function'
@@ -545,6 +570,7 @@ export const zswapCallsToSegmentedOffer = (
   const segmentOfOutput = new Map<string, 0 | 1>();
   // Read only by the unattributed branch of pass 2, which has no address to derive a commitment from.
   const commitmentsByCoinInfo = new Map<string, CoinCommitment[]>();
+  const coinOfOutput = new Map<string, ShieldedCoinInfo>();
 
   // Pass 1 — every output. Keyed by commitment, so one coin sent by a contract and received by
   // another collapses to a single offer output; a duplicate commitment is rejected on chain as
@@ -567,6 +593,7 @@ export const zswapCallsToSegmentedOffer = (
         continue;
       }
       segmentOfOutput.set(commitment, segment);
+      coinOfOutput.set(commitment, coinInfo);
       const serialized = serializeCoinInfo(coinInfo);
       const sameCoinInfo = commitmentsByCoinInfo.get(serialized);
       if (sameCoinInfo === undefined) commitmentsByCoinInfo.set(serialized, [commitment]);
@@ -661,6 +688,17 @@ export const zswapCallsToSegmentedOffer = (
         value: coinInfo.value
       });
     }
+  }
+
+  if (spentHere !== undefined) {
+    spendOutputsInside(
+      [
+        { segment: GUARANTEED_SEGMENT_NUMBER, ...buckets[GUARANTEED_SEGMENT_NUMBER] },
+        { segment: FALLIBLE_SEGMENT_NUMBER, ...buckets[FALLIBLE_SEGMENT_NUMBER] }
+      ],
+      coinOfOutput,
+      spentHere
+    );
   }
 
   return {

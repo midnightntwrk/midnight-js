@@ -72,12 +72,16 @@ const cases: readonly Case[] = [
   ['NetworkVersionReadFailedError', new errors.NetworkVersionReadFailedError('network version read failed', { cause: CAUSE }), CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED, 'TRANSIENT'],
   ['ZswapOutputResolutionError', new errors.ZswapOutputResolutionError('unresolved', { cause: CAUSE }), CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED, 'USAGE'],
   ['ContractNotFoundError', new errors.ContractNotFoundError('no contract'), CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND, 'USAGE'],
-  ['PrivateStateNotFoundError', new errors.PrivateStateNotFoundError('no private state'), CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND, 'USAGE']
+  ['PrivateStateNotFoundError', new errors.PrivateStateNotFoundError('no private state'), CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND, 'USAGE'],
+  ['Ledger9PrivateStatesNotStoredError', new errors.Ledger9PrivateStatesNotStoredError('tx-id', [{ contractAddress: ADDRESS, privateStateId: 'id', privateState: 1, cause: CAUSE }]), CONTRACTS_ERROR_CODES.LEDGER9_PRIVATE_STATES_NOT_STORED, 'ENVIRONMENT'],
+  ['Ledger9SubmittedTxUnconfirmedError', new errors.Ledger9SubmittedTxUnconfirmedError('tx-id', [], CAUSE), CONTRACTS_ERROR_CODES.LEDGER9_SUBMITTED_TX_UNCONFIRMED, 'UNCERTAIN'],
+  ['Ledger9ScopeFalliblePartError', new errors.Ledger9ScopeFalliblePartError('unproven', ['fallible coins in segment 1']), CONTRACTS_ERROR_CODES.LEDGER9_SCOPE_FALLIBLE_PART, 'USAGE'],
+  ['Ledger9ScopeOutsideTimeToDismissError', new errors.Ledger9ScopeOutsideTimeToDismissError(6000, { timeToDismiss: '17.047ms', allowedTimeToDismiss: '15.000ms' }, [], { cause: CAUSE }), CONTRACTS_ERROR_CODES.LEDGER9_SCOPE_OUTSIDE_TIME_TO_DISMISS, 'REJECTED']
 ];
 
 describe('contracts error classes', () => {
   it('every error class in errors.ts extends MidnightJsError', () => {
-    expect(errorClasses.length).toBe(26);
+    expect(errorClasses.length).toBe(30);
     expect(errorClasses.filter((c) => !(c.prototype instanceof MidnightJsError)).map((c) => c.name)).toEqual([]);
   });
 

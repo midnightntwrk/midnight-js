@@ -1,0 +1,28 @@
+import CompactStandardLibrary;
+
+export ledger stamps: MerkleTree<20, Bytes<32>>;
+export ledger seals: Set<Bytes<32>>;
+
+export circuit mintToSelf(domainSep: Bytes<32>, mintValue: Uint<64>, mintNonce: Bytes<32>): ShieldedCoinInfo {
+    return mintShieldedToken(disclose(domainSep), disclose(mintValue), disclose(mintNonce), right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
+}
+
+export circuit sendMinted(coin: ShieldedCoinInfo, publicKey: ZswapCoinPublicKey, sendValue: Uint<128>): ShieldedSendResult {
+    return sendImmediateShielded(disclose(coin), left<ZswapCoinPublicKey, ContractAddress>(disclose(publicKey)), disclose(sendValue));
+}
+
+export circuit stampThriceAndMint(seed: Bytes<32>, domainSep: Bytes<32>, mintValue: Uint<64>, mintNonce: Bytes<32>, publicKey: ZswapCoinPublicKey): ShieldedCoinInfo {
+    const s = disclose(seed);
+    for (const i of 0..3) {
+        stamps.insert(s);
+    }
+    return mintShieldedToken(disclose(domainSep), disclose(mintValue), disclose(mintNonce), left<ZswapCoinPublicKey, ContractAddress>(disclose(publicKey)));
+}
+
+export circuit sealOnce(after: Bytes<32>, id: Bytes<32>): [] {
+    const previous = disclose(after);
+    const k = disclose(id);
+    assert(previous == default<Bytes<32>> || seals.member(previous), "not sealed after");
+    assert(!seals.member(k), "already sealed");
+    seals.insert(k);
+}

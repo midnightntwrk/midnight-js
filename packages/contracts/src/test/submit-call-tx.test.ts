@@ -14,7 +14,7 @@
  */
 
 import { COMMON_ERROR_CODES } from '@midnightntwrk/midnight-js-protocol/errors';
-import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import { type CompiledContract, type Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
 import { StateValue } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import { CURRENT_LEDGER_ERA } from '@midnightntwrk/midnight-js-protocol/version';
@@ -31,30 +31,38 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { isLedger8Result } from '../era-results';
-import { IncompleteCallTxPrivateStateConfig, TxFailedError } from '../errors';
+import { IncompleteCallTxPrivateStateConfig, Ledger9PrivateStatesNotStoredError, TxFailedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
+import type * as InternalUtils from '../internal/utils';
+import { createUnprovenLedgerCallTx } from '../internal/utils';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import { submitLedger9Payload, submitLedger9PayloadAsync } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
 import type { Ledger9FinalizedCallTxData, Ledger9UnsubmittedCallTxData } from '../tx-model';
-import { createLedger9UnprovenCallTx,type Ledger9CallTxOptions } from '../unproven-call-tx';
+import { createLedger9UnprovenCallTx, executeLedger9CallWithProviders, type Ledger9CallTxOptions } from '../unproven-call-tx';
 import {
   contractStatesOf,
   createMockCoinInfo,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractCall,
+  createMockExecutedCall,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
   createMockUnprovenCallTxData,
   createMockUnprovenTx,
   createMockZswapLocalState,
+  executedInScope,
   separateContractStates
 } from './test-mocks';
 
 vi.mock('../unproven-call-tx');
 vi.mock('../submit-tx');
+vi.mock('../internal/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof InternalUtils>()),
+  createUnprovenLedgerCallTx: vi.fn()
+}));
 
 describe('submit-call-tx', () => {
   let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -84,10 +92,19 @@ describe('submit-call-tx', () => {
     ...overrides
   });
 
+  // A call made with `submitCallTx` runs only its execute step and is recorded into a scope, which
+  // builds one transaction of its calls when it submits. This makes the execute step return
+  // `callTxData`'s execution and the scope's build return `callTxData`'s transaction.
+  const recordCall = (callTxData: Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>) => {
+    vi.mocked(executeLedger9CallWithProviders).mockImplementation(executedInScope(createMockExecutedCall(callTxData)));
+    vi.mocked(createUnprovenLedgerCallTx).mockReturnValue(callTxData.private.unprovenTx.deserialize({ v9: Transaction }));
+  };
+
   const setupSuccessfulMocks = () => {
     const mockUnprovenCallTxData = createMockUnprovenCallTxData();
     const mockFinalizedTxData = createMockFinalizedTxData();
 
+    recordCall(mockUnprovenCallTxData);
     vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
     vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
@@ -122,15 +139,17 @@ describe('submit-call-tx', () => {
     result: Ledger9FinalizedCallTxData<Contract.Any, AnyProvableCircuitId>,
     options: Ledger9CallTxOptions<Contract.Any, AnyProvableCircuitId>
   ) => {
-    expect(createLedger9UnprovenCallTx).toHaveBeenCalledWith(
+    expect(executeLedger9CallWithProviders).toHaveBeenCalledWith(
       mockProviders,
       options,
       expect.anything() // Ignore transaction context.
     );
     expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, {
       unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-      circuitId: 'testCircuit'
-    });
+      circuitId: 'testCircuit',
+      // The scope prepares the submission of the balanced transaction: a rejection carries its identifiers.
+      prepareSubmission: expect.any(Function)
+    }, expect.any(Function));
     expect(result).toEqual({
       era: CURRENT_LEDGER_ERA,
       circuitId: 'testCircuit',
@@ -167,13 +186,13 @@ describe('submit-call-tx', () => {
         expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
-      it('forwards logEvents through the nested scoped Ledger9CallResult rebuild', async () => {
+      it('forwards logEvents through the result of a call nested in a scope', async () => {
         const options = createBasicCallOptions();
         const { mockUnprovenCallTxData } = setupSuccessfulMocks();
 
-        // Nesting a call inside an outer scope returns via the hand-rolled `Ledger9CallResult` rebuild
-        // (internal/transaction.ts), not the root `[Submit]` spread. Reference identity proves the
-        // rebuild forwards the executor's actual logEvents array rather than a fresh/hardcoded default.
+        // A call nested inside an outer scope returns the result the scope recorded for it, not the
+        // root `[Submit]` spread. Reference identity proves it carries the executor's actual logEvents
+        // array rather than a fresh or defaulted one.
         let nestedResult: Awaited<ReturnType<typeof submitCallTx>> | undefined;
         await withContractScopedTransaction(mockProviders, async (txCtx) => {
           nestedResult = await submitCallTx(mockProviders, options, txCtx);
@@ -203,17 +222,16 @@ describe('submit-call-tx', () => {
         expect(result.era).toBe('v9');
       });
 
-      it('forwards calls through the nested scoped Ledger9CallResult rebuild', async () => {
+      it('forwards calls through the result of a call nested in a scope', async () => {
         const options = createBasicCallOptions();
         const rootCall = createMockContractCall({ circuitId: 'testCircuit' });
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({ calls: [rootCall] });
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
 
-        // `calls` is a caller's only route to callee proof data for a cross-contract circuit, and
-        // the nested path rebuilds `Ledger9CallResult` member by member rather than spreading the
-        // executor's data. Reference identity proves the rebuild forwards the executor's own array
-        // instead of a fresh or defaulted one.
+        // `calls` is a caller's only route to callee proof data for a cross-contract circuit. Reference
+        // identity proves the nested result carries the executor's own array instead of a fresh or
+        // defaulted one.
         let nestedResult: Awaited<ReturnType<typeof submitCallTx>> | undefined;
         await withContractScopedTransaction(mockProviders, async (txCtx) => {
           nestedResult = await submitCallTx(mockProviders, options, txCtx);
@@ -242,7 +260,7 @@ describe('submit-call-tx', () => {
             newCoins: [mockCoinInfo]
           }
         });
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
 
         const result = await submitCallTx(mockProviders, options);
 
@@ -282,22 +300,26 @@ describe('submit-call-tx', () => {
         });
 
         const result = await withContractScopedTransaction(mockProviders, async (txCtx) => {
-          vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData_1);
+          recordCall(mockUnprovenCallTxData_1);
           const result_1 = await submitCallTx(mockProviders, options, txCtx);
           expect(result_1.private.result).toBe('1');
 
-          vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData_2);
+          recordCall(mockUnprovenCallTxData_2);
           const result_2 = await submitCallTx(mockProviders, options, txCtx);
           expect(result_2.private.result).toBe('2');
         });
 
         expect(contractStatesOf(mockProviders.privateStateProvider).set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
-        expect(createLedger9UnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
+        expect(executeLedger9CallWithProviders).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
           era: CURRENT_LEDGER_ERA,
           circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData_2.calls,
-          private: mockUnprovenCallTxData_2.private,
+          // The scope's result carries the new coins of every call, in the order they were made.
+          private: {
+            ...mockUnprovenCallTxData_2.private,
+            newCoins: [...mockUnprovenCallTxData_1.private.newCoins, ...mockUnprovenCallTxData_2.private.newCoins]
+          },
           public: {
             ...mockUnprovenCallTxData_2.public,
             ...mockFinalizedTxData
@@ -334,7 +356,7 @@ describe('submit-call-tx', () => {
           IncompleteCallTxPrivateStateConfig
         );
 
-        expect(createLedger9UnprovenCallTx).not.toHaveBeenCalled();
+        expect(executeLedger9CallWithProviders).not.toHaveBeenCalled();
         expect(submitLedger9Payload).not.toHaveBeenCalled();
       });
 
@@ -346,7 +368,7 @@ describe('submit-call-tx', () => {
           code: COMMON_ERROR_CODES.INVALID_ARGUMENT
         });
 
-        expect(createLedger9UnprovenCallTx).not.toHaveBeenCalled();
+        expect(executeLedger9CallWithProviders).not.toHaveBeenCalled();
         expect(submitLedger9Payload).not.toHaveBeenCalled();
         expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
@@ -367,7 +389,7 @@ describe('submit-call-tx', () => {
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow(TxFailedError);
@@ -379,7 +401,7 @@ describe('submit-call-tx', () => {
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         await expect(withContractScopedTransaction(mockProviders, async (txCtx) => {
@@ -395,7 +417,7 @@ describe('submit-call-tx', () => {
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         try {
@@ -416,7 +438,7 @@ describe('submit-call-tx', () => {
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailFallible);
 
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow(TxFailedError);
@@ -428,7 +450,7 @@ describe('submit-call-tx', () => {
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailFallible);
 
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         await expect(withContractScopedTransaction(mockProviders, async (txCtx) => {
@@ -444,7 +466,7 @@ describe('submit-call-tx', () => {
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailFallible);
 
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         try {
@@ -472,7 +494,7 @@ describe('submit-call-tx', () => {
           segmentStatusMap
         };
 
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         try {
@@ -507,10 +529,10 @@ describe('submit-call-tx', () => {
     });
 
     describe('error propagation', () => {
-      it('should propagate errors from createLedger9UnprovenCallTx', async () => {
+      it('should propagate errors from the circuit run', async () => {
         const options = createBasicCallOptions();
         const createError = new Error('Failed to create unproven call tx');
-        vi.mocked(createLedger9UnprovenCallTx).mockRejectedValue(createError);
+        vi.mocked(executeLedger9CallWithProviders).mockRejectedValue(createError);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Failed to create unproven call tx');
         expect(submitLedger9Payload).not.toHaveBeenCalled();
@@ -521,7 +543,7 @@ describe('submit-call-tx', () => {
         const mockUnprovenCallTxData = createFailedTxData();
         const submitError = new Error('Network error during submission');
 
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockRejectedValue(submitError);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Network error during submission');
@@ -534,11 +556,14 @@ describe('submit-call-tx', () => {
         const mockUnprovenCallTxData = createMockUnprovenCallTxData();
         const mockFinalizedTxData = createMockFinalizedTxData();
 
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
         contractStatesOf(mockProviders.privateStateProvider).set = vi.fn().mockRejectedValue(stateError);
 
-        await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Failed to set private state');
+        const rejection = submitCallTx(mockProviders, options);
+
+        await expect(rejection).rejects.toThrow(Ledger9PrivateStatesNotStoredError);
+        await expect(rejection).rejects.toMatchObject({ cause: stateError, notStored: [{ privateStateId: mockPrivateStateId, cause: stateError }] });
       });
     });
 
@@ -559,15 +584,17 @@ describe('submit-call-tx', () => {
             unprovenTx: mockUnprovenTx
           }
         });
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
         const result = await submitCallTx(mockProviders, options);
 
         expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-          circuitId: 'testCircuit'
-        });
+          circuitId: 'testCircuit',
+          // The scope prepares the submission of the balanced transaction: a rejection carries its identifiers.
+          prepareSubmission: expect.any(Function)
+        }, expect.any(Function));
         expect(result).toEqual({
           era: CURRENT_LEDGER_ERA,
           circuitId: 'testCircuit',
@@ -592,7 +619,7 @@ describe('submit-call-tx', () => {
             newCoins: [mockCoinInfo]
           }
         });
-        vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        recordCall(mockUnprovenCallTxData);
 
         await submitCallTx(mockProviders, options);
 
@@ -605,7 +632,7 @@ describe('submit-call-tx', () => {
 
         const result = await submitCallTx(mockProviders, options);
 
-        expect(createLedger9UnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
+        expect(executeLedger9CallWithProviders).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
       });
     });
@@ -846,7 +873,7 @@ describe('submit-call-tx', () => {
         unshielded: guaranteedUnshieldedOutputs
       };
 
-      vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+      recordCall(mockUnprovenCallTxData);
       vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
       try {

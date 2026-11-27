@@ -56,8 +56,9 @@ contracts.
 - **Negative:** the scope function needs a type, or the era-specific function, to receive a ledger 8
   context. `ReturnType<typeof withContractScopedTransaction>` names the ledger 8 result, because it
   reads the last overload.
-- **Negative:** as in the ledger 9 scope, the contract's balance stays as the first call read it,
-  and the ledger does not keep the order of merged calls. A JavaScript caller that nests a scope by
+- **Negative:** the contract's balance stays as the first call read it, and the ledger does not
+  keep the order of merged calls; the ledger 9 scope builds one transaction in call order instead
+  ([ADR 0027](./0027-build-a-ledger-9-contract-scoped-transaction-once-in-call-order.md)). A JavaScript caller that nests a scope by
   passing a running scope's context as the options gets that scope's last call data, not a
   finalized transaction, whatever the declared return type says.
 - **Follow-ups:** none required. Running a ledger 8 contract's calls in a ledger 9 scope after the
