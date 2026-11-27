@@ -209,6 +209,7 @@ in both directions. Every registered code appears here exactly once, with its ca
 | C | `ZSWAP_OUTPUT_UNRESOLVED` | USAGE | `ZswapOutputResolutionError` |
 | C | `CONTRACT_NOT_FOUND` | USAGE | `ContractNotFoundError` |
 | C | `PRIVATE_STATE_NOT_FOUND` | USAGE | `PrivateStateNotFoundError` |
+| C | `TX_NOT_WELL_FORMED` | REJECTED | `TxNotWellFormedError` |
 | U | `TAG_PARSE_FAILED` | INTEGRITY | `TagParseError` |
 | U | `UNHANDLED_UNION_MEMBER` | INTERNAL | `UnhandledUnionMemberError` |
 | U | `ZK_ARTIFACT_INTEGRITY_FAILED` | INTEGRITY | `ZkArtifactIntegrityError` |

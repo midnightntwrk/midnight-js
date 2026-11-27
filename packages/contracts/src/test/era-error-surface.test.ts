@@ -32,6 +32,7 @@ import {
   NetworkVersionReadFailedError,
   NetworkVersionStateMismatchError,
   PrivateStateNotFoundError,
+  TxNotWellFormedError,
   VerifierKeyMismatchError,
   ZswapOutputResolutionError
 } from '../index';
@@ -50,6 +51,7 @@ describe('the era and verification-path errors a caller has to catch are reachab
       { error: new LedgerParametersUnservedError('addr'), code: CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED },
       { error: new ContractNotFoundError('no contract'), code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND },
       { error: new PrivateStateNotFoundError('no private state'), code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND },
+      { error: new TxNotWellFormedError('not well formed'), code: CONTRACTS_ERROR_CODES.TX_NOT_WELL_FORMED },
       { error: new Ledger8NotStoredError('deploy', 'addr', { tag: 'schnorr', value: '11'.repeat(32) }, 'signing-key', new Error('store down')), code: CONTRACTS_ERROR_CODES.LEDGER8_NOT_STORED }
     ];
 

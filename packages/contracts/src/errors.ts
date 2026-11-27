@@ -857,6 +857,17 @@ export class ZswapOutputResolutionError extends MidnightJsError {
   }
 }
 
+/** The ledger refused a call's transaction before it was proven; its refusal is on `cause`. */
+export class TxNotWellFormedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.TX_NOT_WELL_FORMED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.TX_NOT_WELL_FORMED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'TxNotWellFormedError';
+  }
+}
+
 /** No contract is deployed at the given address on the network the providers point to. */
 export class ContractNotFoundError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND;

@@ -22,6 +22,8 @@ import {
   type ContractState as LedgerContractState,
   type EncPublicKey,
   Intent,
+  type LedgerParameters,
+  LedgerState,
   QueryContext as LedgerQueryContext,
   Transaction,
   type Transcript,
@@ -29,6 +31,7 @@ import {
   type UnprovenTransaction,
   UnshieldedOffer,
   type UtxoOutput,
+  WellFormedStrictness,
   type ZswapChainState
 } from '@midnightntwrk/midnight-js-protocol/v9';
 import type { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
@@ -52,7 +55,7 @@ import {
 } from '@midnightntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
-import { BlankVerifierKeySlotError, ZswapOutputResolutionError } from '../../errors';
+import { BlankVerifierKeySlotError, TxNotWellFormedError, ZswapOutputResolutionError } from '../../errors';
 import { type EncryptionPublicKeyResolver, zswapCallsToSegmentedOffer, zswapStateToOffer } from './zswap-utils';
 
 const PKG = '@midnightntwrk/midnight-js-contracts';
@@ -287,4 +290,28 @@ export const createUnprovenLedgerCallTx = (
     segmentedOffers.fallible,
     intent
   );
+};
+
+export const assertCallTxWellFormed = (
+  tx: UnprovenTransaction,
+  networkId: string,
+  ledgerParameters: LedgerParameters
+): void => {
+  // Not yet proven, signed or balanced, so the ledger checks the rest: structure, claims, call order.
+  const strictness = new WellFormedStrictness();
+  strictness.enforceBalancing = false;
+  strictness.verifyNativeProofs = false;
+  strictness.verifyContractProofs = false;
+  strictness.verifySignatures = false;
+  strictness.enforceLimits = false;
+  const referenceState = LedgerState.blank(networkId);
+  referenceState.parameters = ledgerParameters;
+  try {
+    tx.wellFormed(referenceState, strictness, new Date());
+  } catch (error: unknown) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new TxNotWellFormedError(`The ledger refuses this call's transaction, so it is not proven: ${reason}`, {
+      cause: error
+    });
+  }
 };

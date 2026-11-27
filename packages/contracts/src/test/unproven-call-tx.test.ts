@@ -39,7 +39,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
 import { GetCurrentStatesForIdentity, MergeUnsubmittedCallTxData, TransactionContextImpl, TypeId } from '../internal/transaction';
-import { createUnprovenLedgerCallTx, makeCalleeStateResolver, zswapCallsToNewCoins } from '../internal/utils';
+import { assertCallTxWellFormed, createUnprovenLedgerCallTx, makeCalleeStateResolver, zswapCallsToNewCoins } from '../internal/utils';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
@@ -72,6 +72,7 @@ vi.mock('../internal/utils', async () => {
   return {
     createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', new runtime.ContractState(), ledger.Transaction.fromParts('undeployed')]),
     createUnprovenLedgerCallTx: vi.fn(() => ledger.Transaction.fromParts('undeployed')),
+    assertCallTxWellFormed: vi.fn(),
     createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
     encryptionPublicKeyResolverForZswapState: vi.fn().mockReturnValue(() => 'encrypted-key'),
     // Both: the call path uses zswapCallsToNewCoins, and the deploy this file sets up with reaches
@@ -159,6 +160,7 @@ describe('unproven-call-tx', () => {
         stage: 'Unproven'
       });
       expect(result.private.unprovenTx.serialize()).toEqual(built.serialize());
+      expect(assertCallTxWellFormed).toHaveBeenLastCalledWith(built, options.config.networkId, expect.any(LedgerParameters));
     });
 
     it('should create unproven call tx from initial states with private state', async () => {

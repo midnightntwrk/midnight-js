@@ -65,6 +65,7 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'ScopedTransactionIdentityMismatchError',
   'SubmitRejectionUndiagnosedError',
   'TxFailedError',
+  'TxNotWellFormedError',
   'VerifierKeyMismatchError',
   'ZswapOutputResolutionError',
   'createCallTxOptions',
