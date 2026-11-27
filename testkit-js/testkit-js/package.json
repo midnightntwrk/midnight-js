@@ -56,7 +56,7 @@
     "pino": "^10.4.0",
     "pino-pretty": "^13.2.0",
     "rxjs": "^7.8.2",
-    "testcontainers": "^12.2.1",
+    "testcontainers": "^12.2.2",
     "ws": "^8.23.0"
   },
   "devDependencies": {
@@ -66,15 +66,15 @@
     "@types/ws": "^8.18.2",
     "@vitest/runner": "^4.1.11",
     "allure-commandline": "^2.46.1",
-    "allure-js-commons": "^3.14.0",
-    "allure-vitest": "^3.14.0",
+    "allure-js-commons": "^3.15.0",
+    "allure-vitest": "^3.15.0",
     "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0",
     "rollup": "^4.68.2",
     "rxjs": "^7.8.2",
     "typedoc": "^0.28.20",
     "typedoc-plugin-markdown": "4.14.1",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   },
   "files": [
     "dist/"
